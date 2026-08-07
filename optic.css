@@ -1,0 +1,33 @@
+/* ================== FONT & BASE IMPORTS ================== */
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
+@import url('kesher.css');
+
+/* ================== צבעים - חלוקה ל-35 עמודות באופטיקה (פסטל בהיר) ================== */
+
+/* 1. בא"ח איסו"ק (עמודות 2 עד 8) */
+.optictable thead tr:last-child th:nth-child(n+2):nth-child(-n+8) { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(n+2):nth-child(-n+8) { background-color: #fffde7 !important; }
+
+/* 2. בא"ח חיר"ג (עמודות 9 עד 14) */
+.optictable thead tr:last-child th:nth-child(n+9):nth-child(-n+14) { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(n+9):nth-child(-n+14) { background-color: #e8f5e9 !important; }
+
+/* 3. גדוד הפיקוד (עמודות 15 עד 21) */
+.optictable thead tr:last-child th:nth-child(n+15):nth-child(-n+21) { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(n+15):nth-child(-n+21) { background-color: #e3f2fd !important; }
+
+/* 4. ענף תצ"מ (עמודות 22 עד 29) */
+.optictable thead tr:last-child th:nth-child(n+22):nth-child(-n+29) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(n+22):nth-child(-n+29) { background-color: #f3e5f5 !important; }
+
+/* 5. בהל"ג (עמודה 30) */
+.optictable thead tr:last-child th:nth-child(30) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(30) { background-color: #fff3e0 !important; }
+
+/* 6. סה"כ כללי (עמודות 31 עד 35) */
+.optictable tbody tr td:nth-child(n+31):nth-child(-n+35) { background-color: #e0f7fa !important; }
+
+#optictable thead th {
+  vertical-align: middle;
+  text-align: center;
+}

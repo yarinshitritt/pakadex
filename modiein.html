@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="modiein.css">
+  <title>PAKADEX - מודיעין</title>
+</head>
+
+<body>
+
+  <div id="top-nav-placeholder"></div>
+
+  <div style="display:flex; gap:12px; align-items:flex-start; margin-top: 8px; width: 100%;">
+
+    <div id="side-nav-placeholder"></div>
+
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+      <div class="table-container" style="margin-top: 0;">
+
+      <div style="display:flex; align-items:center; gap:8px; background:#f1f5f9; padding:6px 14px; border-radius:6px; width:fit-content; color:#000000; margin:10px 10px 14px; border:1px solid #cbd5e1;">
+        <span style="font-weight:bold; font-size:15px; color:#000000;">שבוע:</span>
+        <input type="text" id="weekInput" style="width:55px; height:28px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+      </div>
+
+      <div style="padding:0 12px 12px;">
+        <h2 class="unit-title">🟡 בא"ח איסו"ק</h2>
+        <table class="modieintable" id="esukTable" dir="rtl" border="1">
+          <thead>
+            <tr>
+              <th colspan="7" style="position:relative;">
+                בא"ח איסו"ק
+                <button onclick="importDirectToTable('reqesukTable', 'esukTable')" class="table-import-btn">ייבוא</button>
+              </th>
+            </tr>
+            <tr>
+              <th>פלוגה</th>
+              <th>אומץ</th><th>ברק</th><th>גולן</th><th>דביר</th><th>הראל</th><th>ונוס</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="test">נושא שבוע</td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+            <tr>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2 class="unit-title">🟢 בא"ח חיר"ג</h2>
+        <table class="modieintable" id="hirgTable" dir="rtl" border="1">
+          <thead>
+            <tr>
+              <th colspan="7" style="position:relative;">
+                בא"ח חיר"ג
+                <button onclick="importDirectToTable('reqhirgTable', 'hirgTable')" class="table-import-btn">ייבוא</button>
+              </th>
+            </tr>
+            <tr>
+              <th>פלוגה</th>
+              <th>קרקל</th><th>ברדלס</th><th>אריות הירדן</th><th>פנתר</th><th>לביא</th><th>יגואר</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="test">נושא שבוע</td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+            <tr>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2 class="unit-title">🔵 גדוד הפיקוד</h2>
+        <table class="modieintable" id="pikudTable" dir="rtl" border="1">
+          <thead>
+            <tr>
+              <th colspan="8" style="position:relative;">
+                גדוד הפיקוד
+                <button onclick="importDirectToTable('reqpikudTable', 'pikudTable')" class="table-import-btn">ייבוא</button>
+              </th>
+            </tr>
+            <tr>
+              <th>פלוגה</th>
+              <th>מפג"ד</th><th>קקא"ס נגב</th><th>קמ"א תבור</th><th>קמ"כ מצדה</th><th>קק"צ מגן</th><th>קמ"כ ירדן</th><th>הכנה לשדה</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="test">נושא שבוע</td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+            <tr>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2 class="unit-title">🟣 ענף תצ"מ</h2>
+        <table class="modieintable" id="tazamTable" dir="rtl" border="1">
+          <thead>
+            <tr>
+              <th colspan="9" style="position:relative;">
+                ענף תצ"מ
+                <button onclick="importDirectToTable('reqtazamTable', 'tazamTable')" class="table-import-btn">ייבוא</button>
+              </th>
+            </tr>
+            <tr>
+              <th>פלוגה</th>
+              <th>קמ"א רותם</th><th>קקא"ס חרמון</th><th>טל</th><th>יהל</th><th>כחל</th><th>קמ"ד</th><th>מקצועות</th><th>הכנה למעוז</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="test">נושא שבוע</td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+            <tr>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2 class="unit-title">🟠 בהל"ג</h2>
+        <table class="modieintable" id="bahalagTable" dir="rtl" border="1">
+          <thead>
+            <tr>
+              <th colspan="2" style="position:relative;">
+                בהל"ג
+                <button onclick="importDirectToTable('reqbahalagTable', 'bahalagTable')" class="table-import-btn">ייבוא</button>
+              </th>
+            </tr>
+            <tr>
+              <th>פלוגה</th>
+              <th>מפח"ט</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="test">נושא שבוע</td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+            <tr>
+              <td><input type="text" class="cell-input"></td>
+              <td><input type="text" class="cell-input"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <div id="nextbt">
+      <button onclick="prevWeek()">▶</button>
+      <div id="pageNumbers"></div>
+      <button onclick="nextWeek()">◀</button>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,274 @@
+/* ================== FONT & BASE IMPORTS ================== */
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&display=swap');
+
+/* ================== קיבוע רוחב עמודות ואחידות לכל הטבלה ================== */
+table.hipoktable {
+  table-layout: fixed !important;
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.hipoktable thead tr:nth-child(2) th:nth-child(1),
+.hipoktable thead tr:nth-child(2) th:nth-child(2) {
+  width: 12% !important;
+}
+
+.hipoktable thead tr:nth-child(2) th:nth-child(n+3) {
+  width: 10.8% !important;
+}
+
+/* ================== בסיס טבלאות ================== */
+.hipoktable,
+.hipoktable th,
+.hipoktable td,
+.hipoktable textarea {
+  font-family: 'Assistant', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+}
+
+/* ================== כותרות הימים ================== */
+#hipoktable thead tr:nth-child(2) th {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  padding: 10px 4px !important;
+  border: 1px solid #334155 !important;
+}
+
+.hipoktable input.cell-input {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  padding: 0 4px !important;
+  margin: 0 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  text-align: center !important;
+  font-weight: 800 !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000 !important;
+}
+
+.hipoktable tbody tr td {
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 2px !important;
+  vertical-align: middle !important;
+  position: relative;
+  text-align: center !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.hipoktable td:nth-child(n+2) {
+  width: 58px !important;
+  min-width: 90px !important;
+}
+
+.hipoktable td:first-child,
+.hipoktable th:first-child {
+  width: 130px !important;
+  min-width: 130px !important;
+  background-color: #f1f5f9 !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+/* ================== כותרות ימין בתוך הטבלה ================== */
+.hipoktable td[rowspan]:first-child {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  font-size: 14.5px !important;
+  vertical-align: middle !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.hipoktable .dry-type {
+  background-color: #fef08a !important; /* צהוב איסו"ק */
+  color: #000000 !important;
+  font-weight: 800 !important;
+  font-size: 13.5px !important;
+  vertical-align: middle !important;
+  border: 1px solid #fde047 !important;
+}
+
+.hipoktable .wet-type {
+  background-color: #bfdbfe !important; /* כחול פיקוד */
+  color: #000000 !important;
+  font-weight: 800 !important;
+  font-size: 13.5px !important;
+  vertical-align: middle !important;
+  border: 1px solid #93c5fd !important;
+}
+
+/* ================== משבצות פנימיות (CELL WRAPPER) ================== */
+.cell-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 74px;
+  padding: 4px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.15s ease;
+}
+
+.task-input {
+  width: 100%;
+  min-height: 48px;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: #000000 !important;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.time-input {
+  width: 100%;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  outline: none;
+  background: rgba(255, 255, 255, 0.7) !important;
+  direction: ltr;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #000000 !important;
+  padding: 2px;
+  box-sizing: border-box;
+  margin-top: auto;
+  border-radius: 0 0 4px 4px;
+}
+
+/* ================== צבעי הפלוגות ================== */
+.bg-esuk   { background-color: #fffde7 !important; border: 1.5px solid #fde047 !important; }
+.bg-hirg   { background-color: #e8f5e9 !important; border: 1.5px solid #86efac !important; }
+.bg-pikud  { background-color: #e3f2fd !important; border: 1.5px solid #93c5fd !important; }
+.bg-tazam  { background-color: #f3e5f5 !important; border: 1.5px solid #d8b4fe !important; }
+.bg-maphat { background-color: #fff3e0 !important; border: 1.5px solid #fdba74 !important; }
+
+.cell-wrapper.imported {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ================== מיני תפריט צבע (COLOR PICKER) ================== */
+.color-picker-toggle {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  cursor: pointer;
+  font-size: 13px;
+  opacity: 0.25;
+  transition: opacity 0.2s;
+  z-index: 2;
+}
+
+.cell-wrapper:hover .color-picker-toggle {
+  opacity: 1;
+}
+
+.color-menu {
+  display: none;
+  position: absolute;
+  top: 20px;
+  left: 2px;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 5px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+  z-index: 100;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 92px;
+  gap: 5px;
+}
+
+.color-menu.show {
+  display: flex;
+}
+
+.color-option {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  transition: transform 0.1s;
+}
+
+.color-option:hover {
+  transform: scale(1.15);
+}
+
+.bg-clear {
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: bold;
+  border: 1px dashed #cbd5e1;
+}
+
+/* ================== לייאאוט וקונטיינר ================== */
+.table-container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 145px);
+  background-color: var(--card-bg, #ffffff) !important;
+  padding: 0 !important;
+  border-radius: var(--radius-md, 8px);
+  margin-top: 6px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  position: relative;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+}
+
+/* ================== כפתור ייבוא מודרני ================== */
+.table-import-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.table-import-btn:hover {
+  background: rgba(255, 255, 255, 0.45);
+  transform: translateY(-50%) scale(1.02);
+}

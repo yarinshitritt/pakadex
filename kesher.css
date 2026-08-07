@@ -1,0 +1,426 @@
+/* ================== FONT ================== */
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
+
+/* ================== בסיס טבלאות ================== */
+.keshertable,
+.optictable,
+.keshertable th,
+.optictable th,
+.keshertable td,
+.optictable td,
+.keshertable textarea,
+.optictable textarea {
+  font-family: 'Assistant', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+}
+
+/* ================== ביטול פדינג בקונטיינר להצמדה מלאה לימין ================== */
+.table-container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 145px);
+  background-color: var(--card-bg, #ffffff);
+  padding: 0 !important;
+  border-radius: var(--radius-md, 8px);
+  margin-top: 6px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  position: relative;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+}
+
+/* ================== הקפאת העמודה הראשונה מימין (כמו באקסל) ================== */
+
+/* כותרות העמודה הראשונה ב-thead (תא "שבוע:" ותא "פלוגה") */
+.keshertable thead tr th:first-child,
+.optictable thead tr th:first-child {
+  position: sticky !important;
+  right: 0 !important; 
+  z-index: 30 !important; /* שכבה עליונה ביותר כדי לעמוד מעל הכל בגלילה */
+  background-color: #0f172a !important; /* צבע סלייט כהה יוקרתי ומאופק */
+  color: #ffffff !important;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.18) !important; /* הצללה רכה משמאל */
+  border-left: 2px solid #0284c7 !important;
+  font-weight: 800 !important;
+}
+
+/* תאי הגוף בעמודה הראשונה (שמות הציוד) */
+.keshertable tbody tr td:first-child,
+.optictable tbody tr td:first-child {
+  position: sticky !important;
+  right: 0 !important; 
+  z-index: 20 !important; /* שכבה מעל התאים הנגללים */
+  background-color: #f1f5f9 !important; /* אפור סלייט בהיר ואטום */
+  color: #0f172a !important;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.12) !important;
+  border-left: 2px solid #cbd5e1 !important;
+  width: 130px !important;
+  min-width: 130px !important;
+  font-weight: 800 !important;
+}
+
+/* שורות אפורות/מיוחדות בגוף הטבלה בעמודה הראשונה */
+.keshertable tbody tr:nth-child(2) td:first-child,
+.keshertable tbody tr:nth-child(21) td:first-child,
+.optictable tbody tr:nth-child(2) td:first-child {
+  background-color: #e0e0e0 !important;
+}
+
+/* אפקט Hover עדין במעבר עכבר על העמודה המוקפאת */
+.keshertable tbody tr:hover td:first-child,
+.optictable tbody tr:hover td:first-child {
+  background-color: #cfe3ff !important;
+  color: #000 !important;
+}
+
+/* ================== INPUT - מרכוז והתאמה למשבצות קטנות ================== */
+.keshertable input.cell-input,
+.optictable input.cell-input {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  
+  padding: 0 1px !important;
+  margin: 0 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  
+  text-align: center !important;
+  font-weight: 800 !important;
+  font-size: 16px !important; /* פונט מוקטן מעט כדי שיכנס במשבצת הקטנה */
+  line-height: 1 !important;
+  
+  box-sizing: border-box !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ================== תאים רגילים ================== */
+.keshertable:not(#keshertable) tbody tr td,
+.optictable:not(#optictable) tbody tr td {
+  height: 38px !important;
+  padding: 0 !important;
+  vertical-align: middle !important;
+  position: relative;
+  text-align: center !important;
+}
+
+/* ================== שורות גבוהות (אפורות) בטבלה הראשית בלבד ================== */
+#keshertable tbody tr:nth-child(2),
+#keshertable tbody tr:nth-child(21),
+#optictable tbody tr:nth-child(2) {
+  min-height: 30px !important;
+  height: 40px !important;
+}
+
+#keshertable tbody tr:nth-child(2) td,
+#keshertable tbody tr:nth-child(21) td,
+#optictable tbody tr:nth-child(2) td {
+  padding: 6px 8px !important;
+  vertical-align: top !important;
+  background-color: #e0e0e0 !important;
+}
+
+/* ================== textarea בשורות האפורות ================== */
+#keshertable tbody tr:nth-child(2) textarea,
+#keshertable tbody tr:nth-child(21) textarea,
+#optictable tbody tr:nth-child(2) textarea {
+  min-height: 40px !important;
+  height: 100% !important;
+  width: 100% !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  padding: 6px 8px !important;
+  resize: none;
+  overflow-y: auto;
+  box-sizing: border-box;
+  text-align: right;
+}
+
+/* ================== גבולות ברורים והפרדות סקציות לחלוקה חזותית מודגשת ================== */
+.keshertable,
+.optictable {
+  border-collapse: collapse !important;
+  border: 2px solid #334155 !important;
+}
+
+.keshertable th,
+.optictable th,
+.keshertable td,
+.optictable td {
+  border: 1px solid #94a3b8 !important;
+}
+
+.keshertable th,
+.optictable th {
+  border-bottom: 2px solid #334155 !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+}
+
+/* הפרדות אנכיות מודגשות בין יחידות בטבלת קשר */
+.keshertable th:nth-child(8), .keshertable td:nth-child(8),
+.keshertable th:nth-child(11), .keshertable td:nth-child(11),
+.keshertable th:nth-child(17), .keshertable td:nth-child(17),
+.keshertable th:nth-child(20), .keshertable td:nth-child(20),
+.keshertable th:nth-child(27), .keshertable td:nth-child(27),
+.keshertable th:nth-child(30), .keshertable td:nth-child(30),
+.keshertable th:nth-child(38), .keshertable td:nth-child(38),
+.keshertable th:nth-child(41), .keshertable td:nth-child(41),
+.keshertable th:nth-child(42), .keshertable td:nth-child(42),
+.keshertable th:nth-child(45), .keshertable td:nth-child(45) {
+  border-left: 2px solid #475569 !important;
+}
+
+/* הפרדות אנכיות מודגשות בין יחידות בטבלת אופטיקה */
+.optictable th:nth-child(8), .optictable td:nth-child(8),
+.optictable th:nth-child(14), .optictable td:nth-child(14),
+.optictable th:nth-child(21), .optictable td:nth-child(21),
+.optictable th:nth-child(29), .optictable td:nth-child(29),
+.optictable th:nth-child(30), .optictable td:nth-child(30) {
+  border-left: 2px solid #475569 !important;
+}
+
+/* ================== עמודות - כיווץ דרמטי לניצול מסך מרבי ================== */
+.keshertable td:nth-child(n+2),
+.optictable td:nth-child(n+2),
+.keshertable th:nth-child(n+2) {
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  padding: 2px 1px !important;
+  word-wrap: break-word; /* שבירת מילים ארוכות כמו "וויסות גדודי" */
+  white-space: normal !important; 
+  line-height: 1.1 !important;
+}
+
+/* ================== צבעי קבוצות ויחידות ================== */
+#keshertable thead tr:first-child th:nth-child(2),
+#optictable thead tr:first-child th:nth-child(2) { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
+
+#keshertable thead tr:first-child th:nth-child(4),
+#optictable thead tr:first-child th:nth-child(4) { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
+
+#keshertable thead tr:first-child th:nth-child(6),
+#optictable thead tr:first-child th:nth-child(6) { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
+
+#keshertable thead tr:first-child th:nth-child(8),
+#optictable thead tr:first-child th:nth-child(8) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
+
+#keshertable thead tr:first-child th:nth-child(10),
+#optictable thead tr:first-child th:nth-child(10) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
+
+/* כותרות סה"כ פנימיות בטבלת קשר (דרישה, וויסות גדודי, עודף) */
+.keshertable thead tr:last-child th:nth-child(9), .keshertable thead tr:last-child th:nth-child(10), .keshertable thead tr:last-child th:nth-child(11),
+.keshertable thead tr:last-child th:nth-child(18), .keshertable thead tr:last-child th:nth-child(19), .keshertable thead tr:last-child th:nth-child(20),
+.keshertable thead tr:last-child th:nth-child(28), .keshertable thead tr:last-child th:nth-child(29), .keshertable thead tr:last-child th:nth-child(30),
+.keshertable thead tr:last-child th:nth-child(39), .keshertable thead tr:last-child th:nth-child(40), .keshertable thead tr:last-child th:nth-child(41),
+.keshertable thead tr:last-child th:nth-child(43), .keshertable thead tr:last-child th:nth-child(44), .keshertable thead tr:last-child th:nth-child(45) {
+  background-color: #008f9c !important;
+  color: #000000 !important;
+  font-weight: bold;
+}
+
+/* כותרות סה"כ כללי בסוף הטבלה */
+.keshertable thead tr:last-child th:nth-child(n+46):nth-child(-n+50),
+.optictable thead tr:last-child th:nth-child(n+31):nth-child(-n+35) {
+  background-color: #00555e !important;
+  color: #000000 !important;
+  font-weight: bold;
+}
+
+/* ================== צבעים - אופטיקה (35 עמודות - פסטל בהיר) ================== */
+.optictable thead tr:last-child th:nth-child(n+2):nth-child(-n+8) { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(n+2):nth-child(-n+8) { background-color: #fffde7 !important; }
+
+.optictable thead tr:last-child th:nth-child(n+9):nth-child(-n+14) { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(n+9):nth-child(-n+14) { background-color: #e8f5e9 !important; }
+
+.optictable thead tr:last-child th:nth-child(n+15):nth-child(-n+21) { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(n+15):nth-child(-n+21) { background-color: #e3f2fd !important; }
+
+.optictable thead tr:last-child th:nth-child(n+22):nth-child(-n+29) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(n+22):nth-child(-n+29) { background-color: #f3e5f5 !important; }
+
+.optictable thead tr:last-child th:nth-child(30) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
+.optictable tbody tr td:nth-child(30) { background-color: #fff3e0 !important; }
+
+.optictable tbody tr td:nth-child(n+31):nth-child(-n+35) { background-color: #e0f7fa !important; }
+
+/* ================== צבעים - קשר (50 עמודות - פסטל בהיר) ================== */
+/* קבוצה 1: בא"ח איסו"ק (עמודות 2 עד 11) */
+.keshertable thead tr:last-child th:nth-child(n+2):nth-child(-n+8) { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
+.keshertable tbody tr td:nth-child(n+2):nth-child(-n+11) { background-color: #fffde7 !important; }
+
+/* קבוצה 2: בא"ח חיר"ג (עמודות 12 עד 20) */
+.keshertable thead tr:last-child th:nth-child(n+12):nth-child(-n+17) { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
+.keshertable tbody tr td:nth-child(n+12):nth-child(-n+20) { background-color: #e8f5e9 !important; }
+
+/* קבוצה 3: גדוד הפיקוד (עמודות 21 עד 30) */
+.keshertable thead tr:last-child th:nth-child(n+21):nth-child(-n+27) { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
+.keshertable tbody tr td:nth-child(n+21):nth-child(-n+30) { background-color: #e3f2fd !important; }
+
+/* קבוצה 4: ענף תצ"מ (עמודות 31 עד 41) */
+.keshertable thead tr:last-child th:nth-child(n+31):nth-child(-n+38) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
+.keshertable tbody tr td:nth-child(n+31):nth-child(-n+41) { background-color: #f3e5f5 !important; }
+
+/* קבוצה 5: בהל"ג (עמודות 42 עד 45) */
+.keshertable thead tr:last-child th:nth-child(42) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
+.keshertable tbody tr td:nth-child(n+42):nth-child(-n+45) { background-color: #fff3e0 !important; }
+
+/* ================== צבעי טבלאות דרישות והקצאות לפי יחידה ================== */
+/* 1. בא"ח איסו"ק (צהוב) */
+#esukkeshertable thead tr th,
+#esukoptictable thead tr th,
+#reqesukTable thead tr th,
+#haktzaot-esuk-kesher-table thead tr th,
+#haktzaot-esuk-optic-table thead tr th,
+#haktzaot-esuk-table thead tr th { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
+#esukkeshertable tbody tr td:nth-child(n+2),
+#esukoptictable tbody tr td:nth-child(n+2),
+#reqesukTable tbody tr td:nth-child(n+2),
+#haktzaot-esuk-kesher-table tbody tr td:nth-child(n+2),
+#haktzaot-esuk-optic-table tbody tr td:nth-child(n+2),
+#haktzaot-esuk-table tbody tr td:nth-child(n+2) { background-color: #fffde7 !important; }
+
+/* 2. בא"ח חיר"ג (ירוק) */
+#kkeshertable thead tr th,
+#koptictable thead tr th,
+#reqhirgTable thead tr th,
+#haktzaot-hirg-kesher-table thead tr th,
+#haktzaot-hirg-optic-table thead tr th,
+#haktzaot-hirg-table thead tr th { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
+#kkeshertable tbody tr td:nth-child(n+2),
+#koptictable tbody tr td:nth-child(n+2),
+#reqhirgTable tbody tr td:nth-child(n+2),
+#haktzaot-hirg-kesher-table tbody tr td:nth-child(n+2),
+#haktzaot-hirg-optic-table tbody tr td:nth-child(n+2),
+#haktzaot-hirg-table tbody tr td:nth-child(n+2) { background-color: #e8f5e9 !important; }
+
+/* 3. גדוד הפיקוד (כחול) */
+#pkeshertable thead tr th,
+#poptictable thead tr th,
+#reqpikudTable thead tr th,
+#haktzaot-pikud-kesher-table thead tr th,
+#haktzaot-pikud-optic-table thead tr th,
+#haktzaot-pikud-table thead tr th { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
+#pkeshertable tbody tr td:nth-child(n+2),
+#poptictable tbody tr td:nth-child(n+2),
+#reqpikudTable tbody tr td:nth-child(n+2),
+#haktzaot-pikud-kesher-table tbody tr td:nth-child(n+2),
+#haktzaot-pikud-optic-table tbody tr td:nth-child(n+2),
+#haktzaot-pikud-table tbody tr td:nth-child(n+2) { background-color: #e3f2fd !important; }
+
+/* 4. ענף תצ"מ (סגול) */
+#tkeshertable thead tr th,
+#toptictable thead tr th,
+#reqtazamTable thead tr th,
+#haktzaot-tazam-kesher-table thead tr th,
+#haktzaot-tazam-optic-table thead tr th,
+#haktzaot-tazam-table thead tr th { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
+#tkeshertable tbody tr td:nth-child(n+2),
+#toptictable tbody tr td:nth-child(n+2),
+#reqtazamTable tbody tr td:nth-child(n+2),
+#haktzaot-tazam-kesher-table tbody tr td:nth-child(n+2),
+#haktzaot-tazam-optic-table tbody tr td:nth-child(n+2),
+#haktzaot-tazam-table tbody tr td:nth-child(n+2) { background-color: #f3e5f5 !important; }
+
+/* 5. בהל"ג (כתום) */
+#bkeshertable thead tr th,
+#boptictable thead tr th,
+#reqbahalagTable thead tr th,
+#haktzaot-bahalag-kesher-table thead tr th,
+#haktzaot-bahalag-optic-table thead tr th,
+#haktzaot-bahalag-table thead tr th { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
+#bkeshertable tbody tr td:nth-child(n+2),
+#boptictable tbody tr td:nth-child(n+2),
+#reqbahalagTable tbody tr td:nth-child(n+2),
+#haktzaot-bahalag-kesher-table tbody tr td:nth-child(n+2),
+#haktzaot-bahalag-optic-table tbody tr td:nth-child(n+2),
+#haktzaot-bahalag-table tbody tr td:nth-child(n+2) { background-color: #fff3e0 !important; }
+
+/* הכהיה עדינה ויזואלית לעמודות הסיכום הפנימיות כדי להבדילן מעמודות הפלוגות */
+.keshertable tbody tr td:nth-child(9), .keshertable tbody tr td:nth-child(10), .keshertable tbody tr td:nth-child(11),
+.keshertable tbody tr td:nth-child(18), .keshertable tbody tr td:nth-child(19), .keshertable tbody tr td:nth-child(20),
+.keshertable tbody tr td:nth-child(28), .keshertable tbody tr td:nth-child(29), .keshertable tbody tr td:nth-child(30),
+.keshertable tbody tr td:nth-child(39), .keshertable tbody tr td:nth-child(40), .keshertable tbody tr td:nth-child(41),
+.keshertable tbody tr td:nth-child(43), .keshertable tbody tr td:nth-child(44), .keshertable tbody tr td:nth-child(45) {
+  filter: brightness(0.95);
+}
+
+/* ================== עיצוב תא ראשון (שבוע) ב-header ================== */
+.keshertable thead th:first-child,
+.optictable thead th:first-child {
+  width: 140px !important;
+  min-width: 140px !important;
+  text-align: center !important;
+}
+
+#keshertable thead th {
+  vertical-align: middle;
+  text-align: center;
+}
+
+/* ================== לייאאוט וכללי ================== */
+
+/* ================== לייאאוט וכללי ================== */
+.layout {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+
+table {
+  border-collapse: collapse;
+  background-color: white;
+  width: 100%;
+  min-width: 100%;
+  table-layout: auto;
+  box-sizing: border-box;
+}
+
+th, td {
+  border: 1px solid #00a8b5;
+  text-align: center;
+}
+
+thead {
+  background-color: #008f9c;
+  color: black;
+}
+
+input[type="date"] {
+  box-shadow: none !important;
+}
+
+.keshertable tbody tr:first-child td,
+.optictable tbody tr:first-child td {
+  height: auto !important;
+  min-height: 42px !important;
+}
+
+/* ================== שורה 1 ("נושא שבוע") - עיצוב מתרחב ל-textarea ================== */
+.topic-textarea {
+  width: 100% !important;
+  min-height: 42px !important;
+  height: auto;
+  padding: 4px !important;
+  margin: 0 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  text-align: center !important;
+  font-weight: 800 !important;
+  font-size: 11.5px !important;
+  line-height: 1.2 !important;
+  box-sizing: border-box !important;
+  resize: none !important;
+  overflow-y: hidden !important;
+  font-family: 'Assistant', sans-serif !important;
+  color: #111 !important;
+  field-sizing: content;
+}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="hipokim.css">
+  <title>PAKADEX - חיפוקים</title>
+</head>
+<body>
+
+  <div id="top-nav-placeholder"></div>
+
+  <div style="display:flex; gap:12px; align-items:flex-start; margin-top: 8px; width: 100%;">
+
+    <div id="side-nav-placeholder"></div>
+
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+      <div class="table-container" style="margin-top: 0;">
+      <table class="hipoktable" id="hipoktable" dir="rtl" border="1">
+        <thead>
+          <tr>
+            <th style="align-items:center; justify-content:center; gap:8px; background:#f1f5f9; height:44px; border:1px solid #cbd5e1;">
+              <span style="font-weight:bold; font-size:14px; color:#000000;">שבוע:</span>
+              <input type="text" id="weekInput" style="width:55px; height:28px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+            </th>
+            <th colspan="8" style="position:relative; background:#0f172a; color:#ffffff; font-size:16px; font-weight:800; border:1px solid #1e293b;">
+              חיפוקים
+              <button onclick="importHipukim()" class="table-import-btn">ייבוא</button>
+            </th>
+          </tr>
+          <tr>
+            <th>אמבולס</th>
+            <th>סוג חיפוק</th>
+            <th>יום א׳</th>
+            <th>יום ב׳</th>
+            <th>יום ג׳</th>
+            <th>יום ד׳</th>
+            <th>יום ה׳</th>
+            <th>יום ו׳</th>
+            <th>שבת</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="12">אמבולנס</td>
+            <td rowspan="6" class="dry-type">חיפוק יבש</td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+          </tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+
+          <tr>
+            <td rowspan="6" class="wet-type">חיפוק רטוב</td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+            <td><input type="text" class="cell-input"></td>
+          </tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+          <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="nextbt">
+      <button onclick="prevWeek()">▶</button>
+      <div id="pageNumbers"></div>
+      <button onclick="nextWeek()">◀</button>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+
+  <script>
+    const ALL_HIPOK_COLORS = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat'];
+
+    function toggleColorMenu(btn) {
+      document.querySelectorAll('.color-menu.show').forEach(menu => {
+         if (menu !== btn.nextElementSibling) menu.classList.remove('show');
+      });
+      const menu = btn.nextElementSibling;
+      menu.classList.toggle('show');
+    }
+
+    function setCellColor(btn, colorClass) {
+      const wrapper = btn.closest('.cell-wrapper');
+      wrapper.classList.remove(...ALL_HIPOK_COLORS);
+      if (colorClass) {
+        wrapper.classList.add(colorClass);
+      }
+      btn.closest('.color-menu').classList.remove('show');
+      if (typeof saveHipokData === 'function') saveHipokData();
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.color-picker-toggle') && !e.target.closest('.color-menu')) {
+        document.querySelectorAll('.color-menu.show').forEach(menu => menu.classList.remove('show'));
+      }
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const cells = document.querySelectorAll("#hipoktable tbody td");
+
+      cells.forEach(td => {
+        if (td.hasAttribute("rowspan")) return;
+        const oldInput = td.querySelector(".cell-input");
+        if (oldInput) {
+          td.innerHTML = `
+            <div class="cell-wrapper">
+              <div class="color-picker-toggle" onclick="toggleColorMenu(this)" title="בחר פלוגה">🎨</div>
+              <div class="color-menu">
+                 <div class="color-option bg-esuk" onclick="setCellColor(this, 'bg-esuk')" title="בא״ח איסו״ק (צהוב)"></div>
+                 <div class="color-option bg-hirg" onclick="setCellColor(this, 'bg-hirg')" title="בא״ח חיר״ג (ירוק)"></div>
+                 <div class="color-option bg-pikud" onclick="setCellColor(this, 'bg-pikud')" title="גדוד הפיקוד (כחול)"></div>
+                 <div class="color-option bg-tazam" onclick="setCellColor(this, 'bg-tazam')" title="ענף תצ״מ (סגול)"></div>
+                 <div class="color-option bg-maphat" onclick="setCellColor(this, 'bg-maphat')" title="מפח״ט (כתום)"></div>
+                 <div class="color-option bg-clear" onclick="setCellColor(this, '')" title="נקה צבע">✕</div>
+              </div>
+              <textarea class="task-input" placeholder=""></textarea>
+              <input type="text" class="time-input" pattern="^([01]\\d|2[0-3]):[0-5]\\d\\s-\\s([01]\\d|2[0-3]):[0-5]\\d$">
+            </div>
+          `;
+        }
+      });
+    });
+
+    // דריסת פונקציות השמירה והטעינה מ-script.js לתמיכה מלאה בצבעים
+    function readHipokData() {
+      const data = {};
+      document.querySelectorAll('#hipoktable .task-input').forEach((el, i) => { data['task_' + i] = el.value; });
+      document.querySelectorAll('#hipoktable .time-input').forEach((el, i) => { data['time_' + i] = el.value; });
+      
+      document.querySelectorAll('#hipoktable .cell-wrapper').forEach((el, i) => {
+         const colorClass = ALL_HIPOK_COLORS.find(c => el.classList.contains(c)) || '';
+         data['color_' + i] = colorClass;
+      });
+      return data;
+    }
+
+    function loadHipokData(week, year) {
+      const table = document.getElementById('hipoktable');
+      if (!table) return;
+
+      document.querySelectorAll('#hipoktable .task-input').forEach(el => el.value = '');
+      document.querySelectorAll('#hipoktable .time-input').forEach(el => el.value = '');
+      document.querySelectorAll('#hipoktable .cell-wrapper').forEach(wrapper => {
+         wrapper.className = 'cell-wrapper';
+      });
+
+      const saved = localStorage.getItem(getStorageKey('hipoktable', week, year));
+      if (!saved) return;
+
+      const data = JSON.parse(saved);
+      document.querySelectorAll('#hipoktable .task-input').forEach((el, i) => {
+        if (data['task_' + i] !== undefined) {
+          el.value = data['task_' + i];
+          if (data['task_' + i].trim() !== '') {
+            const wrapper = el.closest('.cell-wrapper');
+            if (wrapper) wrapper.classList.add('imported');
+          }
+        }
+      });
+      document.querySelectorAll('#hipoktable .time-input').forEach((el, i) => {
+        if (data['time_' + i] !== undefined) {
+          el.value = data['time_' + i];
+          if (data['time_' + i].trim() !== '') {
+            const wrapper = el.closest('.cell-wrapper');
+            if (wrapper) wrapper.classList.add('imported');
+          }
+        }
+      });
+
+      document.querySelectorAll('#hipoktable .cell-wrapper').forEach((wrapper, i) => {
+         if (data['color_' + i]) {
+             wrapper.classList.add(data['color_' + i]);
+         }
+      });
+    }
+  </script>
+</body>
+</html>

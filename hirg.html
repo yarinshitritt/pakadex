@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="esuk.css">
+  <link rel="stylesheet" href="kesher.css">
+  <link rel="stylesheet" href="optic.css">
+  <link rel="stylesheet" href="modiein.css">
+  <link rel="stylesheet" href="hipokim.css">
+  <title>PAKADEX - בא"ח חיר"ג</title>
+</head>
+<body>
+ 
+  <div class="container1">
+    <div id="breadcrumb-path" style="display:flex; align-items:center; gap:6px; background:#1e293b; padding:4px 10px; border-radius:6px; border:1px solid #334155; font-size:13px; font-weight:700; color:#38bdf8; white-space:nowrap;"></div>
+    <div style="display:flex; align-items:center; gap:8px; margin-right:auto; cursor:pointer;" onclick="window.location.href='main.html'">
+      <h1 style="font-size:24px; color:white; margin:0;">PAKADEX</h1>
+      <img src="images/לוגו בהלג בלי רקע.png" alt="לוגו" class="sidebar-image" width="36" style="height:auto;">
+    </div>
+  </div>
+  
+  <div id="top-nav-placeholder"></div>
+ 
+  <div style="display:flex; gap:12px; align-items:flex-start; margin-top: 8px; width: 100%;">
+ 
+    <div id="side-nav-placeholder"></div>
+ 
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+ 
+      <div id="bakashot" class="section">
+ 
+        <div id="kesher" class="topsub">
+          <div class="table-container">
+            <table class="keshertable" id="kkeshertable" dir="rtl" border="1">
+              <thead>
+                <tr>
+                  <th style="align-items:center; justify-content:center; gap:8px; background:#388e3c; color:white; height:48px;">
+                    <span style="font-weight:bold; font-size:15px;">שבוע:</span>
+                    <input type="text" id="weekInput"
+                      style="width:70px; height:35px; font-size:24px; font-weight:800; text-align:center; border:2px solid black; border-radius:6px;">
+                  </th>
+                  <th colspan="6" style="background:#388e3c; color:white;">בא"ח חיר"ג</th>
+                </tr>
+                <tr>
+                  <th>פלוגה</th>
+                  <th>קרקל</th><th>ברדלס</th><th>אריות הירדן</th><th>פנתר</th><th>לביא</th><th>יגואר</th>
+                </tr>
+              </thead>
+              <tbody>
+                <script>
+                  const rows = [
+                    "נושא שבוע","715/709","POC","710","שקדון","CF-33","700","דיסקית","סל\"צ","נתונים",
+                    "מגבר","מח-120","מח-121","מח-122","מדונה","אול\"רים","מר2791",
+                    "מזוודת הטענה בומבה","מזוודת הטענה ליתיום","משיכה\\זיכוי"
+                  ];
+                  const columnsCount = 1 + 6;
+                  document.write(
+                    rows.map((row, rowIndex) => {
+                      let tds = `<td class="test">${row}</td>`;
+                      for (let i = 1; i < columnsCount; i++) {
+                        if (rowIndex === 0) {
+                          tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
+                        } else {
+                          tds += `<td><input type="text" class="cell-input"></td>`;
+                        }
+                      }
+                      return `<tr>${tds}</tr>`;
+                    }).join("")
+                  );
+                </script>
+              </tbody>
+            </table>
+          </div>
+        </div>
+ 
+        <div id="optic" class="topsub" style="display:none;">
+          <div class="table-container">
+            <table class="optictable" id="koptictable" dir="rtl" border="1">
+              <thead>
+                <tr>
+                  <th style="align-items:center; justify-content:center; gap:8px; background:#388e3c; color:white; height:48px;">
+                    <span style="font-weight:bold; font-size:15px;">שבוע:</span>
+                    <input type="text" id="weekInputOptic"
+                      style="width:70px; height:35px; font-size:24px; font-weight:800; text-align:center; border:2px solid black; border-radius:6px;">
+                  </th>
+                  <th colspan="6" style="background:#388e3c; color:white;">בא"ח חיר"ג</th>
+                </tr>
+                <tr>
+                  <th>פלוגה</th>
+                  <th>קרקל</th><th>ברדלס</th><th>אריות הירדן</th><th>פנתר</th><th>לביא</th><th>יגואר</th>
+                </tr>
+              </thead>
+              <tbody>
+                <script>
+                  const opticrows = [
+                    "נושא שבוע","מת\"ן","עמית","עמית איכון","חצובת עמית","חצובת תבל","יובל","תבל ידני",
+                    "מיני תבל ידני","תבל נשלט","מיני תבל נשלט","רחפן מטריס 300","רחפן איבו",
+                    "רחפן אווטא (ערכה זוגית)","15X80","מצפן מעלות","שטיינר",
+                    "צגון","מצלמת NIKON","איבו אלפא","התקני הטלה/ כדור ברזל"
+                  ];
+                  const opticcolumnsCount = 1 + 6;
+                  document.write(
+                    opticrows.map((row, rowIndex) => {
+                      let tds = `<td class="test">${row}</td>`;
+                      for (let i = 1; i < opticcolumnsCount; i++) {
+                        if (rowIndex === 0) {
+                          tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
+                        } else {
+                          tds += `<td><input type="text" class="cell-input"></td>`;
+                        }
+                      }
+                      return `<tr>${tds}</tr>`;
+                    }).join("")
+                  );
+                </script>
+              </tbody>
+            </table>
+          </div>
+        </div>
+ 
+        <div id="modiein" class="topsub" style="display:none;">
+          <div class="table-container">
+            <table class="modieintable" id="reqhirgTable" dir="rtl" border="1">
+              <thead>
+                <tr>
+                  <th style="align-items:center; justify-content:center; gap:8px; background:#388e3c; color:white; height:48px;">
+                    <span style="font-weight:bold; font-size:15px;">בא"ח חיר"ג</span>
+                  </th>
+                  <th colspan="6" style="position:relative; background:#388e3c; color:white;">
+                    בא"ח חיר"ג
+                  </th>
+                </tr>
+                <tr>
+                  <th>פלוגה</th>
+                  <th>קרקל</th><th>ברדלס</th><th>אריות הירדן</th><th>פנתר</th><th>לביא</th><th>יגואר</th>
+                </tr>
+              </thead>
+              <tbody>
+                <script>
+                  document.write(`
+                    <tr>
+                      <td>נושא שבוע</td>
+                      ${'<td><input type="text" class="cell-input"></td>'.repeat(6)}
+                    </tr>
+                    <tr>
+                      ${'<td><input type="text" class="cell-input"></td>'.repeat(7)}
+                    </tr>
+                  `);
+                </script>
+              </tbody>
+            </table>
+          </div>
+        </div>
+ 
+        <div id="hipok" class="topsub" style="display:none;">
+          <div class="request-card-container">
+            <button id="openHipokModalBtn" onclick="openHipokModal()" class="hipok-choice-btn" style="margin-bottom:15px;">➕ הוספת חיפוק חדש</button>
+            <h3>חיפוקים שהוזנו לשבוע זה:</h3>
+            <div id="hipokEntriesList"></div>
+          </div>
+        </div>
+ 
+        <div id="chadrag" class="topsub" style="display:none;">
+          <div class="request-card-container">
+            <h2>בקשת הקצאה לחדר"ג / כיתות</h2>
+            
+            <div class="form-bar-card">
+               <select id="hadragFacilityInput">
+                  <option value="chadrag">חדר"ג</option>
+                  <option value="anafit8">ענפית 8</option>
+                  <option value="anafit-bah">ענפית בא"ח</option>
+                  <option value="tavor">תבור</option>
+               </select>
+
+               <input type="text" id="hadragTextInput" placeholder="פרטי האימון (למשל: פלוגת קרקל)" style="width: 200px;">
+               
+               <select id="hadragDayInput">
+                  <option value="0">ראשון</option>
+                  <option value="1">שני</option>
+                  <option value="2">שלישי</option>
+                  <option value="3">רביעי</option>
+                  <option value="4">חמישי</option>
+                  <option value="5">שישי</option>
+                  <option value="6">שבת</option>
+               </select>
+               
+               <div style="display: flex; align-items: center; gap: 5px;">
+                 <label style="font-weight: bold;">מ-</label>
+                 <input type="time" id="hadragStartTime" step="1800">
+               </div>
+
+               <div style="display: flex; align-items: center; gap: 5px;">
+                 <label style="font-weight: bold;">עד-</label>
+                 <input type="time" id="hadragEndTime" step="1800">
+               </div>
+
+               <button onclick="submitHadragRequest('bg-hirg', 'בא&quot;ח חיר&quot;ג')" class="hipok-choice-btn">➕ הוסף בקשה</button>
+            </div>
+
+            <h3>בקשות שהוזנו לשבוע זה:</h3>
+            <div id="hadragRequestsList"></div>
+          </div>
+        </div>
+ 
+        <div id="shekem" class="topsub" style="display:none;">
+          <div class="request-card-container">
+            <h2>בקשת שעות לשק"ם</h2>
+            
+            <div class="form-bar-card">
+               <input type="text" id="shekemTextInput" placeholder="פרטי הפלוגה (למשל: פלוגת קרקל)" style="width: 200px;">
+               
+               <select id="shekemDayInput">
+                  <option value="0">ראשון</option>
+                  <option value="1">שני</option>
+                  <option value="2">שלישי</option>
+                  <option value="3">רביעי</option>
+                  <option value="4">חמישי</option>
+                  <option value="5">שישי</option>
+                  <option value="6">שבת</option>
+               </select>
+               
+               <div style="display: flex; align-items: center; gap: 5px;">
+                 <label style="font-weight: bold;">מ-</label>
+                 <input type="time" id="shekemStartTime" step="1800">
+               </div>
+
+               <div style="display: flex; align-items: center; gap: 5px;">
+                 <label style="font-weight: bold;">עד-</label>
+                 <input type="time" id="shekemEndTime" step="1800">
+               </div>
+
+               <button onclick="submitShekemRequest('bg-hirg', 'בא&quot;ח חיר&quot;ג')" class="hipok-choice-btn">➕ הוסף בקשה</button>
+            </div>
+
+            <h3>בקשות שהוזנו לשבוע זה:</h3>
+            <div id="shekemRequestsList"></div>
+          </div>
+        </div>
+ 
+        <div id="nextbt">
+          <button onclick="prevWeek()">▶</button>
+          <div id="pageNumbers"></div>
+          <button onclick="nextWeek()">◀</button>
+        </div>
+ 
+      </div>
+ 
+      <div id="haktzaot" class="section" style="display:none;">
+
+        <div id="haktzaot-kesher" class="haktzaot-sub">
+          <div class="table-container">
+            <table id="haktzaot-hirg-kesher-table" dir="rtl" border="1" class="keshertable">
+              <thead>
+                <tr>
+                  <th>פלוגה</th>
+                  <th>קרקל</th><th>ברדלס</th><th>אריות הירדן</th><th>פנתר</th><th>לביא</th><th>יגואר</th>
+                </tr>
+              </thead>
+              <tbody id="haktzaot-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="haktzaot-optic" class="haktzaot-sub" style="display:none;">
+          <div class="table-container">
+            <table id="haktzaot-hirg-optic-table" dir="rtl" border="1" class="optictable">
+              <thead>
+                <tr>
+                  <th>פלוגה</th>
+                  <th>קרקל</th><th>ברדלס</th><th>אריות הירדן</th><th>פנתר</th><th>לביא</th><th>יגואר</th>
+                </tr>
+              </thead>
+              <tbody id="haktzaot-optic-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="haktzaot-modiein" class="haktzaot-sub" style="display:none;">
+          <div class="table-container">
+            <table class="modieintable" id="haktzaot-hirg-table" dir="rtl" border="1">
+              <thead>
+                <tr>
+                  <th style="align-items:center; justify-content:center; gap:8px; background:#388e3c; color:white; height:48px;">
+                    <span style="font-weight:bold; font-size:15px;">בא"ח חיר"ג</span>
+                  </th>
+                  <th colspan="6" style="position:relative; background:#388e3c; color:white;">
+                    בא"ח חיר"ג (הקצאות מאושרות)
+                  </th>
+                </tr>
+                <tr>
+                  <th>פלוגה</th>
+                  <th>קרקל</th><th>ברדלס</th><th>אריות הירדן</th><th>פנתר</th><th>לביא</th><th>יגואר</th>
+                </tr>
+              </thead>
+              <tbody id="haktzaot-hirg-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="haktzaot-none" class="haktzaot-sub" style="display:none;">
+          <div class="table-container" style="text-align:center; padding:30px;">
+            <p style="color:#666; font-size:18px; font-weight:bold;">אין הקצאות להצגה בקטגוריה זו</p>
+          </div>
+        </div>
+
+        <div id="nextbt2">
+          <button onclick="prevWeek()">▶</button>
+          <div id="pageNumbers2"></div>
+          <button onclick="nextWeek()">◀</button>
+        </div>
+
+      </div>
+ 
+    </div>
+  </div>
+ 
+  <div class="modal-overlay" id="hipokModalOverlay">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeHipokModal()">&times;</span>
+
+      <div id="hipokStep1" class="hipok-step">
+        <div class="modal-header">
+          <h3>הוספת חיפוק חדש - בא"ח חיר"ג</h3>
+          <p class="modal-subtitle">שלב 1 מתוך 3: בחר סוג חיפוק</p>
+        </div>
+        <div class="hipok-type-grid">
+          <button class="hipok-type-btn dry" onclick="selectHipokType('dry')">
+            <span class="type-title">חיפוק יבש</span>
+          </button>
+          <button class="hipok-type-btn wet" onclick="selectHipokType('wet')">
+            <span class="type-title">חיפוק רטוב</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="hipokStep2" class="hipok-step" style="display:none;">
+        <div class="modal-header">
+          <h3>הוספת חיפוק חדש - בא"ח חיר"ג</h3>
+          <p class="modal-subtitle">שלב 2 מתוך 3: בחר יום בשבוע</p>
+        </div>
+        <div class="hipok-days-grid"></div>
+        <div class="modal-footer">
+          <button class="hipok-back-btn" onclick="hipokGoToStep(1)">➔ חזור</button>
+        </div>
+      </div>
+
+      <div id="hipokStep3" class="hipok-step" style="display:none;">
+        <div class="modal-header">
+          <h3>הוספת חיפוק חדש - בא"ח חיר"ג</h3>
+          <p class="modal-subtitle">שלב 3 מתוך 3: פרטי הטיפול והשעות</p>
+        </div>
+
+        <div class="form-group">
+          <label for="hipokTextInput">תיאור / פירוט החיפוק:</label>
+          <textarea id="hipokTextInput" placeholder="הזן תיאור חופשי"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="hipokTimeInput">טווח שעות:</label>
+          <input type="text" id="hipokTimeInput" placeholder="לדוגמה: 12:00 - 12:30">
+        </div>
+        
+        <div class="modal-footer">
+          <button class="hipok-back-btn" onclick="hipokGoToStep(2)">➔ חזור</button>
+          <button class="hipok-submit-btn" onclick="submitHipokEntry()">✓ הוסף חיפוק</button>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <script>
+    let currentCategory = 'kesher';
+
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+      document.getElementById(id).style.display = 'block';
+
+      const btnShekem = document.getElementById('btn-shekem');
+      const btnChadrag = document.getElementById('btn-chadrag');
+      const btnHipok = document.getElementById('btn-hipok');
+
+      if (id === 'haktzaot') {
+        if (typeof renderHaktzaot === 'function') renderHaktzaot();
+        if (typeof renderHaktzaotOptic === 'function') renderHaktzaotOptic();
+        if (typeof renderHaktzaotHirg === 'function') renderHaktzaotHirg();
+        
+        if (btnShekem) btnShekem.style.display = 'none';
+        if (btnChadrag) btnChadrag.style.display = 'none';
+        if (btnHipok) btnHipok.style.display = 'none';
+
+        if (['shekem', 'chadrag', 'hipok'].includes(currentCategory)) {
+          currentCategory = 'kesher';
+        }
+      } else {
+        if (btnShekem) btnShekem.style.display = '';
+        if (btnChadrag) btnChadrag.style.display = '';
+        if (btnHipok) btnHipok.style.display = '';
+      }
+
+      updateCategoryView();
+    }
+
+    function showTopSection(id) {
+      currentCategory = id;
+      updateCategoryView();
+    }
+
+    function updateCategoryView() {
+      const ALL_CAT_BTNS = ['btn-kesher', 'btn-optic', 'btn-modiein', 'btn-hipok', 'btn-chadrag', 'btn-shekem'];
+      ALL_CAT_BTNS.forEach(bId => {
+        const btn = document.getElementById(bId);
+        if (btn) btn.classList.remove('active');
+      });
+      const currentBtnId = {
+        'kesher': 'btn-kesher',
+        'optic': 'btn-optic',
+        'modiein': 'btn-modiein',
+        'hipok': 'btn-hipok',
+        'chadrag': 'btn-chadrag',
+        'shekem': 'btn-shekem'
+      }[currentCategory];
+      if (currentBtnId) {
+        const activeBtn = document.getElementById(currentBtnId);
+        if (activeBtn) activeBtn.classList.add('active');
+      }
+
+      if (typeof updateBreadcrumbPath === 'function') updateBreadcrumbPath();
+
+      const isBakashot = document.getElementById('bakashot').style.display !== 'none';
+      const isHaktzaot = document.getElementById('haktzaot').style.display !== 'none';
+
+      if (isBakashot) {
+        document.querySelectorAll('#bakashot .topsub').forEach(s => s.style.display = 'none');
+        const target = document.getElementById(currentCategory);
+        if (target) target.style.display = 'block';
+
+        if (currentCategory === 'hipok' && typeof renderHipokEntriesList === 'function') {
+          renderHipokEntriesList();
+        }
+        if (currentCategory === 'chadrag' && typeof renderHadragRequestsList === 'function') {
+          renderHadragRequestsList();
+        }
+        if (currentCategory === 'shekem' && typeof renderShekemRequestsList === 'function') {
+          renderShekemRequestsList();
+        }
+      }
+
+      if (isHaktzaot) {
+        document.querySelectorAll('#haktzaot .haktzaot-sub').forEach(s => s.style.display = 'none');
+        const target = document.getElementById('haktzaot-' + currentCategory);
+        if (target) {
+          target.style.display = 'block';
+        } else {
+          const fallback = document.getElementById('haktzaot-none');
+          if (fallback) fallback.style.display = 'block';
+        }
+      }
+    }
+
+    function renderHaktzaot() {
+      const key = getStorageKey('keshertable', currentWeek, currentYear);
+      const saved = localStorage.getItem(key);
+      if (!saved) {
+        document.getElementById('haktzaot-body').innerHTML = '<tr><td colspan="7" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
+        return;
+      }
+      const data = JSON.parse(saved);
+      buildHaktzaotRows(data, KESHER_ROW_NAMES, 50, 11, 16, 'haktzaot-body', [0, KESHER_ROW_NAMES.length - 1]);
+    }
+
+    function renderHaktzaotOptic() {
+      const key = getStorageKey('optictable', currentWeek, currentYear);
+      const saved = localStorage.getItem(key);
+      if (!saved) {
+        document.getElementById('haktzaot-optic-body').innerHTML = '<tr><td colspan="7" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
+        return;
+      }
+      const data = JSON.parse(saved);
+      buildHaktzaotRows(data, OPTIC_ROW_NAMES, 35, 8, 13, 'haktzaot-optic-body', [0]);
+    }
+
+    function renderHaktzaotHirg() {
+      renderHaktzaotModieinUnit('hirgTable', 'haktzaot-hirg-body', 6);
+    }
+
+    function renderPageNumbers2() {
+      const container = document.getElementById('pageNumbers2');
+      if (!container) return;
+      container.innerHTML = '';
+
+      for (let offset = -2; offset <= 2; offset++) {
+        let week = currentWeek + offset;
+        let year = currentYear;
+        if (week < 1) { week += 52; year--; }
+        if (week > 52) { week -= 52; year++; }
+
+        const btn = document.createElement('button');
+        btn.textContent = `${week} (${year})`;
+        btn.onclick = () => loadWeek(year, week);
+        if (week === currentWeek && year === currentYear) btn.classList.add('active-week');
+        container.appendChild(btn);
+      }
+    }
+
+    let hipokSelectedType = null;
+    let hipokSelectedDay = null;
+
+    function openHipokModal() {
+      hipokSelectedType = null;
+      hipokSelectedDay = null;
+      buildHipokDayButtons();
+      hipokGoToStep(1);
+      document.getElementById('hipokModalOverlay').classList.add('active');
+    }
+
+    function closeHipokModal() {
+      document.getElementById('hipokModalOverlay').classList.remove('active');
+    }
+
+    function hipokGoToStep(step) {
+      document.querySelectorAll('.hipok-step').forEach(s => s.style.display = 'none');
+      document.getElementById('hipokStep' + step).style.display = 'block';
+    }
+
+    function selectHipokType(type) {
+      hipokSelectedType = type;
+      hipokGoToStep(2);
+    }
+
+    function buildHipokDayButtons() {
+      const grid = document.querySelector('#hipokStep2 .hipok-days-grid');
+      grid.innerHTML = '';
+      const HIPOK_DAY_LABELS = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "שבת"];
+      HIPOK_DAY_LABELS.forEach((label, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'hipok-day-btn';
+        btn.textContent = idx === 6 ? 'שבת' : 'יום ' + label;
+        btn.onclick = () => selectHipokDay(idx);
+        grid.appendChild(btn);
+      });
+    }
+
+    function selectHipokDay(dayIndex) {
+      hipokSelectedDay = dayIndex;
+      document.getElementById('hipokTextInput').value = '';
+      document.getElementById('hipokTimeInput').value = '';
+      hipokGoToStep(3);
+    }
+
+    function submitHipokEntry() {
+      const text = document.getElementById('hipokTextInput').value.trim();
+      const time = document.getElementById('hipokTimeInput').value.trim();
+      if (!time) { alert('יש להזין שעה'); return; }
+      if (hipokSelectedType === null || hipokSelectedDay === null) { alert('שגיאה - נסה שוב'); return; }
+
+      if (typeof addHipokEntry === 'function') {
+        addHipokEntry(hipokSelectedType, hipokSelectedDay, time, text, 'bg-hirg');
+      }
+      closeHipokModal();
+      if (typeof renderHipokEntriesList === 'function') renderHipokEntriesList();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isHaktzaot = (urlParams.get('view') === 'haktzaot');
+
+      if (isHaktzaot) {
+        showSection('haktzaot');
+      } else {
+        showSection('bakashot');
+      }
+    });
+  </script>
+  <script src="script.js"></script>
+
+</body>
+</html>

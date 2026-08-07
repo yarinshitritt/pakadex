@@ -1,0 +1,359 @@
+/* ================== כרטיסיות ובקשות איסו"ק ================== */
+
+/* כפתורי בחירה (ימים / חיפוקים) */
+.hipok-choice-btn {
+  background: #fff;
+  border: 2px solid #0aa1b2;
+  color: #0aa1b2;
+  padding: 15px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.hipok-choice-btn:hover {
+  background: #0aa1b2;
+  color: white;
+  transform: translateY(-2px);
+}
+
+.hipok-choice-btn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* שורת בקשה ברשימה (חיפוקים / חדר"ג / שק"ם) */
+.hipok-entry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+  font-size: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* כפתור מחיקת בקשה (X) */
+.hipok-delete-btn {
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.hipok-delete-btn:hover {
+  background: #ff1a1a;
+  transform: scale(1.1);
+}
+
+/* כפתור "חזור" בחלונות המוקפצים */
+.hipok-back-btn {
+  background: #f4f4f4;
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.hipok-back-btn:hover {
+  background: #e0e0e0;
+}
+
+/* רשת ימים (Grid) לבחירת ימים בחלון המוקפץ */
+.hipok-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+/* סידור לשורת הימים הספציפית כך שהיום האחרון ישב יפה למטה */
+.hipok-days-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+.hipok-days-grid button:last-child {
+  grid-column: span 2;
+}
+
+.hipok-step h3 {
+  text-align: center;
+  margin-top: 0;
+  color: #333;
+}
+
+/* ================== מודאל הוספת חיפוק ================== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.55);
+  z-index: 10000;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+  display: flex !important;
+}
+
+.modal-content {
+  background-color: #ffffff;
+  padding: 28px 32px;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+  width: 90%;
+  max-width: 460px;
+  position: relative;
+  border: 2px solid #0aa1b2;
+  animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  direction: rtl;
+  font-family: 'Assistant', sans-serif;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  font-size: 26px;
+  font-weight: bold;
+  color: #aaa;
+  cursor: pointer;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #ff4d4d;
+  background-color: #fff0f0;
+}
+
+.modal-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.modal-header h3 {
+  margin: 0 0 4px 0;
+  color: #0aa1b2;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.modal-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #777;
+  font-weight: 600;
+}
+
+/* --- שלב 1: סוג חיפוק --- */
+.hipok-type-grid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin: 15px 0 10px 0;
+}
+
+.hipok-type-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hipok-type-btn .type-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #333;
+}
+
+.hipok-type-btn.dry:hover {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15);
+}
+
+.hipok-type-btn.wet:hover {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.15);
+}
+
+/* --- שלב 2: ימים --- */
+.hipok-days-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.hipok-day-btn {
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 2px solid #e0e0e0;
+  background: #ffffff;
+  color: #333;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: center;
+}
+
+.hipok-day-btn:hover {
+  border-color: #0aa1b2;
+  background: #e6f7f9;
+  color: #0aa1b2;
+  transform: translateY(-2px);
+}
+
+.hipok-day-btn:last-child {
+  grid-column: span 3;
+  background: #f5f5f5;
+}
+
+.hipok-day-btn:last-child:hover {
+  background: #e6f7f9;
+}
+
+/* --- שלב 3: טפסים --- */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  text-align: right;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #444;
+}
+
+.form-group textarea {
+  width: 100%;
+  height: 80px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  box-sizing: border-box;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group textarea:focus,
+.form-group input:focus {
+  border-color: #0aa1b2;
+}
+
+/* --- footer / כפתורי פעולה למטה --- */
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.hipok-back-btn {
+  padding: 10px 20px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  color: #555;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hipok-back-btn:hover {
+  background: #e5e5e5;
+  color: #222;
+}
+
+.hipok-submit-btn {
+  flex: 1;
+  height: 42px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #0aa1b2;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(10, 161, 178, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hipok-submit-btn:hover {
+  background: #088a99;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(10, 161, 178, 0.35);
+}

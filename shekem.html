@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="shekem.css">
+  <title>PAKADEX - שעות שק"ם</title>
+</head>
+<body>
+
+  <div id="top-nav-placeholder"></div>
+
+  <div style="display:flex; gap:20px; align-items:stretch; margin-top: 10px; width: 100%; min-height: calc(100vh - 90px);">
+
+    <div id="side-nav-placeholder"></div>
+
+    <div style="flex:1; display:flex; flex-direction:column;">
+
+      <div class="manager-panel" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:6px 12px; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <!-- בצד ימין באמצע: הצגת השבוע -->
+        <div style="display:flex; align-items:center; gap:6px; background:#f1f5f9; padding:4px 10px; border-radius:6px; color:#000000; border:1px solid #cbd5e1; flex-shrink:0;">
+          <span style="font-weight:bold; font-size:14px; color:#000000;">שבוע:</span>
+          <input type="text" id="weekInput" style="width:48px; height:26px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+        </div>
+
+        <!-- במרכז: שיבוץ ישיר לשעות שק"ם -->
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; flex:1; justify-content:center;">
+          <span style="font-weight:800; color:#0f172a; font-size:13.5px; white-space:nowrap;">שיבוץ ישיר לשעות שק"ם:</span>
+          
+          <select id="directUnit" class="shekem-input">
+            <option value="bg-esuk">בא"ח איסו"ק (צהוב)</option>
+            <option value="bg-hirg">בא"ח חיר"ג (ירוק)</option>
+            <option value="bg-pikud">גדוד הפיקוד (כחול)</option>
+            <option value="bg-tazam">ענף תצ"מ (סגול)</option>
+            <option value="bg-maphat">מפח"ט/בהל"ג (כתום)</option>
+          </select>
+
+          <input type="text" id="directText" placeholder="פרטי הפלוגה / הפעילות..." class="shekem-input" style="width:150px;">
+          
+          <select id="directDay" class="shekem-input">
+            <option value="0">ראשון</option>
+            <option value="1">שני</option>
+            <option value="2">שלישי</option>
+            <option value="3">רביעי</option>
+            <option value="4">חמישי</option>
+            <option value="5">שישי</option>
+            <option value="6">שבת</option>
+          </select>
+
+          <span style="font-size:12.5px; font-weight:800; color:#0f172a;">מ:</span>
+          <input type="time" id="directStart" step="1800" class="shekem-input">
+          <span style="font-size:12.5px; font-weight:800; color:#0f172a;">עד:</span>
+          <input type="time" id="directEnd" step="1800" class="shekem-input">
+
+          <button onclick="addDirectEntry('shekem')" class="shekem-btn">שבץ</button>
+        </div>
+      </div>
+
+      <div id="pendingContainer" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:6px 12px; margin-bottom:6px;">
+        <h4 style="margin:0 0 4px 0; color:#0f172a; text-align:center; font-size:12.5px; font-weight:800;">בקשות לשעות שק"ם הממתינות לאישור</h4>
+        <div id="shekemPendingList" style="display:flex; flex-direction:column; gap:4px; max-height:85px; overflow-y:auto;"></div>
+      </div>
+
+      <div class="table-container" style="flex:1; margin-top:0; padding:0 4px 4px 4px; overflow-y:auto; max-height: calc(100vh - 200px);">
+        <table class="shekem-table" dir="rtl">
+          <thead>
+            <tr>
+              <th class="time-col">שעה</th>
+              <th>ראשון</th>
+              <th>שני</th>
+              <th>שלישי</th>
+              <th>רביעי</th>
+              <th>חמישי</th>
+              <th>שישי</th>
+              <th>שבת</th>
+            </tr>
+          </thead>
+          <tbody id="body-shekem"></tbody>
+        </table>
+      </div>
+
+      <div id="nextbt">
+        <button onclick="prevWeek()">▶</button>
+        <div id="pageNumbers"></div>
+        <button onclick="nextWeek()">◀</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // פונקציה לבניית השורות של שעות היום (06:00 עד 23:30)
+    function generateTimeSlots(tbodyId) {
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) return;
+      
+      if (tbody.rows.length > 0) return; // מניעת יצירה כפולה
+
+      let html = '';
+      for (let r = 0; r < 36; r++) {
+        const hour = Math.floor(6 + r / 2).toString().padStart(2, '0');
+        const minutes = r % 2 === 0 ? '00' : '30';
+        const timeString = `${hour}:${minutes}`;
+        
+        let rowHtml = `<tr><td class="time-col">${timeString}</td>`;
+        for (let c = 0; c < 7; c++) {
+          rowHtml += `<td class="platoon-cell" data-row="${r}" data-col="${c}">
+                        <textarea placeholder=""></textarea>
+                      </td>`;
+        }
+        rowHtml += `</tr>`;
+        html += rowHtml;
+      }
+      tbody.innerHTML = html;
+
+      // שמירה אוטומטית בעת הקלדה
+      tbody.querySelectorAll('textarea').forEach(ta => {
+        ta.addEventListener('input', () => {
+          if (typeof saveShekemTables === 'function') saveShekemTables();
+        });
+      });
+    }
+
+    // ניקוי משבצת בלחיצה ימנית (Right Click)
+    document.addEventListener('contextmenu', function(e) {
+      const cell = e.target.closest('td.platoon-cell');
+      if (cell && cell.closest('#body-shekem')) {
+        e.preventDefault();
+        if (confirm('האם תרצה למחוק את השיבוץ הזה ולפנות את שעות השק"ם?')) {
+          cell.rowSpan = 1;
+          cell.className = 'platoon-cell';
+          const ta = cell.querySelector('textarea');
+          if (ta) {
+            ta.value = '';
+            ta.style.height = '100%';
+          }
+          const tbody = cell.closest('tbody');
+          const col = cell.dataset.col;
+          const startRow = parseInt(cell.dataset.row);
+
+          for(let i = startRow + 1; i < 36; i++) {
+             const hiddenCell = tbody.querySelector(`td.platoon-cell[data-row="${i}"][data-col="${col}"]`);
+             if(hiddenCell && hiddenCell.style.display === 'none') {
+                hiddenCell.style.display = '';
+             } else {
+                break;
+             }
+          }
+          if (typeof saveShekemTables === 'function') saveShekemTables();
+        }
+      }
+    });
+  </script>
+  
+  <script src="script.js"></script>
+
+</body>
+</html>

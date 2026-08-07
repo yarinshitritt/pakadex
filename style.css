@@ -1,0 +1,426 @@
+/* =========================================================
+   STYLE.CSS - עיצוב גלובלי (מערכת ניהול מודרנית ומתקדמת)
+========================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&family=Montserrat:wght@600;700;800&display=swap');
+
+:root {
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --primary-light: #e0f2fe;
+  --bg-main: #f8fafc;
+  --card-bg: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border-color: #cbd5e1;
+  --border-focus: #0284c7;
+  --sidebar-width: 170px;
+  --sidebar-collapsed-width: 56px;
+  --header-height: 52px;
+  --transition-speed: 0.2s;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Assistant', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 6px 10px;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ================== כותרת מותג (Header Brand) ================== */
+h1 {
+  position: relative;
+  color: #ffffff;
+  font: 800 24px 'Montserrat', sans-serif;
+  text-align: right;
+  cursor: pointer;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+/* ================== סרגל עליון (Top Nav Header Bar) ================== */
+.container1 {
+  direction: rtl;
+  padding: 0 16px;
+  background-color: #0f172a;
+  border-radius: var(--radius-md);
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  border: 1px solid #1e293b;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 8px;
+}
+
+.top-nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* ================== סרגל צדדי (Side Nav Sidebar) ================== */
+.container2 {
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-width);
+  min-height: calc(100vh - 80px);
+  gap: 6px;
+  justify-content: flex-start;
+  background-color: #1e293b;
+  padding: 10px 8px;
+  box-sizing: border-box;
+  border-radius: var(--radius-md);
+  border: 1px solid #334155;
+  box-shadow: var(--shadow-sm);
+  transition: width var(--transition-speed) ease-in-out, padding var(--transition-speed) ease-in-out;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* מצב מכווץ לסרגל הצד */
+.container2.collapsed {
+  width: var(--sidebar-collapsed-width);
+  padding: 10px 4px;
+}
+
+.container2.collapsed .sidebar-text {
+  display: none;
+}
+
+.container2.collapsed .submenu {
+  display: none !important;
+}
+
+.container2.collapsed .sidebar-btn {
+  justify-content: center;
+  padding: 0;
+  width: 100%;
+}
+
+/* כפתור כיווץ/הרחבה בראש הסיידבר */
+.sidebar-toggle-btn {
+  width: 100%;
+  height: 34px;
+  background-color: #334155;
+  color: #94a3b8;
+  border: 1px solid #475569;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  transition: all var(--transition-speed) ease;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: #475569;
+  color: #ffffff;
+}
+
+/* ================== כפתורים וסגנונות ניווט ================== */
+button, .sidebar, .sidebar-btn {
+  font-family: 'Assistant', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+}
+
+/* כפתורי הסיידבר */
+.sidebar-btn {
+  width: 100%;
+  height: 38px;
+  background-color: transparent;
+  color: #cbd5e1;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 0 10px;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.sidebar-btn:hover {
+  background-color: #334155;
+  color: #ffffff;
+}
+
+.sidebar-btn.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  font-weight: 700;
+  border-right: 4px solid #38bdf8;
+  box-shadow: var(--shadow-sm);
+}
+
+/* כפתורי הניווט העליון (Top Nav) */
+.topnav-btn {
+  height: 36px;
+  padding: 0 14px;
+  background-color: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.topnav-btn:hover {
+  background-color: #334155;
+  color: #ffffff;
+}
+
+.topnav-btn.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  font-weight: 700;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 1px #0284c7;
+}
+
+/* ================== תפריט נפתח בסרגל הצד (Submenu) ================== */
+.submenu {
+  display: none;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 2px;
+  margin-bottom: 4px;
+  padding-right: 8px;
+  gap: 3px;
+}
+
+.submenu.show {
+  display: flex;
+}
+
+.submenu .sidebar-btn {
+  height: 32px;
+  font-size: 13.5px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+}
+
+.submenu .sidebar-btn:hover {
+  background-color: #334155;
+  color: #ffffff;
+}
+
+.submenu .sidebar-btn.active {
+  background-color: #0369a1;
+  color: #ffffff;
+  border-right: 3px solid #38bdf8;
+}
+
+/* ================== קונטיינרים וטבלאות (Containers & Tables) ================== */
+.table-container {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 8px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* קיבוע כותרות טבלה בגלילה (Sticky Table Headers) */
+table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table th, table td {
+  padding: 4px 6px;
+  font-size: 13.5px;
+  text-align: center;
+  border: 1px solid #cbd5e1;
+}
+
+table tbody tr:hover {
+  background-color: rgba(2, 132, 199, 0.04);
+}
+
+/* ================== מספרי שבועות וניווט שבועות גלובלי ================== */
+#nextbt, #nextbt-optic, #nextbt2 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  position: sticky;
+  bottom: 0;
+  z-index: 90;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-sm);
+}
+
+#nextbt button, #nextbt-optic button, #nextbt2 button {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: #f1f5f9;
+  color: var(--text-main);
+  font-size: 16px;
+  font-weight: 700;
+  transition: all 0.15s ease-in-out;
+}
+
+#nextbt button:hover, #nextbt-optic button:hover, #nextbt2 button:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+#pageNumbers, #pageNumbers-optic, #pageNumbers2 {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 6px;
+}
+
+#pageNumbers button, #pageNumbers-optic button, #pageNumbers2 button {
+  width: 70px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: #f8fafc;
+  color: var(--text-muted);
+  font-family: 'Assistant', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+#pageNumbers button:hover, #pageNumbers-optic button:hover, #pageNumbers2 button:hover {
+  background: var(--primary-light);
+  color: var(--primary-hover);
+  border-color: var(--primary);
+}
+
+#pageNumbers button.active-week, #pageNumbers-optic button.active-week, #pageNumbers2 button.active-week {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border-color: var(--primary) !important;
+}
+
+/* ================== צבעים ייעודיים לכל יחידה (פסטל קריא) ================== */
+.bg-esuk   { background-color: #fef08a !important; border: 1px solid #fde047 !important; color: #713f12 !important; }
+.bg-hirg   { background-color: #bbf7d0 !important; border: 1px solid #86efac !important; color: #14532d !important; }
+.bg-pikud  { background-color: #bfdbfe !important; border: 1px solid #93c5fd !important; color: #1e3a8a !important; }
+.bg-tazam  { background-color: #e9d5ff !important; border: 1px solid #d8b4fe !important; color: #581c87 !important; }
+.bg-maphat { background-color: #fed7aa !important; border: 1px solid #fdba74 !important; color: #7c2d12 !important; }
+
+/* ================== מכולות חדשות לבקשות חיפוקים, חדר"ג ושק"ם ================== */
+.request-card-container {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  padding: 20px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.request-card-container h2 {
+  color: #0f172a !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.request-card-container h3 {
+  color: #334155 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+.form-bar-card {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  background: #f8fafc !important;
+  padding: 14px 18px !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.form-bar-card select,
+.form-bar-card input {
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  border: 1px solid #cbd5e1 !important;
+  font-size: 14.5px !important;
+  font-family: inherit !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-bar-card select:focus,
+.form-bar-card input:focus {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.hipok-choice-btn, #openHipokModalBtn {
+  background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.hipok-choice-btn:hover, #openHipokModalBtn:hover {
+  background: linear-gradient(135deg, #0369a1, #075985) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
+}

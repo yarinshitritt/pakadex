@@ -1,0 +1,191 @@
+/* ================== FONT ================== */
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&display=swap');
+
+/* ================== בסיס טבלת שק"ם ================== */
+.shekem-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'Assistant', sans-serif;
+  text-align: center;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* ================== כותרות (ימים) ================== */
+.shekem-table th {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  padding: 6px 2px !important;
+  border: 1px solid #334155 !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* כותרת עמודת השעות (פינה ימנית עליונה) */
+.shekem-table th:first-child {
+  width: 55px;
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  z-index: 20; 
+  right: 0;
+  border-left: 2px solid #0284c7 !important;
+}
+
+/* ================== תאים רגילים ומשבצות שעות ================== */
+.shekem-table td {
+  border: 1px solid #cbd5e1 !important;
+  padding: 0;
+  height: 18px;
+  font-size: 11px;
+  vertical-align: middle;
+  position: relative;
+}
+
+/* עמודת השעות הקבועה מימין */
+.shekem-table td.time-col {
+  background-color: #f1f5f9 !important;
+  font-weight: 800 !important;
+  color: #000000 !important;
+  position: sticky;
+  right: 0;
+  z-index: 5;
+  border-left: 2px solid #cbd5e1 !important;
+  box-shadow: -2px 0 4px rgba(0,0,0,0.06);
+  direction: ltr; 
+  font-size: 11.5px;
+  padding: 0 2px;
+}
+
+/* ================== אזור הטקסט בתוך המשבצות ================== */
+.platoon-cell textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 18px; 
+  border: none;
+  resize: none;
+  background: transparent;
+  text-align: center;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 800 !important;
+  font-size: 11.5px !important;
+  color: #000000 !important;
+  outline: none;
+  box-sizing: border-box;
+  padding: 1px 2px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.platoon-cell:hover:not(.imported):not([class*="bg-"]) {
+  background-color: #f0f9ff;
+  cursor: pointer;
+}
+
+/* ================== פאנל מנהל ================== */
+.manager-panel {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.shekem-input {
+  padding: 4px 8px;
+  height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 700;
+  color: #000000;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.shekem-btn {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  border: none;
+  padding: 4px 14px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  width: auto;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.shekem-btn:hover {
+  background: linear-gradient(135deg, #0369a1, #075985);
+  transform: translateY(-1px);
+}
+
+/* ================== כרטיסי בקשות ממתינות ================== */
+.request-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.btn-approve {
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.btn-reject {
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+/* ================== צבעי הפלוגות בטבלה ================== */
+.bg-esuk   { background-color: #fffde7 !important; border: 1.5px solid #fde047 !important; }
+.bg-hirg   { background-color: #e8f5e9 !important; border: 1.5px solid #86efac !important; }
+.bg-pikud  { background-color: #e3f2fd !important; border: 1.5px solid #93c5fd !important; }
+.bg-tazam  { background-color: #f3e5f5 !important; border: 1.5px solid #d8b4fe !important; }
+.bg-maphat { background-color: #fff3e0 !important; border: 1.5px solid #fdba74 !important; }
+.imported:not([class*="bg-"]) { background-color: #e8f5e9 !important; border: 1.5px solid #86efac !important; }
+
+/* ================== קונטיינר מרכזי ================== */
+.table-container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+  background-color: var(--card-bg, #ffffff) !important;
+  padding: 0 !important;
+  border-radius: var(--radius-md, 8px);
+  margin-top: 6px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  position: relative;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+}

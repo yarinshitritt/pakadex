@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="kesher.css">
+  <link rel="stylesheet" href="optic.css">
+  <title>PAKADEX - אופטיקה</title>
+</head>
+
+<body>
+
+  <div id="top-nav-placeholder"></div>
+
+  <div style="display:flex; gap:12px; align-items:flex-start; margin-top: 8px; width: 100%;">
+
+    <div id="side-nav-placeholder"></div>
+
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+      <div class="table-container" style="margin-top: 0;">
+
+        <table class="optictable" id="optictable" dir="rtl" border="1">
+        <thead>
+          <tr>
+            <th style="align-items:center; justify-content:center; gap:8px; background:#1ea2b6; height:48px;">
+              <span style="font-weight:bold; font-size:15px;">שבוע:</span>
+              <input type="text" id="weekInputOptic"
+                style="width:70px; height:35px; font-size:24px; font-weight:800; text-align:center; border:2px solid black; border-radius:6px;">
+            </th>
+
+            <th colspan="7" style="position:relative;">
+              בא״ח איסו״ק
+              <button onclick="importFromSubTable('esukoptictable', 'optictable', 1, 7)"
+                style="position:absolute; right:6px; height: 35px; top:50%; transform:translateY(-50%);">ייבוא</button>
+            </th>
+
+            <th colspan="6" style="position:relative;">
+              בא"ח חיר"ג
+              <button onclick="importFromSubTable('koptictable', 'optictable', 8, 6)"
+                style="position:absolute; right:6px; height: 35px; top:50%; transform:translateY(-50%);">ייבוא</button>
+            </th>
+
+            <th colspan="7" style="position:relative;">
+              גדוד הפיקוד
+              <button onclick="importFromSubTable('poptictable', 'optictable', 14, 7)"
+                style="position:absolute; right:6px; height: 35px; top:50%; transform:translateY(-50%);">ייבוא</button>
+            </th>
+
+            <th colspan="8" style="position:relative;">
+              ענף תצ"מ
+              <button onclick="importFromSubTable('toptictable', 'optictable', 21, 8)"
+                style="position:absolute; right:6px; height: 35px; top:50%; transform:translateY(-50%);">ייבוא</button>
+            </th>
+
+            <th colspan="1" style="position:relative;">
+              בהל"ג
+              <button onclick="importFromSubTable('boptictable', 'optictable', 29, 1)"
+                style="position:absolute; right:6px; height: 35px; top:50%; transform:translateY(-50%);">ייבוא</button>
+            </th>
+
+            <th colspan="5" style="background:#004d56; color:white;">סה"כ כללי</th>
+          </tr>
+
+          <tr>
+            <th>פלוגה</th>
+            <th>סמג"ד</th><th>א׳</th><th>ב׳</th><th>ג׳</th><th>ד׳</th><th>ה׳</th><th>ו׳</th>
+            <th>קרקל</th><th>ברדלס</th><th>אריות הירדן</th><th>פנתר</th><th>לביא</th><th>יגואר</th>
+            <th>מפג"ד</th><th>קקא"ס נגב</th><th>קמ"א תבור</th><th>קמ"כ מצדה</th><th>קק"צ מגן</th><th>קמ"כ ירדן</th><th>הכנה לשדה</th>
+            <th>קמ"א רותם</th><th>קקא"ס חרמון</th><th>טל</th><th>יהל</th><th>כחל</th><th>קמ"ד</th><th>מקצועות</th><th>הכנה למעוז</th>
+            <th>מפח"ט</th>
+            <th style="background:#00555e; color:white;">סה"כ ביחידה</th>
+            <th style="background:#00555e; color:white;">תקול</th>
+            <th style="background:#00555e; color:white;">סה"כ מווסת</th>
+            <th style="background:#00555e; color:white;">כמה יש פנוי</th>
+            <th style="background:#00555e; color:white;">עודף</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+          <script>
+            const opticrows = [
+              "נושא שבוע", "מת\"ן", "עמית", "עמית איכון", "חצובת עמית", "חצובת תבל", "יובל", "תבל ידני",
+              "מיני תבל ידני", "תבל נשלט", "מיני תבל נשלט", "רחפן מטריס 300", "רחפן איבו",
+              "רחפן אווטא (ערכה זוגית)", "15X80", "מצפן מעלות", "שטיינר", "צגון", "מצלמת NIKON",
+              "איבו אלפא", "התקני הטלה/ כדור ברזל"
+            ];
+
+            // 1 (שם) + 7 (איסוק) + 6 (חירג) + 7 (פיקוד) + 8 (תצמ) + 1 (בהלג) + 5 (סיכום) = 35 עמודות
+            const opticColsCount = 1 + 7 + 6 + 7 + 8 + 1 + 5;
+
+            document.write(
+              opticrows.map((row, rowIndex) => {
+                let tds = `<td class="test">${row}</td>`;
+                for (let i = 1; i < opticColsCount; i++) {
+                  if (rowIndex === 0) {
+                    tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
+                  } else {
+                    tds += `<td><input type="text" class="cell-input"></td>`;
+                  }
+                }
+                return `<tr>${tds}</tr>`;
+              }).join("")
+            );
+          </script>
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <div id="nextbt-optic">
+      <button onclick="prevWeek()">▶</button>
+      <div id="pageNumbers-optic"></div>
+      <button onclick="nextWeek()">◀</button>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>

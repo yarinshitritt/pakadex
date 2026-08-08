@@ -59,7 +59,7 @@
                     rows.map((row, rowIndex) => {
                       let tds = `<td class="test">${row}</td>`;
                       for (let i = 1; i < columnsCount; i++) {
-                        if (rowIndex === 0) {
+                        if (rowIndex === 0 || rowIndex === rows.length - 1) {
                           tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
                         } else {
                           tds += `<td><input type="text" class="cell-input"></td>`;
@@ -255,7 +255,7 @@
               <thead>
                 <tr>
                   <th>פלוגה</th>
-                  <th>אומץ</th><th>ברק</th><th>גולן</th><th>דביר</th><th>הראל</th><th>ונוס</th>
+                  <th>הכנ"ס</th><th>א׳</th><th>ב׳</th><th>ג׳</th><th>ד׳</th><th>ה׳</th><th>ו׳</th>
                 </tr>
               </thead>
               <tbody id="haktzaot-body"></tbody>

@@ -59,7 +59,7 @@
                     rows.map((row, rowIndex) => {
                       let tds = `<td class="test">${row}</td>`;
                       for (let i = 1; i < columnsCount; i++) {
-                        if (rowIndex === 0) {
+                        if (rowIndex === 0 || rowIndex === rows.length - 1) {
                           tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
                         } else {
                           tds += `<td><input type="text" class="cell-input"></td>`;

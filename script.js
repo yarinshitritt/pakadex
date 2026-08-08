@@ -264,12 +264,12 @@ function toggleMenu(menuId) {
 ================================ */
 function getCurrentWeekAndYear() {
   const now = new Date();
-  const jan4 = new Date(now.getFullYear(), 0, 4);
-  const startOfWeek1 = new Date(jan4);
-  startOfWeek1.setDate(jan4.getDate() - jan4.getDay());
-  const diff = now - startOfWeek1;
-  const week = Math.floor(diff / (7 * 86400000)) + 2;
-  return { week: Math.min(Math.max(week, 1), 52), year: now.getFullYear() };
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return { week: Math.min(Math.max(weekNo, 1), 52), year: d.getUTCFullYear() };
 }
 
 function getStorageKey(tableId, week, year) {
@@ -426,6 +426,10 @@ function updateUIForWeek() {
     if (typeof renderHaktzaot === 'function') renderHaktzaot();
     if (typeof renderHaktzaotOptic === 'function') renderHaktzaotOptic();
     if (typeof renderHaktzaotEsuk === 'function') renderHaktzaotEsuk();
+    if (typeof renderHaktzaotHirg === 'function') renderHaktzaotHirg();
+    if (typeof renderHaktzaotPikud === 'function') renderHaktzaotPikud();
+    if (typeof renderHaktzaotTazam === 'function') renderHaktzaotTazam();
+    if (typeof renderHaktzaotBahalag === 'function') renderHaktzaotBahalag();
   }
 
   if (typeof renderHipokEntriesList === 'function') renderHipokEntriesList();
@@ -626,14 +630,9 @@ function importHipukim() {
   const table = document.getElementById('hipoktable');
   if (!table) { alert('טבלת החיפוקים לא נמצאה'); return; }
 
-  table.querySelectorAll('.time-input').forEach(el => el.value = '');
-  table.querySelectorAll('.task-input').forEach(el => el.value = '');
-  table.querySelectorAll('.cell-wrapper').forEach(wrapper => { wrapper.className = 'cell-wrapper'; });
-
   const entries = loadHipokEntries(currentWeek, currentYear);
   if (entries.length === 0) {
-    saveHipokData();
-    alert('אין חיפוקים שהוזנו לשבוע זה. הטבלה אופסה.');
+    alert('אין חיפוקים שהוזנו לשבוע זה.');
     return;
   }
 
@@ -654,8 +653,8 @@ function importHipukim() {
     const timeInput = cell.querySelector('.time-input');
     const taskInput = cell.querySelector('.task-input');
 
-    if (timeInput) timeInput.value = entry.time || '';
-    if (taskInput) taskInput.value = entry.text || '';
+    if (timeInput && entry.time) timeInput.value = entry.time;
+    if (taskInput && entry.text) taskInput.value = entry.text;
     
     if (wrapper) {
       wrapper.classList.add('imported');
@@ -728,6 +727,7 @@ function importFromSubTable(sourceTableId, targetTableId, targetStartCol, source
   }
   const targetRows = target.tBodies[0].rows;
   Object.entries(data).forEach(([indexStr, value]) => {
+    if (value === undefined || value === null || value.trim() === '') return;
     const index = parseInt(indexStr);
     const row = Math.floor(index / sourceCols);
     const col = index % sourceCols;
@@ -764,7 +764,9 @@ function importDirectToTable(sourceTableId, targetTableId) {
 
   const targetInputs = target.querySelectorAll('.cell-input');
   targetInputs.forEach((input, idx) => {
-    if (data[idx] !== undefined) { input.value = data[idx]; } else { input.value = ''; }
+    if (data[idx] !== undefined && data[idx].trim() !== '') {
+      input.value = data[idx];
+    }
   });
 
   const tbody = target.tBodies[0];
@@ -794,7 +796,7 @@ const OPTIC_ROW_NAMES = [
   "איבו אלפא","התקני הטלה/ כדור ברזל"
 ];
 
-function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices = [0]) {
+function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices = [0, 19]) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -889,6 +891,18 @@ function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 6) {
 
 function renderHaktzaotEsuk() {
   renderHaktzaotModieinUnit('esukTable', 'haktzaot-esuk-body', 6);
+}
+function renderHaktzaotHirg() {
+  renderHaktzaotModieinUnit('hirgTable', 'haktzaot-hirg-body', 6);
+}
+function renderHaktzaotPikud() {
+  renderHaktzaotModieinUnit('pikudTable', 'haktzaot-pikud-body', 7);
+}
+function renderHaktzaotTazam() {
+  renderHaktzaotModieinUnit('tazamTable', 'haktzaot-tazam-body', 8);
+}
+function renderHaktzaotBahalag() {
+  renderHaktzaotModieinUnit('bahalagTable', 'haktzaot-bahalag-body', 1);
 }
 
 /* ================================
@@ -1101,9 +1115,39 @@ const HADRAG_FACILITY_NAMES = {
 const HADRAG_DAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const ALL_COLOR_CLASSES = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'imported', 'conflict-overlap'];
 
-function getHadragRequestsKey(week, year) { return `hadragRequests_esuk_week${week}_year${year}`; }
+function getHadragRequestsKey(week, year) { return `hadragRequests_week${week}_year${year}`; }
 function loadHadragRequests(week, year) { const raw = localStorage.getItem(getHadragRequestsKey(week, year)); return raw ? JSON.parse(raw) : []; }
 function saveHadragRequests(requests, week, year) { localStorage.setItem(getHadragRequestsKey(week, year), JSON.stringify(requests)); }
+
+function generateTimeSlots(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  if (tbody.rows.length > 0) return;
+
+  let html = '';
+  for (let r = 0; r < 36; r++) {
+    const hour = Math.floor(6 + r / 2).toString().padStart(2, '0');
+    const minutes = r % 2 === 0 ? '00' : '30';
+    const timeString = `${hour}:${minutes}`;
+    
+    let rowHtml = `<tr><td class="time-col">${timeString}</td>`;
+    for (let c = 0; c < 7; c++) {
+      rowHtml += `<td class="platoon-cell" data-row="${r}" data-col="${c}">
+                    <textarea placeholder=""></textarea>
+                  </td>`;
+    }
+    rowHtml += `</tr>`;
+    html += rowHtml;
+  }
+  tbody.innerHTML = html;
+
+  tbody.querySelectorAll('textarea').forEach(ta => {
+    ta.addEventListener('input', () => {
+      if (typeof saveHadragTables === 'function') saveHadragTables();
+      if (typeof saveShekemTables === 'function') saveShekemTables();
+    });
+  });
+}
 
 const PAGE_UNIT_NAMES = {
   'esuk.html': 'בא"ח איסו"ק',
@@ -1200,7 +1244,7 @@ function renderHadragPendingRequests() {
   const pendingRequests = allRequests.filter(req => req.status !== 'approved');
 
   if (pendingRequests.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:#888; font-size:12px; font-weight:bold; margin:4px 0;">אין בקשות ממתינות.</p>';
+    container.innerHTML = '<p style="text-align:center; color:#64748b; font-size:13px; font-weight:700; margin:6px 0;">אין בקשות ממתינות לאישור.</p>';
     return;
   }
 
@@ -1208,19 +1252,27 @@ function renderHadragPendingRequests() {
     const unitKey = req.unit || 'bg-esuk';
     const info = UNIT_BG_MAP[unitKey] || UNIT_BG_MAP['bg-esuk'];
     const unitName = req.unitName || 'בא"ח איסו"ק';
+    const facilityName = HADRAG_FACILITY_NAMES[req.facility] || 'חדר"ג';
+    const dayName = HADRAG_DAY_LABELS[req.day] !== undefined ? 'יום ' + HADRAG_DAY_LABELS[req.day] : '';
+
     return `
-      <div class="request-card" style="background-color: ${info.bg}; border: 1px solid ${info.border}; padding: 3px 8px; border-radius: 5px; display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px;">
-        <span style="font-weight:bold; color: #006d75; white-space:nowrap;">${HADRAG_FACILITY_NAMES[req.facility] || 'חדר"ג'} | יום ${HADRAG_DAY_LABELS[req.day]}</span>
-        <span style="background: rgba(255,255,255,0.7); border: 1px solid ${info.border}; color: ${info.text}; padding: 1px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; white-space: nowrap;">${unitName}</span>
-        <span style="color: #111; font-weight: bold; flex: 1; text-align: right; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${req.text}</span>
-        <div style="direction:ltr; display:flex; align-items:center; gap:2px; flex-shrink:0;">
-          <input type="time" id="editStart_${req.id}" value="${req.startTime}" step="1800" style="padding:1px 3px; border:1px solid #ccc; border-radius:3px; font-size:11px; width:62px; text-align:center;">
-          <span>-</span>
-          <input type="time" id="editEnd_${req.id}" value="${req.endTime}" step="1800" style="padding:1px 3px; border:1px solid #ccc; border-radius:3px; font-size:11px; width:62px; text-align:center;">
+      <div class="request-card" style="background:#ffffff; border:1px solid #cbd5e1; border-right:4px solid ${info.border}; padding:6px 12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:4px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          <span style="background:${info.bg}; border:1px solid ${info.border}; color:${info.text}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:11.5px;">${unitName}</span>
+          <span style="background:#0f172a; color:#ffffff; padding:2px 8px; border-radius:6px; font-weight:700; font-size:11.5px;">${facilityName} • ${dayName}</span>
         </div>
-        <div style="display:flex; gap:3px; flex-shrink:0;">
-          <button class="btn-approve" style="padding: 2px 8px; font-size: 11px; width: auto; height: auto;" onclick="approveHadragRequest('${req.id}')">✓ שבץ</button>
-          <button class="btn-reject" style="padding: 2px 6px; font-size: 11px; width: auto; height: auto;" onclick="rejectHadragRequest('${req.id}')">✕</button>
+
+        <span style="color:#000000; font-weight:800; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 4px;">${req.text}</span>
+
+        <div style="direction:ltr; display:flex; align-items:center; gap:4px; flex-shrink:0; background:#f8fafc; padding:3px 6px; border-radius:6px; border:1px solid #e2e8f0;">
+          <input type="time" id="editStart_${req.id}" value="${req.startTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
+          <span style="font-weight:700; color:#64748b; font-size:12px;">-</span>
+          <input type="time" id="editEnd_${req.id}" value="${req.endTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
+        </div>
+
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button class="btn-approve" style="background:linear-gradient(135deg, #16a34a, #15803d); color:#ffffff; border:none; padding:4px 12px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(22,163,74,0.2);" onclick="approveHadragRequest('${req.id}')">✓ שבץ</button>
+          <button class="btn-reject" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:4px 10px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center;" onclick="rejectHadragRequest('${req.id}')">✕</button>
         </div>
       </div>
     `;
@@ -1284,7 +1336,7 @@ function approveHadragRequest(reqId) {
   firstCell.rowSpan = (endRow - startRow + 1);
   const textarea = firstCell.querySelector('textarea');
   if (textarea) {
-    textarea.style.height = (firstCell.rowSpan * 17.5) + 'px';
+    textarea.style.height = '100%';
     textarea.value = req.text;
     const unitClass = req.unit || 'bg-esuk';
     firstCell.classList.add(unitClass, 'imported');
@@ -1369,7 +1421,7 @@ function loadHadragTables(week, year) {
           const textarea = cell.querySelector('textarea');
           if (textarea) {
             textarea.value = data.val || '';
-            textarea.style.height = (data.span > 1) ? (data.span * 17.5) + 'px' : '100%';
+            textarea.style.height = '100%';
           }
           cell.rowSpan = data.span || 1;
           cell.style.display = data.disp || '';
@@ -1458,7 +1510,7 @@ function renderShekemPendingRequests() {
   const pendingRequests = allRequests.filter(req => req.status !== 'approved');
 
   if (pendingRequests.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:#888; font-size:12px; font-weight:bold; margin:4px 0;">אין בקשות ממתינות.</p>';
+    container.innerHTML = '<p style="text-align:center; color:#64748b; font-size:13px; font-weight:700; margin:6px 0;">אין בקשות לשעות שק"ם הממתינות לאישור.</p>';
     return;
   }
 
@@ -1466,19 +1518,26 @@ function renderShekemPendingRequests() {
     const unitKey = req.unit || 'bg-esuk';
     const info = UNIT_BG_MAP[unitKey] || UNIT_BG_MAP['bg-esuk'];
     const unitName = req.unitName || 'בא"ח איסו"ק';
+    const dayName = HADRAG_DAY_LABELS[req.day] !== undefined ? 'יום ' + HADRAG_DAY_LABELS[req.day] : '';
+
     return `
-      <div class="request-card" style="background-color: ${info.bg}; border: 1px solid ${info.border}; padding: 3px 8px; border-radius: 5px; display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px;">
-        <span style="font-weight:bold; color: #006d75; white-space:nowrap;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
-        <span style="background: rgba(255,255,255,0.7); border: 1px solid ${info.border}; color: ${info.text}; padding: 1px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; white-space: nowrap;">${unitName}</span>
-        <span style="color: #111; font-weight: bold; flex: 1; text-align: right; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${req.text}</span>
-        <div style="direction:ltr; display:flex; align-items:center; gap:2px; flex-shrink:0;">
-          <input type="time" id="editShekemStart_${req.id}" value="${req.startTime}" step="1800" style="padding:1px 3px; border:1px solid #ccc; border-radius:3px; font-size:11px; width:62px; text-align:center;">
-          <span>-</span>
-          <input type="time" id="editShekemEnd_${req.id}" value="${req.endTime}" step="1800" style="padding:1px 3px; border:1px solid #ccc; border-radius:3px; font-size:11px; width:62px; text-align:center;">
+      <div class="request-card" style="background:#ffffff; border:1px solid #cbd5e1; border-right:4px solid ${info.border}; padding:6px 12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:4px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          <span style="background:${info.bg}; border:1px solid ${info.border}; color:${info.text}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:11.5px;">${unitName}</span>
+          <span style="background:#0f172a; color:#ffffff; padding:2px 8px; border-radius:6px; font-weight:700; font-size:11.5px;">שק"ם • ${dayName}</span>
         </div>
-        <div style="display:flex; gap:3px; flex-shrink:0;">
-          <button class="btn-approve" style="padding: 2px 8px; font-size: 11px; width: auto; height: auto;" onclick="approveShekemRequest('${req.id}')">✓ שבץ</button>
-          <button class="btn-reject" style="padding: 2px 6px; font-size: 11px; width: auto; height: auto;" onclick="rejectShekemRequest('${req.id}')">✕</button>
+
+        <span style="color:#000000; font-weight:800; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 4px;">${req.text}</span>
+
+        <div style="direction:ltr; display:flex; align-items:center; gap:4px; flex-shrink:0; background:#f8fafc; padding:3px 6px; border-radius:6px; border:1px solid #e2e8f0;">
+          <input type="time" id="editShekemStart_${req.id}" value="${req.startTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
+          <span style="font-weight:700; color:#64748b; font-size:12px;">-</span>
+          <input type="time" id="editShekemEnd_${req.id}" value="${req.endTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
+        </div>
+
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button class="btn-approve" style="background:linear-gradient(135deg, #16a34a, #15803d); color:#ffffff; border:none; padding:4px 12px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(22,163,74,0.2);" onclick="approveShekemRequest('${req.id}')">✓ שבץ</button>
+          <button class="btn-reject" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:4px 10px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center;" onclick="rejectShekemRequest('${req.id}')">✕</button>
         </div>
       </div>
     `;
@@ -1687,13 +1746,29 @@ let dragStartCell = null;
 let dragStartRow = -1;
 let dragCol = -1;
 
+function stopDragging() {
+  if (isDragging) {
+    isDragging = false;
+    dragStartCell = null;
+    dragStartRow = -1;
+    dragCol = -1;
+    if (typeof saveHadragTables === 'function') saveHadragTables();
+    if (typeof saveShekemTables === 'function') saveShekemTables();
+  }
+}
+
 // 1. תחילת גרירה (לחיצה שמאלית)
 document.addEventListener('mousedown', function(e) {
-  if (e.button !== 0) return; // רק קליק שמאלי
+  if (e.button !== 0) return;
   
   const cell = e.target.closest('td.platoon-cell');
-  // נתחיל גרירה רק אם לחצנו על משבצת שאינה יובאה מהמערכת (כדי לא לדרוס אישורים)
-  if (cell && !cell.classList.contains('imported')) {
+  if (!cell) return;
+  
+  const ta = cell.querySelector('textarea');
+  const hasContent = ta && ta.value.trim() !== '';
+  const hasColor = ALL_COLOR_CLASSES.some(cls => cell.classList.contains(cls));
+
+  if (!hasContent && !hasColor && cell.style.display !== 'none') {
     isDragging = true;
     dragStartCell = cell;
     dragStartRow = parseInt(cell.dataset.row);
@@ -1710,39 +1785,32 @@ document.addEventListener('mouseover', function(e) {
     const currentRow = parseInt(cell.dataset.row);
     const currentCol = parseInt(cell.dataset.col);
     
-    // גרירה אפשרית רק באותה עמודה (אותו יום) וכלפי מטה
     if (currentCol === dragCol && currentRow > dragStartRow) {
-      
-      // נוודא שהמשבצת שאנחנו עוברים עליה לא תפוסה ולא הוסתרה כבר
-      if (cell.style.display !== 'none' && !cell.classList.contains('imported')) {
+      const ta = cell.querySelector('textarea');
+      const hasContent = ta && ta.value.trim() !== '';
+      const hasColor = ALL_COLOR_CLASSES.some(cls => cell.classList.contains(cls));
+
+      if (cell.style.display !== 'none' && !hasContent && !hasColor && cell.rowSpan === 1) {
+        cell.style.display = 'none';
+        const newSpan = currentRow - dragStartRow + 1;
         
-        cell.style.display = 'none'; // מעלימים את המשבצת הנוכחית
-        const newSpan = currentRow - dragStartRow + 1; // מחשבים את הגודל החדש
-        
-        dragStartCell.rowSpan = newSpan; // מגדילים את המשבצת הראשונה
+        dragStartCell.rowSpan = newSpan;
         dragStartCell.classList.add('merged');
         
-        const ta = dragStartCell.querySelector('textarea');
-        if (ta) {
-          // מתאימים את גובה תיבת הטקסט לגודל המשבצת החדשה
-          ta.style.height = (newSpan * 17.5) + 'px'; 
+        const startTa = dragStartCell.querySelector('textarea');
+        if (startTa) {
+          startTa.style.height = '100%'; 
         }
+      } else {
+        stopDragging();
       }
     }
   }
 });
 
-// 3. סיום גרירה (עזיבת העכבר)
-document.addEventListener('mouseup', function() {
-  if (isDragging) {
-    isDragging = false;
-    dragStartCell = null;
-    
-    // שמירת הנתונים ל-LocalStorage מיד בסיום הגרירה
-    if (typeof saveHadragTables === 'function') saveHadragTables();
-    if (typeof saveShekemTables === 'function') saveShekemTables();
-  }
-});
+// 3. סיום גרירה (עזיבת העכבר/פוקוס)
+document.addEventListener('mouseup', stopDragging);
+window.addEventListener('blur', stopDragging);
 
 // *הערה: פונקציית הקליק הימני לביטול (contextmenu) כבר מובנית בקבצי ה-HTML של החדר"ג והשק"ם.
 /* ================================

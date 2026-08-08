@@ -65,14 +65,14 @@
 
       <div id="pendingContainer" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:6px 12px; margin-bottom:6px;">
         <h4 style="margin:0 0 4px 0; color:#0f172a; text-align:center; font-size:12.5px; font-weight:800;">בקשות ממתינות לאישור</h4>
-        <div id="hadragPendingList" style="display:flex; flex-direction:column; gap:4px; max-height:85px; overflow-y:auto;"></div>
+        <div id="hadragPendingList" style="display:flex; flex-direction:column; gap:4px; max-height:110px; overflow-y:auto;"></div>
       </div>
 
       <div class="tabs-container" style="display:flex; gap:6px; margin-bottom:4px; padding:3px 6px; border-radius:6px;">
-        <button class="tab-btn active" onclick="showFacility('chadrag')">חדר"ג</button>
-        <button class="tab-btn" onclick="showFacility('anafit8')">ענפית 8</button>
-        <button class="tab-btn" onclick="showFacility('anafit-bah')">ענפית בא"ח</button>
-        <button class="tab-btn" onclick="showFacility('tavor')">תבור</button>
+        <button class="tab-btn active" onclick="showFacility(event, 'chadrag')">חדר"ג</button>
+        <button class="tab-btn" onclick="showFacility(event, 'anafit8')">ענפית 8</button>
+        <button class="tab-btn" onclick="showFacility(event, 'anafit-bah')">ענפית בא"ח</button>
+        <button class="tab-btn" onclick="showFacility(event, 'tavor')">תבור</button>
       </div>
 
       <div class="table-container" style="flex:1; margin-top:0; padding:0 4px 4px 4px; overflow-y:auto; max-height: calc(100vh - 220px);">
@@ -126,12 +126,13 @@
 
   <script>
     // מעבר בין טאבים (מתקנים)
-    function showFacility(facilityId) {
+    function showFacility(e, facilityId) {
       document.querySelectorAll('.facility-table-wrapper').forEach(el => el.style.display = 'none');
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       
-      document.getElementById('table-' + facilityId).style.display = 'block';
-      event.currentTarget.classList.add('active');
+      const targetTable = document.getElementById('table-' + facilityId);
+      if (targetTable) targetTable.style.display = 'block';
+      if (e && e.currentTarget) e.currentTarget.classList.add('active');
     }
 
     // פונקציה לבניית השורות של שעות היום (מ-06:00 עד 23:30)
@@ -139,7 +140,6 @@
       const tbody = document.getElementById(tbodyId);
       if (!tbody) return;
       
-      // אם הטבלה כבר מלאה, אל תייצר מחדש (מונע כפילויות)
       if (tbody.rows.length > 0) return;
 
       let html = '';
@@ -159,7 +159,6 @@
       }
       tbody.innerHTML = html;
 
-      // הוספת מאזינים לשמירה אוטומטית בהקלדה
       tbody.querySelectorAll('textarea').forEach(ta => {
         ta.addEventListener('input', () => {
           if (typeof saveHadragTables === 'function') saveHadragTables();
@@ -173,6 +172,11 @@
       if (cell) {
         e.preventDefault();
         if (confirm('האם תרצה למחוק את השיבוץ הזה ולפנות את השעות?')) {
+          const tbody = cell.closest('tbody');
+          const col = cell.dataset.col;
+          const startRow = parseInt(cell.dataset.row);
+          const span = cell.rowSpan || 1;
+
           cell.rowSpan = 1;
           cell.className = 'platoon-cell';
           const ta = cell.querySelector('textarea');
@@ -180,16 +184,14 @@
             ta.value = '';
             ta.style.height = '100%';
           }
-          const tbody = cell.closest('tbody');
-          const col = cell.dataset.col;
-          const startRow = parseInt(cell.dataset.row);
-          // מחזיר את כל התאים שהוסתרו (בגלל הrowspan)
-          for(let i = startRow + 1; i < 36; i++) {
-             const hiddenCell = tbody.querySelector(`td.platoon-cell[data-row="${i}"][data-col="${col}"]`);
-             if(hiddenCell && hiddenCell.style.display === 'none') {
+          for (let i = startRow + 1; i < startRow + span; i++) {
+             const hiddenCell = tbody ? tbody.querySelector(`td.platoon-cell[data-row="${i}"][data-col="${col}"]`) : null;
+             if (hiddenCell) {
                 hiddenCell.style.display = '';
-             } else {
-                break;
+                hiddenCell.rowSpan = 1;
+                hiddenCell.className = 'platoon-cell';
+                const hiddenTa = hiddenCell.querySelector('textarea');
+                if (hiddenTa) hiddenTa.value = '';
              }
           }
           if (typeof saveHadragTables === 'function') saveHadragTables();

@@ -86,10 +86,29 @@
   transform: translateY(-50%) scale(1.02);
 }
 
+/* ================== כותרות דביקות (Multi-row Sticky Headers) ================== */
+.modieintable thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  height: 35px;
+  box-shadow: none !important;
+}
+
+.modieintable thead tr:nth-child(2) th {
+  position: sticky;
+  top: 35px;
+  z-index: 11;
+}
+
 /* ================== צבעי יחידות ייעודיים לכל טבלה ================== */
 
 /* 1. בא"ח איסו"ק (צהוב) */
+#esukTable thead,
+#esukTable thead tr,
 #esukTable thead tr th,
+#reqesukTable thead,
+#reqesukTable thead tr,
 #reqesukTable thead tr th {
   background-color: #fbc02d !important;
   color: #000000 !important;
@@ -102,7 +121,11 @@
 }
 
 /* 2. בא"ח חיר"ג (ירוק) */
+#hirgTable thead,
+#hirgTable thead tr,
 #hirgTable thead tr th,
+#reqhirgTable thead,
+#reqhirgTable thead tr,
 #reqhirgTable thead tr th {
   background-color: #388e3c !important;
   color: #000000 !important;
@@ -115,7 +138,11 @@
 }
 
 /* 3. גדוד הפיקוד (כחול) */
+#pikudTable thead,
+#pikudTable thead tr,
 #pikudTable thead tr th,
+#reqpikudTable thead,
+#reqpikudTable thead tr,
 #reqpikudTable thead tr th {
   background-color: #1976d2 !important;
   color: #000000 !important;
@@ -128,7 +155,11 @@
 }
 
 /* 4. ענף תצ"מ (סגול) */
+#tazamTable thead,
+#tazamTable thead tr,
 #tazamTable thead tr th,
+#reqtazamTable thead,
+#reqtazamTable thead tr,
 #reqtazamTable thead tr th {
   background-color: #8e24aa !important;
   color: #000000 !important;
@@ -141,7 +172,11 @@
 }
 
 /* 5. בהל"ג (כתום) */
+#bahalagTable thead,
+#bahalagTable thead tr,
 #bahalagTable thead tr th,
+#reqbahalagTable thead,
+#reqbahalagTable thead tr,
 #reqbahalagTable thead tr th {
   background-color: #f57c00 !important;
   color: #000000 !important;

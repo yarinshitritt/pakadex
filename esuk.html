@@ -124,7 +124,7 @@
             <table class="modieintable" id="reqesukTable" dir="rtl" border="1">
               <thead>
                 <tr>
-                  <th style="align-items:center; justify-content:center; gap:8px; background:#1ea2b6; height:48px;">
+                  <th style="align-items:center; justify-content:center; gap:8px; background:#1ea2b6;">
                     <span style="font-weight:bold; font-size:15px;">בא"ח איסו"ק</span>
                   </th>
                   <th colspan="6" style="position:relative;">
@@ -377,15 +377,19 @@
   <script>
     let currentCategory = 'kesher';
 
-    function showSection(id) {
+    /**
+     * מעבירה בין תצוגת דרישות לתצוגת הקצאות בעמוד היחידה.
+     * @param {string} sectionId - מזהה הסקשן ('bakashot' / 'haktzaot')
+     */
+    function showSection(sectionId) {
       document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
-      document.getElementById(id).style.display = 'block';
+      document.getElementById(sectionId).style.display = 'block';
 
       const btnShekem = document.getElementById('btn-shekem');
       const btnChadrag = document.getElementById('btn-chadrag');
       const btnHipok = document.getElementById('btn-hipok');
 
-      if (id === 'haktzaot') {
+      if (sectionId === 'haktzaot') {
         if (typeof renderHaktzaot === 'function') renderHaktzaot();
         if (typeof renderHaktzaotOptic === 'function') renderHaktzaotOptic();
         if (typeof renderHaktzaotEsuk === 'function') renderHaktzaotEsuk();
@@ -406,11 +410,18 @@
       updateCategoryView();
     }
 
+    /**
+     * מעבירה בין הקטגוריות השונות (קשר, אופטיקה, מודיעין וכו') בסרגל העליון.
+     * @param {string} id - מזהה הקטגוריה
+     */
     function showTopSection(id) {
       currentCategory = id;
       updateCategoryView();
     }
 
+    /**
+     * מעדכנת את תצוגת הקטגוריה הנבחרת, כפתורי ה-active וה-breadcrumbs.
+     */
     function updateCategoryView() {
       const ALL_CAT_BTNS = ['btn-kesher', 'btn-optic', 'btn-modiein', 'btn-hipok', 'btn-chadrag', 'btn-shekem'];
       ALL_CAT_BTNS.forEach(bId => {
@@ -463,6 +474,9 @@
       }
     }
  
+    /**
+     * בונה את שורות ההקצאה עבור טבלאות.
+     */
     function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices) {
       const tbody = document.getElementById(tbodyId);
       if (!tbody) return;
@@ -496,6 +510,9 @@
       }
     }
  
+    /**
+     * בונה את שורות ההקצאה עבור טבלת הקשר.
+     */
     function renderHaktzaot() {
       const key = getStorageKey('keshertable', currentWeek, currentYear);
       const saved = localStorage.getItem(key);
@@ -517,6 +534,9 @@
       if (typeof renderPageNumbers2 === 'function') renderPageNumbers2();
     }
  
+    /**
+     * בונה את שורות ההקצאה עבור טבלת האופטיקה.
+     */
     function renderHaktzaotOptic() {
       const key = getStorageKey('optictable', currentWeek, currentYear);
       const saved = localStorage.getItem(key);
@@ -537,6 +557,9 @@
       buildHaktzaotRows(data, opticRowNames, 35, 1, 7, 'haktzaot-optic-body', [0]);
     }
  
+    /**
+     * מייצרת את כפתורי הניווט בין השבועות בתצוגת ההקצאות.
+     */
     function renderPageNumbers2() {
       const container = document.getElementById('pageNumbers2');
       if (!container) return;
@@ -562,6 +585,9 @@
     let hipokSelectedType = null;
     let hipokSelectedDay = null;
  
+    /**
+     * פותחת את מודאל הוספת החיפוק.
+     */
     function openHipokModal() {
       hipokSelectedType = null;
       hipokSelectedDay = null;
@@ -570,6 +596,9 @@
       document.getElementById('hipokModalOverlay').classList.add('active');
     }
  
+    /**
+     * סוגרת את מודאל הוספת החיפוק ומאפסת שדות.
+     */
     function closeHipokModal() {
       document.getElementById('hipokModalOverlay').classList.remove('active');
       const textInput = document.getElementById('hipokTextInput');
@@ -578,6 +607,10 @@
       if (timeInput) timeInput.value = '';
     }
  
+    /**
+     * מעבירה בין שלבי המודאל של הוספת חיפוק (צעד 1, 2, 3).
+     * @param {number} step - מספר השלב
+     */
     function hipokGoToStep(step) {
       [1, 2, 3].forEach(s => {
         const el = document.getElementById('hipokStep' + s);
@@ -585,11 +618,18 @@
       });
     }
  
+    /**
+     * בוחרת את סוג החיפוק ומעבירה לשלב הבא במודאל.
+     * @param {string} type - סוג החיפוק
+     */
     function selectHipokType(type) {
       hipokSelectedType = type;
       hipokGoToStep(2);
     }
  
+    /**
+     * בונה את כפתורי בחירת יום בשבוע במודאל החיפוקים.
+     */
     function buildHipokDayButtons() {
       const grid = document.querySelector('#hipokStep2 .hipok-days-grid');
       grid.innerHTML = '';
@@ -603,6 +643,10 @@
       });
     }
  
+    /**
+     * בוחרת את היום המבוקש ומעבירה לשלב מילוי הפרטים במודאל החיפוקים.
+     * @param {number} dayIndex - אינדקס יום בשבוע
+     */
     function selectHipokDay(dayIndex) {
       hipokSelectedDay = dayIndex;
       document.getElementById('hipokTextInput').value = '';

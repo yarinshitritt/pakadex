@@ -17,6 +17,10 @@ const tableWeeks = {};
 /* ================================
    יצירת תפריטי ניווט גלובליים
 ================================ */
+
+/**
+ * מנהלת פתיחה/כיווץ של סרגל הצד (Sidebar) ושומרת את מצבו ב-LocalStorage.
+ */
 function toggleSidebar() {
   const container2 = document.querySelector('.container2');
   if (!container2) return;
@@ -65,6 +69,9 @@ const PAGE_CATEGORY_MAP = {
   'shekem.html': 'שעות שקם'
 };
 
+/**
+ * מעדכנת את נתיב הניווט (Breadcrumbs) בסרגל העליון בהתאם לעמוד הנוכחי והתצוגה (דרישות/הקצאות).
+ */
 function updateBreadcrumbPath() {
   const container = document.getElementById('breadcrumb-path');
   if (!container) return;
@@ -99,6 +106,9 @@ function updateBreadcrumbPath() {
   }
 }
 
+/**
+ * מייצרת ומזריקה את סרגלי הניווט העליון והצדדי באופן דינמי לכל עמודי המערכת.
+ */
 function renderNavbars() {
   const topNav = document.getElementById('top-nav-placeholder');
   const sideNav = document.getElementById('side-nav-placeholder');
@@ -241,6 +251,10 @@ function renderNavbars() {
   }
 }
 
+/**
+ * מציגה או מסתירה תת-תפריט בסרגל הצדדי, וסוגרת את שאר תתי-התפריטים הפתוחים.
+ * @param {string} menuId - מזהה האלמנט של תת-התפריט
+ */
 function toggleMenu(menuId) {
   const targetId = typeof menuId === 'string' ? menuId : 'subMenu_esuk';
   const targetMenu = document.getElementById(targetId);
@@ -262,6 +276,11 @@ function toggleMenu(menuId) {
 /* ================================
    פונקציות עזר - תאריכים
 ================================ */
+
+/**
+ * מחשבת את מספר השבוע והשנה הנוכחיים לפי תקן ISO-8601 הבינלאומי.
+ * @returns {{week: number, year: number}} אובייקט המכיל את השבוע והשנה
+ */
 function getCurrentWeekAndYear() {
   const now = new Date();
   const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -272,6 +291,13 @@ function getCurrentWeekAndYear() {
   return { week: Math.min(Math.max(weekNo, 1), 52), year: d.getUTCFullYear() };
 }
 
+/**
+ * מפיקה מפתח שמירה אחיד ב-LocalStorage עבור טבלה, שבוע ושנה נתונים.
+ * @param {string} tableId - מזהה הטבלה
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ * @returns {string} מפתח שמירה מורכב
+ */
 function getStorageKey(tableId, week, year) {
   return `${tableId}_week${week}_year${year}`;
 }
@@ -279,6 +305,12 @@ function getStorageKey(tableId, week, year) {
 /* ================================
    קריאה ושמירה של טבלאות כלליות
 ================================ */
+
+/**
+ * קוראת ואוספת את נתוני שדות הקלט (cell-input) מטבלה נתונה במבנה אובייקט.
+ * @param {string} tableId - מזהה הטבלה
+ * @returns {Object} אובייקט המכיל את ערכי התאים לפי אינדקס
+ */
 function readTableData(tableId) {
   const table = document.getElementById(tableId);
   if (!table) return {};
@@ -287,6 +319,10 @@ function readTableData(tableId) {
   return data;
 }
 
+/**
+ * מחזירה את רשימת מזהי כל הטבלאות הפעילות הנשמרות במערכת.
+ * @returns {Array<string>} מערך מזהי טבלאות
+ */
 function getActiveTables() {
   return [
     'keshertable','esukkeshertable','kkeshertable','pkeshertable','tkeshertable','bkeshertable',
@@ -296,6 +332,9 @@ function getActiveTables() {
   ];
 }
 
+/**
+ * שומרת את כל נתוני הטבלאות, החיפוקים, החדר"ג והשק"ם עבור השבוע והשנה הנוכחיים ב-LocalStorage.
+ */
 function saveCurrentWeek() {
   const tables = getActiveTables();
   tables.forEach(tableId => {
@@ -311,6 +350,12 @@ function saveCurrentWeek() {
   if (typeof saveShekemTables === 'function') saveShekemTables();
 }
 
+/**
+ * טוענת את נתוני הטבלה המאוחסנים עבור שבוע ושנה ספציפיים, ומעדכנת את שדות הקלט ב-DOM.
+ * @param {string} tableId - מזהה הטבלה
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ */
 function loadTableData(tableId, week, year) {
   const table = document.getElementById(tableId);
   if (!table) return;
@@ -383,6 +428,12 @@ function loadTableData(tableId, week, year) {
 /* ================================
    ניווט שבועות
 ================================ */
+
+/**
+ * שומרת את השבוע הנוכחי ומעבירה את תצוגת המערכת לשבוע ושנה חדשים.
+ * @param {number} year - השנה
+ * @param {number} week - מספר השבוע
+ */
 function loadWeek(year, week) {
   saveCurrentWeek();
   currentWeek = week;
@@ -390,18 +441,27 @@ function loadWeek(year, week) {
   updateUIForWeek();
 }
 
+/**
+ * מעבירה את התצוגה לשבוע הקודם (כולל מעבר שנה במידת הצורך).
+ */
 function prevWeek() { 
   let week = currentWeek - 1, year = currentYear;
   if (week < 1) { week = TOTAL_WEEKS; year--; }
   loadWeek(year, week);
 }
 
+/**
+ * מעבירה את התצוגה לשבוע הבא (כולל מעבר שנה במידת הצורך).
+ */
 function nextWeek() { 
   let week = currentWeek + 1, year = currentYear;
   if (week > TOTAL_WEEKS) { week = 1; year++; }
   loadWeek(year, week);
 }
 
+/**
+ * מעדכנת את כל רכיבי ממשק המשתמש (שדות שבוע, טבלאות, רשימות חיפוקים, חדר"ג ושק"ם) בעת החלפת שבוע.
+ */
 function updateUIForWeek() {
   const weekInput = document.getElementById('weekInput');
   const weekInputOptic = document.getElementById('weekInputOptic');
@@ -443,6 +503,9 @@ function updateUIForWeek() {
   if (typeof renderShekemPendingRequests === 'function') renderShekemPendingRequests();
 }
 
+/**
+ * מייצרת ומציגה כפתורי ניווט מהיר לשבועות הסמוכים (טווח של +-2 שבועות).
+ */
 function renderPageNumbers() {
   const containers = ['pageNumbers', 'pageNumbers-optic', 'pageNumbers2'];
   containers.forEach(id => {
@@ -463,6 +526,9 @@ function renderPageNumbers() {
   });
 }
 
+/**
+ * מאתחלת מאזיני אירועים לשדות הקלט הידניים של מזהה השבוע בסרגל העליון.
+ */
 function initWeekInput() {
   ['weekInput', 'weekInputOptic'].forEach(inputId => {
     const weekInput = document.getElementById(inputId);
@@ -479,6 +545,11 @@ function initWeekInput() {
 /* ================================
    מערכת החיפוקים (+ צבעים)
 ================================ */
+
+/**
+ * קוראת את נתוני טבלת החיפוקים (משימות, שעות וצבעים) מתוך ה-DOM.
+ * @returns {Object} אובייקט נתוני החיפוקים
+ */
 function readHipokData() {
   const data = {};
   document.querySelectorAll('#hipoktable .task-input').forEach((el, i) => { data['task_' + i] = el.value; });
@@ -493,6 +564,9 @@ function readHipokData() {
   return data;
 }
 
+/**
+ * שומרת את נתוני טבלת החיפוקים עבור השבוע והשנה הנוכחיים.
+ */
 function saveHipokData() {
   const table = document.getElementById('hipoktable');
   if (!table) return;
@@ -500,6 +574,11 @@ function saveHipokData() {
   localStorage.setItem(getStorageKey('hipoktable', currentWeek, currentYear), JSON.stringify(data));
 }
 
+/**
+ * טוענת את נתוני טבלת החיפוקים עבור שבוע ושנה נתונים ומעדכנת את שדות הטבלה והצבעים.
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ */
 function loadHipokData(week, year) {
   const table = document.getElementById('hipoktable');
   if (!table) return;
@@ -543,11 +622,39 @@ function loadHipokData(week, year) {
 const HIPOK_DAY_LABELS = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "שבת"];
 const HIPOK_MAX_SLOTS_PER_GROUP = 6;
 
+/**
+ * מפיקה מפתח שמירה עבור רשימת בקשות החיפוקים של היחידות.
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ * @returns {string} מפתח שמירה
+ */
 function getHipokEntriesKey(week, year) { return `hipokEntries_week${week}_year${year}`; }
+
+/**
+ * טוענת את רשימת בקשות החיפוקים המאוחסנות לשבוע ושנה מסוימים.
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ * @returns {Array<Object>} מערך אובייקטי בקשות חיפוק
+ */
 function loadHipokEntries(week, year) { const raw = localStorage.getItem(getHipokEntriesKey(week, year)); return raw ? JSON.parse(raw) : []; }
+
+/**
+ * שומרת את רשימת בקשות החיפוקים ב-LocalStorage.
+ * @param {Array<Object>} entries - מערך בקשות החיפוק
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ */
 function saveHipokEntriesList(entries, week, year) { localStorage.setItem(getHipokEntriesKey(week, year), JSON.stringify(entries)); }
 
-// הוספת חיפוק עם פרמטר צבע (כדי שיהיה אפשר לצבוע בא"ח איסו"ק בצהוב)
+/**
+ * מוסיפה בקשת חיפוק חדשה לרשימה ומעדכנת את השמירה.
+ * @param {string} type - סוג החיפוק ('dry' / 'wet')
+ * @param {number} day - אינדקס יום (0-6)
+ * @param {string} time - מחרוזת שעות
+ * @param {string} [text] - פירוט המשימה
+ * @param {string} [color] - מחלקת צבע היחידה
+ * @returns {Array<Object>} הרשימה המעודכנת
+ */
 function addHipokEntry(type, day, time, text = '', color = '') {
   const entries = loadHipokEntries(currentWeek, currentYear);
   entries.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), type, day, time, text, color });
@@ -555,12 +662,21 @@ function addHipokEntry(type, day, time, text = '', color = '') {
   return entries;
 }
 
+/**
+ * מוחקת בקשת חיפוק ספציפית לפי מזהה ייחודי.
+ * @param {string} id - מזהה הבקשה
+ * @returns {Array<Object>} הרשימה המעודכנת לאחר המחיקה
+ */
 function deleteHipokEntry(id) {
   const entries = loadHipokEntries(currentWeek, currentYear).filter(e => e.id !== id);
   saveHipokEntriesList(entries, currentWeek, currentYear);
   return entries;
 }
 
+/**
+ * מוחקת בקשת חיפוק ומעדכנת את התצוגה בעמוד היחידה.
+ * @param {string} id - מזהה הבקשה
+ */
 function removeHipokEntry(id) {
   deleteHipokEntry(id);
   if (typeof renderHipokEntriesList === 'function') renderHipokEntriesList();
@@ -574,6 +690,9 @@ const PAGE_UNIT_MAP = {
   'bahalag.html': 'bg-maphat'
 };
 
+/**
+ * מרנדרת את רשימת בקשות החיפוקים המוגשות בעמוד היחידה הרלוונטית.
+ */
 function renderHipokEntriesList() {
   const container = document.getElementById('hipokEntriesList');
   if (!container) return;
@@ -609,6 +728,13 @@ function renderHipokEntriesList() {
   }).join('');
 }
 
+/**
+ * מוצאת ומחזירה תא ספציפי בטבלת החיפוקים לפי סוג החיפוק, היום ואינדקס המשבצת.
+ * @param {string} type - סוג ('dry' / 'wet')
+ * @param {number} day - יום בשבוע
+ * @param {number} slotIndex - אינדקס סלוט בתוך היום
+ * @returns {HTMLTableCellElement|null} התא שנמצא או null
+ */
 function getHipokTableCell(type, day, slotIndex) {
   const table = document.getElementById('hipoktable');
   if (!table || !table.tBodies[0]) return null;
@@ -626,6 +752,9 @@ function getHipokTableCell(type, day, slotIndex) {
   return row.cells[cellIndex] || null;
 }
 
+/**
+ * מייבאת את בקשות החיפוקים של היחידות לתוך טבלת החיפוקים של המנהל מול מגבלת המשבצות.
+ */
 function importHipukim() {
   const table = document.getElementById('hipoktable');
   if (!table) { alert('טבלת החיפוקים לא נמצאה'); return; }
@@ -673,10 +802,21 @@ function importHipukim() {
 /* ================================
    טבלאות דינמיות וייבוא כללי
 ================================ */
+
+/**
+ * בודקת אם כל תאי הקלט בשורה נתונה בטבלה ריקים מטקסט.
+ * @param {HTMLTableRowElement} row - שורת טבלה
+ * @returns {boolean} true אם השורה ריקה לחלוטין
+ */
 function isRowEmpty(row) {
   return Array.from(row.querySelectorAll('.cell-input')).every(input => input.value.trim() === '');
 }
 
+/**
+ * מוסיפה שורה חדשה לטבלה דינמית ומשכפלת את מבנה תאי הקלט.
+ * @param {string} tableId - מזהה הטבלה
+ * @param {boolean} [autoSave=true] - האם לבצע שמירה אוטומטית לאחר ההוספה
+ */
 function addNewRow(tableId, autoSave = true) {
   const table = document.getElementById(tableId);
   if (!table) return;
@@ -692,6 +832,9 @@ function addNewRow(tableId, autoSave = true) {
   if (autoSave) saveCurrentWeek();
 }
 
+/**
+ * מאתחלת מאזיני הקלדה לטבלאות דינמיות להוספת שורות אוטומטית בסיפה ומחיקת שורות ריקות.
+ */
 function initDynamicRows() {
   const tables = [
     'tazamTable', 'hirgTable', 'esukTable', 'pikudTable', 'bahalagTable',
@@ -714,6 +857,13 @@ function initDynamicRows() {
   });
 }
 
+/**
+ * מייבאת נתונים מצירי טבלאות יחידתיות אל טבלת מנהל ראשית (קשר/אופטיקה).
+ * @param {string} sourceTableId - מזהה טבלת המקור
+ * @param {string} targetTableId - מזהה טבלת היעד
+ * @param {number} targetStartCol - עמודת התחלה ביעד
+ * @param {number} [sourceCols] - מספר עמודות במקור
+ */
 function importFromSubTable(sourceTableId, targetTableId, targetStartCol, sourceCols) {
   const target = document.getElementById(targetTableId);
   if (!target) return;
@@ -744,6 +894,11 @@ function importFromSubTable(sourceTableId, targetTableId, targetStartCol, source
   alert(`יובאו נתונים בהצלחה`);
 }
 
+/**
+ * מייבאת נתונים באופן ישיר לטבלאות דינמיות (כגון טבלאות מודיעין).
+ * @param {string} sourceTableId - מזהה טבלת המקור
+ * @param {string} targetTableId - מזהה טבלת היעד
+ */
 function importDirectToTable(sourceTableId, targetTableId) {
   const target = document.getElementById(targetTableId);
   if (!target) return;
@@ -796,6 +951,16 @@ const OPTIC_ROW_NAMES = [
   "איבו אלפא","התקני הטלה/ כדור ברזל"
 ];
 
+/**
+ * בונה שורות הקצאה לתצוגה בלבד על בסיס נתונים שנשמרו בטבלאות המנהל.
+ * @param {Object} data - נתוני הטבלה
+ * @param {Array<string>} names - שמות השורות
+ * @param {number} totalCols - סך העמודות
+ * @param {number} startCol - עמודת התחלה
+ * @param {number} endCol - עמודת סיום
+ * @param {string} tbodyId - מזהה tbody ביעד
+ * @param {Array<number>} [specialRowIndices=[0, 19]] - אינדקסים של שורות מיוחדות להדגשה
+ */
 function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices = [0, 19]) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -830,6 +995,12 @@ function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, sp
   }
 }
 
+/**
+ * מרנדרת את תצוגת הקצאות המודיעין עבור יחידה ספציפית לפי מספר הפלוגות.
+ * @param {string} sourceTableId - מזהה טבלת המקור של המודיעין
+ * @param {string} tbodyId - מזהה tbody ביעד
+ * @param {number} [companyCount=6] - מספר הפלוגות ביחידה
+ */
 function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 6) {
   const key = getStorageKey(sourceTableId, currentWeek, currentYear);
   const saved = localStorage.getItem(key);
@@ -889,18 +1060,27 @@ function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 6) {
   }
 }
 
+/** מרנדרת הקצאות מודיעין עבור בא"ח איסו"ק */
 function renderHaktzaotEsuk() {
   renderHaktzaotModieinUnit('esukTable', 'haktzaot-esuk-body', 6);
 }
+
+/** מרנדרת הקצאות מודיעין עבור בא"ח חיר"ג */
 function renderHaktzaotHirg() {
   renderHaktzaotModieinUnit('hirgTable', 'haktzaot-hirg-body', 6);
 }
+
+/** מרנדרת הקצאות מודיעין עבור גדוד הפיקוד */
 function renderHaktzaotPikud() {
   renderHaktzaotModieinUnit('pikudTable', 'haktzaot-pikud-body', 7);
 }
+
+/** מרנדרת הקצאות מודיעין עבור ענף תצ"מ */
 function renderHaktzaotTazam() {
   renderHaktzaotModieinUnit('tazamTable', 'haktzaot-tazam-body', 8);
 }
+
+/** מרנדרת הקצאות מודיעין עבור בהל"ג */
 function renderHaktzaotBahalag() {
   renderHaktzaotModieinUnit('bahalagTable', 'haktzaot-bahalag-body', 1);
 }
@@ -909,6 +1089,10 @@ function renderHaktzaotBahalag() {
    חישובים (נוסחאות) לטבלת קשר ולשאר
 ================================ */
 
+/**
+ * מריצה נוסחאות וחישובי סיכום, דרישה, ויסות ועודפים עבור שורה בטבלת קשר.
+ * @param {HTMLTableRowElement} row - שורת הטבלה
+ */
 function recalcKesherRow(row) {
   const groups = [
     { companyCols: [1, 2, 3, 4, 5, 6, 7], demandCol: 8, regCol: 9, surplusCol: 10 },
@@ -1001,6 +1185,11 @@ function recalcKesherRow(row) {
   }
 }
 
+/**
+ * מריצה נוסחאות חישוב עבור שורה בטבלת אופטיקה בהתאם לקונפיגורציית העמודות.
+ * @param {HTMLTableRowElement} row - שורת הטבלה
+ * @param {Object} config - קונפיגורציית עמודות
+ */
 function recalcRow(row, config) {
   const { startCol, endCol, totalUnitCol, failCol, totalRegulatedCol, availableCol, excessCol } = config;
   let sum = 0, hasAnyValue = false;
@@ -1049,6 +1238,11 @@ function recalcRow(row, config) {
   }
 }
 
+/**
+ * מריצה חישוב מחדש של הנוסחאות על כל השורות בטבלה נתונה.
+ * @param {string} tableId - מזהה הטבלה
+ * @param {Object} [config] - קונפיגורציית חישוב אופציונלית
+ */
 function recalcAll(tableId, config) {
   const table = document.getElementById(tableId);
   if (!table || !table.tBodies[0]) return;
@@ -1064,6 +1258,9 @@ function recalcAll(tableId, config) {
   }
 }
 
+/**
+ * מאתחלת מאזיני אירועי הקלדה בטבלאות לשמירה וחישוב אוטומטי בזמן אמת.
+ */
 function initTableListeners() {
   const tables = getActiveTables();
   tables.forEach(tableId => {
@@ -1086,12 +1283,20 @@ function initTableListeners() {
 /* ================================
    התרחבות אוטומטית ל"נושא שבוע"
 ================================ */
+
+/**
+ * מתאימה באופן אוטומטי את גובה תיבת הטקסט בשורת "נושא שבוע" לפי גובה התוכן (scrollHeight).
+ * @param {HTMLTextAreaElement} el - רכיב ה-textarea
+ */
 function autoResizeTopicTextarea(el) {
   if (!el) return;
   el.style.height = 'auto';
   el.style.height = Math.max(el.scrollHeight, 42) + 'px';
 }
 
+/**
+ * מאתחלת מאזינים להתרחבות אוטומטית של תיבות הטקסט בשורות נושא השבוע.
+ */
 function initTopicExpansion() {
   document.addEventListener('input', function(e) {
     if (e.target.classList.contains('topic-textarea')) {
@@ -1115,10 +1320,34 @@ const HADRAG_FACILITY_NAMES = {
 const HADRAG_DAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const ALL_COLOR_CLASSES = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'imported', 'conflict-overlap'];
 
+/**
+ * מפיקה מפתח שמירה עבור בקשות חדר"ג.
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ * @returns {string} מפתח שמירה
+ */
 function getHadragRequestsKey(week, year) { return `hadragRequests_week${week}_year${year}`; }
+
+/**
+ * טוענת את בקשות החדר"ג לשבוע ושנה נתונים.
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ * @returns {Array<Object>} מערך בקשות חדר"ג
+ */
 function loadHadragRequests(week, year) { const raw = localStorage.getItem(getHadragRequestsKey(week, year)); return raw ? JSON.parse(raw) : []; }
+
+/**
+ * שומרת את בקשות החדר"ג ב-LocalStorage.
+ * @param {Array<Object>} requests - מערך בקשות חדר"ג
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ */
 function saveHadragRequests(requests, week, year) { localStorage.setItem(getHadragRequestsKey(week, year), JSON.stringify(requests)); }
 
+/**
+ * בונה דינמית את שורות ועמודות השעות (06:00 עד 23:30) בטבלאות חדר"ג ושק"ם.
+ * @param {string} tbodyId - מזהה גוף הטבלה (tbody)
+ */
 function generateTimeSlots(tbodyId) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -1157,6 +1386,11 @@ const PAGE_UNIT_NAMES = {
   'bahalag.html': 'בהל"ג'
 };
 
+/**
+ * מגישה בקשת שיבוץ חדר"ג חדשה מטעם יחידה ושומרת אותה כממתינה לאישור.
+ * @param {string} [unitClass] - מחלקת צבע היחידה
+ * @param {string} [unitName] - שם היחידה
+ */
 function submitHadragRequest(unitClass, unitName) {
   const facility = document.getElementById('hadragFacilityInput').value;
   const text = document.getElementById('hadragTextInput').value.trim();
@@ -1182,6 +1416,10 @@ function submitHadragRequest(unitClass, unitName) {
   if(typeof renderHadragRequestsList === 'function') renderHadragRequestsList();
 }
 
+/**
+ * מוחקת בקשת חדר"ג ומעדכנת את הרשימות בתצוגה.
+ * @param {string} id - מזהה הבקשה
+ */
 function deleteHadragRequest(id) {
   const requests = loadHadragRequests(currentWeek, currentYear).filter(req => req.id !== id);
   saveHadragRequests(requests, currentWeek, currentYear);
@@ -1189,6 +1427,9 @@ function deleteHadragRequest(id) {
   if(typeof renderHadragPendingRequests === 'function') renderHadragPendingRequests();
 }
 
+/**
+ * מרנדרת את רשימת בקשות החדר"ג שהוגשו עבור עמוד היחידה הנוכחי.
+ */
 function renderHadragRequestsList() {
   const container = document.getElementById('hadragRequestsList');
   if (!container) return;
@@ -1222,6 +1463,11 @@ function renderHadragRequestsList() {
   }).join('');
 }
 
+/**
+ * המירה מחרוזת שעה (HH:MM) לאינדקס שורה בטבלאות חדר"ג/שק"ם (0 עד 35).
+ * @param {string} timeStr - מחרוזת שעה
+ * @returns {number} אינדקס שורה
+ */
 function timeToRowIndex(timeStr) {
   if (!timeStr) return 0;
   const [hours, minutes] = timeStr.split(':').map(Number);
@@ -1236,6 +1482,9 @@ const UNIT_BG_MAP = {
   'bg-maphat': { bg: '#ffe0b2', border: '#ffb74d', text: '#e65100' }
 };
 
+/**
+ * מרנדרת את כרטיסי הבקשות הממתינות לאישור חדר"ג עבור עמוד ניהול החדר"ג.
+ */
 function renderHadragPendingRequests() {
   const container = document.getElementById('hadragPendingList');
   if (!container) return; 
@@ -1279,6 +1528,10 @@ function renderHadragPendingRequests() {
   }).join('');
 }
 
+/**
+ * מאשרת בקשת חדר"ג, מחשבת את מיזוג השורות הנדרש, ומשבצת אותה בטבלה.
+ * @param {string} reqId - מזהה הבקשה
+ */
 function approveHadragRequest(reqId) {
   const requests = loadHadragRequests(currentWeek, currentYear);
   const reqIndex = requests.findIndex(r => r.id === reqId);
@@ -1348,12 +1601,19 @@ function approveHadragRequest(reqId) {
   renderHadragPendingRequests(); 
 }
 
+/**
+ * דוחה ומודקת בקשת חדר"ג לאחר אישור המשתמש.
+ * @param {string} reqId - מזהה הבקשה
+ */
 function rejectHadragRequest(reqId) {
   if (confirm('האם אתה בטוח שברצונך לדחות ולמחוק בקשה זו?')) {
     deleteHadragRequest(reqId);
   }
 }
 
+/**
+ * שומרת את מצב תאי הטבלאות ומיזוגי השורות בכל מתקני החדר"ג לשבוע הנוכחי.
+ */
 function saveHadragTables() {
   const TABLE_IDS = ['body-chadrag', 'body-anafit8', 'body-anafit-bah', 'body-tavor'];
   TABLE_IDS.forEach(tableId => {
@@ -1378,6 +1638,10 @@ function saveHadragTables() {
   });
 }
 
+/**
+ * מאפסת את מבנה התאים והמיזוגים בטבלת חדר"ג או שק"ם למצב ברירת מחדל.
+ * @param {HTMLTableSectionElement} tbody - גוף הטבלה
+ */
 function resetHadragOrShekemTable(tbody) {
   if (!tbody) return;
   for (let r = 0; r < 36; r++) {
@@ -1396,6 +1660,11 @@ function resetHadragOrShekemTable(tbody) {
   }
 }
 
+/**
+ * טוענת את מצב המשבצות והאירועים המשובצים בטבלאות החדר"ג עבור שבוע ושנה נתונים.
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ */
 function loadHadragTables(week, year) {
   const TABLE_IDS = ['body-chadrag', 'body-anafit8', 'body-anafit-bah', 'body-tavor'];
   if (typeof generateTimeSlots !== 'function') return;
@@ -1435,10 +1704,21 @@ function loadHadragTables(week, year) {
 /* =========================================================
    מערכת שק"ם
 ========================================================= */
+
+/** מפיקה מפתח שמירה לבקשות שק"ם */
 function getShekemRequestsKey(week, year) { return `shekemRequests_week${week}_year${year}`; }
+
+/** טוענת את בקשות השק"ם לשבוע ושנה נתונים */
 function loadShekemRequests(week, year) { const raw = localStorage.getItem(getShekemRequestsKey(week, year)); return raw ? JSON.parse(raw) : []; }
+
+/** שומרת את בקשות השק"ם ב-LocalStorage */
 function saveShekemRequests(requests, week, year) { localStorage.setItem(getShekemRequestsKey(week, year), JSON.stringify(requests)); }
 
+/**
+ * מגישה בקשת שעות שק"ם חדשה מטעם יחידה.
+ * @param {string} [unitClass] - מחלקת צבע היחידה
+ * @param {string} [unitName] - שם היחידה
+ */
 function submitShekemRequest(unitClass, unitName) {
   const text = document.getElementById('shekemTextInput').value.trim();
   const day = parseInt(document.getElementById('shekemDayInput').value);
@@ -1463,6 +1743,10 @@ function submitShekemRequest(unitClass, unitName) {
   if(typeof renderShekemRequestsList === 'function') renderShekemRequestsList();
 }
 
+/**
+ * מוחקת בקשת שק"ם ומעדכנת את התצוגות.
+ * @param {string} id - מזהה הבקשה
+ */
 function deleteShekemRequest(id) {
   const requests = loadShekemRequests(currentWeek, currentYear).filter(req => req.id !== id);
   saveShekemRequests(requests, currentWeek, currentYear);
@@ -1470,6 +1754,9 @@ function deleteShekemRequest(id) {
   if(typeof renderShekemPendingRequests === 'function') renderShekemPendingRequests();
 }
 
+/**
+ * מרנדרת את רשימת בקשות השק"ם בעמוד היחידה.
+ */
 function renderShekemRequestsList() {
   const container = document.getElementById('shekemRequestsList');
   if (!container) return;
@@ -1502,6 +1789,9 @@ function renderShekemRequestsList() {
   }).join('');
 }
 
+/**
+ * מרנדרת את כרטיסי הבקשות הממתינות לאישור שק"ם עבור עמוד ניהול השק"ם.
+ */
 function renderShekemPendingRequests() {
   const container = document.getElementById('shekemPendingList');
   if (!container) return; 
@@ -1544,6 +1834,10 @@ function renderShekemPendingRequests() {
   }).join('');
 }
 
+/**
+ * מאשרת ומשבצת בקשת שק"ם בטבלת השק"ם.
+ * @param {string} reqId - מזהה הבקשה
+ */
 function approveShekemRequest(reqId) {
   const requests = loadShekemRequests(currentWeek, currentYear);
   const reqIndex = requests.findIndex(r => r.id === reqId);
@@ -1612,12 +1906,19 @@ function approveShekemRequest(reqId) {
   renderShekemPendingRequests(); 
 }
 
+/**
+ * דוחה בקשת שק"ם ומוחקת אותה.
+ * @param {string} reqId - מזהה הבקשה
+ */
 function rejectShekemRequest(reqId) {
   if (confirm('האם אתה בטוח שברצונך לדחות ולמחוק בקשה זו?')) {
     deleteShekemRequest(reqId);
   }
 }
 
+/**
+ * שומרת את מצב טבלת השק"ם ב-LocalStorage.
+ */
 function saveShekemTables() {
   const tbody = document.getElementById('body-shekem');
   if (!tbody) return; 
@@ -1639,6 +1940,11 @@ function saveShekemTables() {
   localStorage.setItem(`shekemData_body-shekem_week${currentWeek}_year${currentYear}`, JSON.stringify(tableData));
 }
 
+/**
+ * טוענת את מצב טבלת השק"ם לשבוע ושנה נתונים.
+ * @param {number} week - מספר השבוע
+ * @param {number} year - השנה
+ */
 function loadShekemTables(week, year) {
   if (typeof generateTimeSlots !== 'function') return;
   const tbody = document.getElementById('body-shekem');
@@ -1674,6 +1980,11 @@ function loadShekemTables(week, year) {
 /* =========================================================
    שיבוץ ישיר למנהל (חדר"ג + שק"ם)
 ========================================================= */
+
+/**
+ * מיועדת לשיבוץ ישיר של מנהל בטבלאות חדר"ג או שק"ם ללא הגשת בקשה מוקדמת.
+ * @param {string} type - סוג הטבלה ('hadrag' / 'shekem')
+ */
 function addDirectEntry(type) {
   const unitClass = document.getElementById('directUnit').value;
   const text = document.getElementById('directText').value.trim();
@@ -1729,7 +2040,7 @@ function addDirectEntry(type) {
   firstCell.rowSpan = (endRow - startRow + 1);
   const textarea = firstCell.querySelector('textarea');
   if (textarea) {
-    textarea.style.height = (firstCell.rowSpan * 17.5) + 'px';
+    textarea.style.height = '100%';
     textarea.value = text;
     firstCell.classList.add(unitClass); 
   }
@@ -1746,6 +2057,9 @@ let dragStartCell = null;
 let dragStartRow = -1;
 let dragCol = -1;
 
+/**
+ * מסימת את מצב הגרירה והמיזוג (Drag-to-Merge) ושומרת את שינויי הטבלאות.
+ */
 function stopDragging() {
   if (isDragging) {
     isDragging = false;

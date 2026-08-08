@@ -76,7 +76,7 @@ table.hipoktable {
   min-width: 90px !important;
 }
 
-.hipoktable td:first-child,
+.hipoktable td:first-child:not(.wet-type):not(.dry-type),
 .hipoktable th:first-child {
   width: 130px !important;
   min-width: 130px !important;
@@ -86,7 +86,7 @@ table.hipoktable {
 }
 
 /* ================== כותרות ימין בתוך הטבלה ================== */
-.hipoktable td[rowspan]:first-child {
+.hipoktable td[rowspan]:first-child:not(.wet-type):not(.dry-type) {
   background-color: #f1f5f9 !important;
   color: #0f172a !important;
   font-weight: 800 !important;
@@ -95,6 +95,7 @@ table.hipoktable {
   border: 1px solid #cbd5e1 !important;
 }
 
+.hipoktable td.dry-type,
 .hipoktable .dry-type {
   background-color: #fef08a !important; /* צהוב איסו"ק */
   color: #000000 !important;
@@ -104,9 +105,10 @@ table.hipoktable {
   border: 1px solid #fde047 !important;
 }
 
+.hipoktable td.wet-type,
 .hipoktable .wet-type {
-  background-color: #bfdbfe !important; /* כחול פיקוד */
-  color: #000000 !important;
+  background-color: #bfdbfe !important; /* כחול פסטל */
+  color: #1e3a8a !important;
   font-weight: 800 !important;
   font-size: 13.5px !important;
   vertical-align: middle !important;

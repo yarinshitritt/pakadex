@@ -14,7 +14,7 @@
  
   <div class="container1">
     <div id="breadcrumb-path" style="display:flex; align-items:center; gap:6px; background:#1e293b; padding:4px 10px; border-radius:6px; border:1px solid #334155; font-size:13px; font-weight:700; color:#38bdf8; white-space:nowrap;"></div>
-    <div style="display:flex; align-items:center; gap:8px; margin-right:auto; cursor:pointer;" onclick="window.location.href='main.html'">
+    <div style="display:flex; align-items:center; gap:8px; margin-right:auto; cursor:pointer;" onclick="window.location.href='index.html'">
       <h1 style="font-size:24px; color:white; margin:0;">PAKADEX</h1>
       <img src="images/לוגו בהלג בלי רקע.png" alt="לוגו" class="sidebar-image" width="36" style="height:auto;">
     </div>
@@ -48,27 +48,6 @@
                 </tr>
               </thead>
               <tbody>
-                <script>
-                  const rows = [
-                    "נושא שבוע","715/709","POC","710","שקדון","CF-33","700","דיסקית","סל\"צ","נתונים",
-                    "מגבר","מח-120","מח-121","מח-122","מדונה","אול\"רים","מר2791",
-                    "מזוודת הטענה בומבה","מזוודת הטענה ליתיום","משיכה\\זיכוי"
-                  ];
-                  const columnsCount = 1 + 8;
-                  document.write(
-                    rows.map((row, rowIndex) => {
-                      let tds = `<td class="test">${row}</td>`;
-                      for (let i = 1; i < columnsCount; i++) {
-                        if (rowIndex === 0 || rowIndex === rows.length - 1) {
-                          tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
-                        } else {
-                          tds += `<td><input type="text" class="cell-input"></td>`;
-                        }
-                      }
-                      return `<tr>${tds}</tr>`;
-                    }).join("")
-                  );
-                </script>
               </tbody>
             </table>
           </div>
@@ -92,28 +71,6 @@
                 </tr>
               </thead>
               <tbody>
-                <script>
-                  const opticrows = [
-                    "נושא שבוע","מת\"ן","עמית","עמית איכון","חצובת עמית","חצובת תבל","יובל","תבל ידני",
-                    "מיני תבל ידני","תבל נשלט","מיני תבל נשלט","רחפן מטריס 300","רחפן איבו",
-                    "רחפן אווטא (ערכה זוגית)","15X80","מצפן מעלות","שטיינר",
-                    "צגון","מצלמת NIKON","איבו אלפא","התקני הטלה/ כדור ברזל"
-                  ];
-                  const opticcolumnsCount = 1 + 8;
-                  document.write(
-                    opticrows.map((row, rowIndex) => {
-                      let tds = `<td class="test">${row}</td>`;
-                      for (let i = 1; i < opticcolumnsCount; i++) {
-                        if (rowIndex === 0) {
-                          tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
-                        } else {
-                          tds += `<td><input type="text" class="cell-input"></td>`;
-                        }
-                      }
-                      return `<tr>${tds}</tr>`;
-                    }).join("")
-                  );
-                </script>
               </tbody>
             </table>
           </div>
@@ -406,7 +363,7 @@
       updateCategoryView();
     }
 
-    function updateCategoryView() {
+    async function updateCategoryView() {
       const ALL_CAT_BTNS = ['btn-kesher', 'btn-optic', 'btn-modiein', 'btn-hipok', 'btn-chadrag', 'btn-shekem'];
       ALL_CAT_BTNS.forEach(bId => {
         const btn = document.getElementById(bId);
@@ -436,13 +393,13 @@
         if (target) target.style.display = 'block';
 
         if (currentCategory === 'hipok' && typeof renderHipokEntriesList === 'function') {
-          renderHipokEntriesList();
+          await renderHipokEntriesList();
         }
         if (currentCategory === 'chadrag' && typeof renderHadragRequestsList === 'function') {
-          renderHadragRequestsList();
+          await renderHadragRequestsList();
         }
         if (currentCategory === 'shekem' && typeof renderShekemRequestsList === 'function') {
-          renderShekemRequestsList();
+          await renderShekemRequestsList();
         }
       }
 
@@ -548,17 +505,17 @@
       hipokGoToStep(3);
     }
 
-    function submitHipokEntry() {
+    async function submitHipokEntry() {
       const text = document.getElementById('hipokTextInput').value.trim();
       const time = document.getElementById('hipokTimeInput').value.trim();
       if (!time) { alert('יש להזין שעה'); return; }
       if (hipokSelectedType === null || hipokSelectedDay === null) { alert('שגיאה - נסה שוב'); return; }
 
       if (typeof addHipokEntry === 'function') {
-        addHipokEntry(hipokSelectedType, hipokSelectedDay, time, text, 'bg-tazam');
+        await addHipokEntry(hipokSelectedType, hipokSelectedDay, time, text, 'bg-tazam');
       }
       closeHipokModal();
-      if (typeof renderHipokEntriesList === 'function') renderHipokEntriesList();
+      if (typeof renderHipokEntriesList === 'function') await renderHipokEntriesList();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -572,6 +529,8 @@
       }
     });
   </script>
+  <script src="config.js"></script>
+  <script src="sharepointService.js"></script>
   <script src="script.js"></script>
 
 </body>

@@ -18,6 +18,8 @@
 
     <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
 
+      <button type="button" onclick="promptAddItemRow('kesher')" class="add-row-btn" style="margin-bottom: 6px; align-self: flex-start;">➕ הוסף אמצעי (קשר)</button>
+
       <div class="table-container" style="margin-top: 0;">
 
         <table class="keshertable" id="keshertable" dir="rtl" border="1">
@@ -60,7 +62,7 @@
             <th colspan="1" style="position:relative;">
               בהל"ג
               <button onclick="importFromSubTable('bkeshertable', 'keshertable', 41, 1)"
-                style="position:absolute; right:6px; height: 35px; top:50%; transform:translateY(-50%);">ייבוא</button>
+                style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); height: 35px;">ייבוא</button>
             </th>
             <th colspan="3" style="background:#006d75; color:white;">סה"כ</th>
 
@@ -85,30 +87,6 @@
         </thead>
 
         <tbody>
-          <script>
-            const rows = [
-              "נושא שבוע", "715/709", "POC", "710", "שקדון", "CF-33", "700", "דיסקית", "סל\"צ", "נתונים",
-              "מגבר", "מח-120", "מח-121", "מח-122", "מדונה", "אול\"רים", "מר2791",
-              "מזוודת הטענה בומבה", "מזוודת הטענה ליתיום", "משיכה\\זיכוי"
-            ];
-
-            // 1 (שם פריט) + 10 (איסוק) + 9 (חירג) + 10 (פיקוד) + 11 (תצמ) + 4 (בהלג) + 5 (סיכום) = 50 עמודות
-            const columnsCount = 1 + 10 + 9 + 10 + 11 + 4 + 5;
-
-            document.write(
-              rows.map((row, rowIndex) => {
-                let tds = `<td class="test">${row}</td>`;
-                for (let i = 1; i < columnsCount; i++) {
-                  if (rowIndex === 0 || rowIndex === rows.length - 1) {
-                    tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
-                  } else {
-                    tds += `<td><input type="text" class="cell-input"></td>`;
-                  }
-                }
-                return `<tr>${tds}</tr>`;
-              }).join("")
-            );
-          </script>
         </tbody>
 
       </table>
@@ -123,6 +101,8 @@
 
   </div>
 
+  <script src="config.js"></script>
+  <script src="sharepointService.js"></script>
   <script src="script.js"></script>
 
 </body>

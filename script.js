@@ -48,7 +48,7 @@ const UNIT_TITLE_MAP = {
   'hipokim.html': 'טבלאות מנהל',
   'hadrag.html': 'טבלאות מנהל',
   'shekem.html': 'טבלאות מנהל',
-  'main.html': 'עמוד ראשי'
+  'index.html': 'עמוד ראשי'
 };
 
 const CATEGORY_NAME_MAP = {
@@ -76,12 +76,16 @@ function updateBreadcrumbPath() {
   const container = document.getElementById('breadcrumb-path');
   if (!container) return;
 
-  const currentPage = window.location.pathname.split('/').pop() || 'main.html';
-  const isUnitPage = ['esuk.html', 'hirg.html', 'pikud.html', 'tazam.html', 'bahalag.html'].includes(currentPage);
+  const rawPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  const currentPage = rawPage.split('?')[0].split('#')[0];
+  const isUnitPage = ['esuk', 'hirg', 'pikud', 'tazam', 'bahalag'].some(u => currentPage.includes(u));
   const urlParams = new URLSearchParams(window.location.search);
   const isHaktzaotView = urlParams.get('view') === 'haktzaot';
 
-  const unitName = UNIT_TITLE_MAP[currentPage] || 'PAKADEX';
+  const matchedUnitKey = Object.keys(UNIT_TITLE_MAP).find(k => currentPage.includes(k.split('.')[0]));
+  const unitName = matchedUnitKey ? UNIT_TITLE_MAP[matchedUnitKey] : 'PAKADEX';
+
+  const matchedCatKey = Object.keys(PAGE_CATEGORY_MAP).find(k => currentPage.includes(k.split('.')[0]));
 
   if (isUnitPage) {
     const viewName = isHaktzaotView ? 'הקצאות' : 'דרישות';
@@ -95,11 +99,11 @@ function updateBreadcrumbPath() {
       <span style="color:#64748b; font-size:11px;">➔</span>
       <span style="color:#ffffff;">${catName}</span>
     `;
-  } else if (PAGE_CATEGORY_MAP[currentPage]) {
+  } else if (matchedCatKey) {
     container.innerHTML = `
       <span>טבלאות מנהל</span>
       <span style="color:#64748b; font-size:11px;">➔</span>
-      <span style="color:#ffffff;">${PAGE_CATEGORY_MAP[currentPage]}</span>
+      <span style="color:#ffffff;">${PAGE_CATEGORY_MAP[matchedCatKey]}</span>
     `;
   } else {
     container.innerHTML = `<span style="color:#ffffff;">${unitName}</span>`;
@@ -113,8 +117,9 @@ function renderNavbars() {
   const topNav = document.getElementById('top-nav-placeholder');
   const sideNav = document.getElementById('side-nav-placeholder');
 
-  const currentPage = window.location.pathname.split('/').pop() || 'main.html';
-  const isUnitPage = ['esuk.html', 'hirg.html', 'pikud.html', 'tazam.html', 'bahalag.html'].includes(currentPage);
+  const rawPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  const currentPage = rawPage.split('?')[0].split('#')[0];
+  const isUnitPage = ['esuk', 'hirg', 'pikud', 'tazam', 'bahalag'].some(u => currentPage.includes(u));
 
   const urlParams = new URLSearchParams(window.location.search);
   const currentView = urlParams.get('view') || 'bakashot';
@@ -122,17 +127,17 @@ function renderNavbars() {
   
   const isCollapsedStored = localStorage.getItem('sidebar_collapsed') === 'true';
 
-  // 1. הזרקת תפריט עליון (Top Nav) - יישור לימין בסדר מימין לשמאל: קשר, אופטיקה, מודיעין, חיפוקים, חדר"ג, שעות שקם
+  // 1. הזרקת תפריט עליון (Top Nav)
   if (topNav) {
-    const isKesher = currentPage === 'kesher.html';
-    const isOptic = currentPage === 'optic.html';
-    const isHipok = currentPage === 'hipokim.html';
-    const isModiein = currentPage === 'modiein.html';
-    const isHadrag = currentPage === 'hadrag.html';
-    const isShekem = currentPage === 'shekem.html';
+    const isKesher = currentPage.includes('kesher');
+    const isOptic = currentPage.includes('optic');
+    const isHipok = currentPage.includes('hipok');
+    const isModiein = currentPage.includes('modiein');
+    const isHadrag = currentPage.includes('hadrag');
+    const isShekem = currentPage.includes('shekem');
 
     const logoBlock = !isUnitPage ? `
-      <div style="display:flex; align-items:center; gap:8px; margin-right:auto; cursor:pointer;" onclick="window.location.href='main.html'">
+      <div style="display:flex; align-items:center; gap:8px; margin-right:auto; cursor:pointer;" onclick="window.location.href='index.html'">
         <h1 style="font-size:20px; color:white; margin:0;">PAKADEX</h1>
         <img src="images/לוגו בהלג בלי רקע.png" alt="לוגו" class="sidebar-image" width="36" style="height:auto;">
       </div>
@@ -164,14 +169,14 @@ function renderNavbars() {
 
   // 2. הזרקת תפריט צדדי (Side Nav)
   if (sideNav) {
-    const isMain = currentPage === 'main.html';
-    const isTabels = ['tabels.html', 'kesher.html', 'optic.html', 'modiein.html', 'hipokim.html', 'hadrag.html', 'shekem.html'].includes(currentPage);
+    const isMain = currentPage.includes('main') || currentPage === '' || currentPage.includes('index');
+    const isTabels = ['tabels', 'kesher', 'optic', 'modiein', 'hipok', 'hadrag', 'shekem'].some(p => currentPage.includes(p));
 
-    const isEsuk = currentPage === 'esuk.html';
-    const isHirg = currentPage === 'hirg.html';
-    const isPikud = currentPage === 'pikud.html';
-    const isTazam = currentPage === 'tazam.html';
-    const isBahalag = currentPage === 'bahalag.html';
+    const isEsuk = currentPage.includes('esuk');
+    const isHirg = currentPage.includes('hirg');
+    const isPikud = currentPage.includes('pikud');
+    const isTazam = currentPage.includes('tazam');
+    const isBahalag = currentPage.includes('bahalag');
 
     sideNav.innerHTML = `
       <div class="container2 ${isCollapsedStored ? 'collapsed' : ''}" style="margin-top: 0;">
@@ -180,7 +185,7 @@ function renderNavbars() {
           <span class="sidebar-text">כווץ תפריט</span>
         </button>
 
-        <button class="sidebar-btn ${isMain ? 'active' : ''}" onclick="window.location.href='main.html'">
+        <button class="sidebar-btn ${isMain ? 'active' : ''}" onclick="window.location.href='index.html'">
           <span>🏠</span> <span class="sidebar-text">ראשי</span>
         </button>
         <button class="sidebar-btn ${isTabels ? 'active' : ''}" onclick="window.location.href='kesher.html'">
@@ -333,32 +338,42 @@ function getActiveTables() {
 }
 
 /**
- * שומרת את כל נתוני הטבלאות, החיפוקים, החדר"ג והשק"ם עבור השבוע והשנה הנוכחיים ב-LocalStorage.
+ * שומרת את כל נתוני הטבלאות, החיפוקים, החדר"ג והשק"ם עבור השבוע והשנה הנוכחיים ב-DataService (SharePoint / Local).
  */
-function saveCurrentWeek() {
+async function saveCurrentWeek() {
   const tables = getActiveTables();
-  tables.forEach(tableId => {
+  for (const tableId of tables) {
     const table = document.getElementById(tableId);
     if (table) {
       const tw = tableWeeks[tableId] || { week: currentWeek, year: currentYear };
-      localStorage.setItem(getStorageKey(tableId, tw.week, tw.year), JSON.stringify(readTableData(tableId)));
+      const key = getStorageKey(tableId, tw.week, tw.year);
+      const data = readTableData(tableId);
+      if (typeof DataService !== 'undefined') {
+        await DataService.setItem(key, data);
+      } else {
+        localStorage.setItem(key, JSON.stringify(data));
+      }
     }
-  });
+  }
   
-  if (typeof saveHipokData === 'function') saveHipokData();
-  if (typeof saveHadragTables === 'function') saveHadragTables();
-  if (typeof saveShekemTables === 'function') saveShekemTables();
+  if (typeof saveHipokData === 'function') await saveHipokData();
+  if (typeof saveHadragTables === 'function') await saveHadragTables();
+  if (typeof saveShekemTables === 'function') await saveShekemTables();
 }
 
 /**
- * טוענת את נתוני הטבלה המאוחסנים עבור שבוע ושנה ספציפיים, ומעדכנת את שדות הקלט ב-DOM.
+ * טוענת את נתוני הטבלה המאוחסנים עבור שבוע ושנה ספציפיים מ-DataService, ומעדכנת את שדות הקלט ב-DOM.
  * @param {string} tableId - מזהה הטבלה
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
-function loadTableData(tableId, week, year) {
+async function loadTableData(tableId, week, year) {
   const table = document.getElementById(tableId);
   if (!table) return;
+
+  if (KESHER_TABLE_LIST.some(t => t.id === tableId) || OPTIC_TABLE_LIST.some(t => t.id === tableId)) {
+    renderDynamicTableStructure(tableId, week, year);
+  }
 
   const dynamicTables = [
     'tazamTable', 'hirgTable', 'esukTable', 'pikudTable', 'bahalagTable',
@@ -380,10 +395,16 @@ function loadTableData(tableId, week, year) {
     }
   });
 
-  const saved = localStorage.getItem(getStorageKey(tableId, week, year));
-  if (saved) {
-    const data = JSON.parse(saved);
+  const key = getStorageKey(tableId, week, year);
+  let data = null;
+  if (typeof DataService !== 'undefined') {
+    data = await DataService.getItem(key);
+  } else {
+    const saved = localStorage.getItem(key);
+    if (saved) data = JSON.parse(saved);
+  }
 
+  if (data) {
     if (isDynamic) {
       const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
       if (keysWithData.length > 0) {
@@ -462,7 +483,7 @@ function nextWeek() {
 /**
  * מעדכנת את כל רכיבי ממשק המשתמש (שדות שבוע, טבלאות, רשימות חיפוקים, חדר"ג ושק"ם) בעת החלפת שבוע.
  */
-function updateUIForWeek() {
+async function updateUIForWeek() {
   const weekInput = document.getElementById('weekInput');
   const weekInputOptic = document.getElementById('weekInputOptic');
   if (weekInput) weekInput.value = currentWeek;
@@ -478,6 +499,8 @@ function updateUIForWeek() {
 
   recalcAll('keshertable');
   recalcAll('optictable', tableConfigs.optictable);
+  checkRequirementChanges('keshertable');
+  checkRequirementChanges('optictable');
 
   renderPageNumbers();
 
@@ -492,15 +515,15 @@ function updateUIForWeek() {
     if (typeof renderHaktzaotBahalag === 'function') renderHaktzaotBahalag();
   }
 
-  if (typeof renderHipokEntriesList === 'function') renderHipokEntriesList();
+  if (typeof renderHipokEntriesList === 'function') await renderHipokEntriesList();
   
   // פונקציות החדר"ג והשק"ם:
-  if (typeof renderHadragRequestsList === 'function') renderHadragRequestsList();
+  if (typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
   if (typeof loadHadragTables === 'function') loadHadragTables(currentWeek, currentYear);
-  if (typeof renderHadragPendingRequests === 'function') renderHadragPendingRequests();
-  if (typeof renderShekemRequestsList === 'function') renderShekemRequestsList();
+  if (typeof renderHadragPendingRequests === 'function') await renderHadragPendingRequests();
+  if (typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
   if (typeof loadShekemTables === 'function') loadShekemTables(currentWeek, currentYear);
-  if (typeof renderShekemPendingRequests === 'function') renderShekemPendingRequests();
+  if (typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
 }
 
 /**
@@ -567,11 +590,16 @@ function readHipokData() {
 /**
  * שומרת את נתוני טבלת החיפוקים עבור השבוע והשנה הנוכחיים.
  */
-function saveHipokData() {
+async function saveHipokData() {
   const table = document.getElementById('hipoktable');
   if (!table) return;
   const data = readHipokData();
-  localStorage.setItem(getStorageKey('hipoktable', currentWeek, currentYear), JSON.stringify(data));
+  const key = getStorageKey('hipoktable', currentWeek, currentYear);
+  if (typeof DataService !== 'undefined') {
+    await DataService.setItem(key, data);
+  } else {
+    localStorage.setItem(key, JSON.stringify(data));
+  }
 }
 
 /**
@@ -579,7 +607,7 @@ function saveHipokData() {
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
-function loadHipokData(week, year) {
+async function loadHipokData(week, year) {
   const table = document.getElementById('hipoktable');
   if (!table) return;
 
@@ -587,10 +615,16 @@ function loadHipokData(week, year) {
   document.querySelectorAll('#hipoktable .time-input').forEach(el => el.value = '');
   document.querySelectorAll('#hipoktable .cell-wrapper').forEach(wrapper => { wrapper.className = 'cell-wrapper'; });
 
-  const saved = localStorage.getItem(getStorageKey('hipoktable', week, year));
-  if (!saved) return;
+  const key = getStorageKey('hipoktable', week, year);
+  let data = null;
+  if (typeof DataService !== 'undefined') {
+    data = await DataService.getItem(key);
+  } else {
+    const saved = localStorage.getItem(key);
+    if (saved) data = JSON.parse(saved);
+  }
+  if (!data) return;
 
-  const data = JSON.parse(saved);
   document.querySelectorAll('#hipoktable .task-input').forEach((el, i) => {
     if (data['task_' + i] !== undefined) {
       el.value = data['task_' + i];
@@ -634,17 +668,32 @@ function getHipokEntriesKey(week, year) { return `hipokEntries_week${week}_year$
  * טוענת את רשימת בקשות החיפוקים המאוחסנות לשבוע ושנה מסוימים.
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
- * @returns {Array<Object>} מערך אובייקטי בקשות חיפוק
+ * @returns {Promise<Array<Object>>} מערך אובייקטי בקשות חיפוק
  */
-function loadHipokEntries(week, year) { const raw = localStorage.getItem(getHipokEntriesKey(week, year)); return raw ? JSON.parse(raw) : []; }
+async function loadHipokEntries(week, year) {
+  const key = getHipokEntriesKey(week, year);
+  if (typeof DataService !== 'undefined') {
+    const data = await DataService.getItem(key);
+    return data || [];
+  }
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : [];
+}
 
 /**
- * שומרת את רשימת בקשות החיפוקים ב-LocalStorage.
+ * שומרת את רשימת בקשות החיפוקים ב-DataService.
  * @param {Array<Object>} entries - מערך בקשות החיפוק
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
-function saveHipokEntriesList(entries, week, year) { localStorage.setItem(getHipokEntriesKey(week, year), JSON.stringify(entries)); }
+async function saveHipokEntriesList(entries, week, year) {
+  const key = getHipokEntriesKey(week, year);
+  if (typeof DataService !== 'undefined') {
+    await DataService.setItem(key, entries);
+  } else {
+    localStorage.setItem(key, JSON.stringify(entries));
+  }
+}
 
 /**
  * מוסיפה בקשת חיפוק חדשה לרשימה ומעדכנת את השמירה.
@@ -655,10 +704,10 @@ function saveHipokEntriesList(entries, week, year) { localStorage.setItem(getHip
  * @param {string} [color] - מחלקת צבע היחידה
  * @returns {Array<Object>} הרשימה המעודכנת
  */
-function addHipokEntry(type, day, time, text = '', color = '') {
-  const entries = loadHipokEntries(currentWeek, currentYear);
+async function addHipokEntry(type, day, time, text = '', color = '') {
+  const entries = await loadHipokEntries(currentWeek, currentYear);
   entries.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), type, day, time, text, color });
-  saveHipokEntriesList(entries, currentWeek, currentYear);
+  await saveHipokEntriesList(entries, currentWeek, currentYear);
   return entries;
 }
 
@@ -667,9 +716,9 @@ function addHipokEntry(type, day, time, text = '', color = '') {
  * @param {string} id - מזהה הבקשה
  * @returns {Array<Object>} הרשימה המעודכנת לאחר המחיקה
  */
-function deleteHipokEntry(id) {
-  const entries = loadHipokEntries(currentWeek, currentYear).filter(e => e.id !== id);
-  saveHipokEntriesList(entries, currentWeek, currentYear);
+async function deleteHipokEntry(id) {
+  const entries = (await loadHipokEntries(currentWeek, currentYear)).filter(e => e.id !== id);
+  await saveHipokEntriesList(entries, currentWeek, currentYear);
   return entries;
 }
 
@@ -677,9 +726,9 @@ function deleteHipokEntry(id) {
  * מוחקת בקשת חיפוק ומעדכנת את התצוגה בעמוד היחידה.
  * @param {string} id - מזהה הבקשה
  */
-function removeHipokEntry(id) {
-  deleteHipokEntry(id);
-  if (typeof renderHipokEntriesList === 'function') renderHipokEntriesList();
+async function removeHipokEntry(id) {
+  await deleteHipokEntry(id);
+  if (typeof renderHipokEntriesList === 'function') await renderHipokEntriesList();
 }
 
 const PAGE_UNIT_MAP = {
@@ -693,11 +742,11 @@ const PAGE_UNIT_MAP = {
 /**
  * מרנדרת את רשימת בקשות החיפוקים המוגשות בעמוד היחידה הרלוונטית.
  */
-function renderHipokEntriesList() {
+async function renderHipokEntriesList() {
   const container = document.getElementById('hipokEntriesList');
   if (!container) return;
 
-  const entries = loadHipokEntries(currentWeek, currentYear);
+  const entries = await loadHipokEntries(currentWeek, currentYear);
   const currentPage = window.location.pathname.split('/').pop();
   const targetColor = PAGE_UNIT_MAP[currentPage];
 
@@ -755,11 +804,11 @@ function getHipokTableCell(type, day, slotIndex) {
 /**
  * מייבאת את בקשות החיפוקים של היחידות לתוך טבלת החיפוקים של המנהל מול מגבלת המשבצות.
  */
-function importHipukim() {
+async function importHipukim() {
   const table = document.getElementById('hipoktable');
   if (!table) { alert('טבלת החיפוקים לא נמצאה'); return; }
 
-  const entries = loadHipokEntries(currentWeek, currentYear);
+  const entries = await loadHipokEntries(currentWeek, currentYear);
   if (entries.length === 0) {
     alert('אין חיפוקים שהוזנו לשבוע זה.');
     return;
@@ -889,8 +938,19 @@ function importFromSubTable(sourceTableId, targetTableId, targetStartCol, source
     }
   });
   saveCurrentWeek();
+  const ackKey = getAckStorageKey(targetTableId, currentWeek, currentYear);
+  const ackSavedRaw = localStorage.getItem(ackKey);
+  const ackData = ackSavedRaw ? JSON.parse(ackSavedRaw) : {};
+  Object.entries(data).forEach(([indexStr, value]) => {
+    const idx = parseInt(indexStr);
+    const subVal = value !== undefined && value !== null ? String(value).trim() : '';
+    ackData[`${sourceTableId}_${idx}`] = subVal;
+  });
+  localStorage.setItem(ackKey, JSON.stringify(ackData));
+
   if (targetTableId === 'keshertable') recalcAll(targetTableId);
   else recalcAll(targetTableId, tableConfigs[targetTableId]);
+  checkRequirementChanges(targetTableId);
   alert(`יובאו נתונים בהצלחה`);
 }
 
@@ -935,35 +995,247 @@ function importDirectToTable(sourceTableId, targetTableId) {
   alert(`יובאו נתונים בהצלחה`);
 }
 
-/* ================================
-   הקצאות (תצוגה בלבד לכל היחידות)
-================================ */
-const KESHER_ROW_NAMES = [
-  "נושא שבוע","715/709","POC","710","שקדון","CF-33","700","דיסקית","סל\"צ","נתונים",
-  "מגבר","מח-120","מח-121","מח-122","מדונה","אול\"רים","מר2791",
-  "מזוודת הטענה בומבה","מזוודת הטענה ליתיום","משיכה\\זיכוי"
+const DEFAULT_KESHER_ROWS = [
+  "נושא שבוע", "715/709", "POC", "710", "שקדון", "CF-33", "700", "דיסקית", "סל\"צ", "נתונים",
+  "מגבר", "מח-120", "מח-121", "מח-122", "מדונה", "אול\"רים", "מר2791",
+  "מזוודת הטענה בומבה", "מזוודת הטענה ליתיום", "משיכה\\זיכוי"
 ];
 
-const OPTIC_ROW_NAMES = [
-  "נושא שבוע","מת\"ן","עמית","עמית איכון","חצובת עמית","חצובת תבל","יובל","תבל ידני",
-  "מיני תבל ידני","תבל נשלט","מיני תבל נשלט","רחפן מטריס 300","רחפן איבו",
-  "רחפן אווטא (ערכה זוגית)","15X80","מצפן מעלות","שטיינר","צגון","מצלמת NIKON",
-  "איבו אלפא","התקני הטלה/ כדור ברזל"
+const DEFAULT_OPTIC_ROWS = [
+  "נושא שבוע", "מת\"ן", "עמית", "עמית איכון", "חצובת עמית", "חצובת תבל", "יובל", "תבל ידני",
+  "מיני תבל ידני", "תבל נשלט", "מיני תבל נשלט", "רחפן מטריס 300", "רחפן איבו",
+  "רחפן אווטא (ערכה זוגית)", "15X80", "מצפן מעלות", "שטיינר", "צגון", "מצלמת NIKON",
+  "איבו אלפא", "התקני הטלה/ כדור ברזל"
 ];
+
+const KESHER_TABLE_LIST = [
+  { id: 'keshertable', dataCols: 49 },
+  { id: 'esukkeshertable', dataCols: 7 },
+  { id: 'kkeshertable', dataCols: 6 },
+  { id: 'pkeshertable', dataCols: 7 },
+  { id: 'tkeshertable', dataCols: 8 },
+  { id: 'bkeshertable', dataCols: 1 }
+];
+
+const OPTIC_TABLE_LIST = [
+  { id: 'optictable', dataCols: 34 },
+  { id: 'esukoptictable', dataCols: 7 },
+  { id: 'koptictable', dataCols: 6 },
+  { id: 'poptictable', dataCols: 7 },
+  { id: 'toptictable', dataCols: 8 },
+  { id: 'boptictable', dataCols: 1 }
+];
+
+function getRowsStorageKey(category, week, year) {
+  return `rowList_${category}_week${week}_year${year}`;
+}
+
+function getRowsForWeek(category, week, year) {
+  const key = getRowsStorageKey(category, week, year);
+  const saved = localStorage.getItem(key);
+  if (saved) return JSON.parse(saved);
+
+  if (week > 1) {
+    return getRowsForWeek(category, week - 1, year);
+  } else if (year > new Date().getFullYear() - 2) {
+    const prevYearKey = getRowsStorageKey(category, TOTAL_WEEKS, year - 1);
+    const prevYearSaved = localStorage.getItem(prevYearKey);
+    if (prevYearSaved) return JSON.parse(prevYearSaved);
+  }
+
+  return category === 'kesher' ? [...DEFAULT_KESHER_ROWS] : [...DEFAULT_OPTIC_ROWS];
+}
+
+function renderDynamicTableStructure(tableId, week, year) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+
+  let category = null;
+  let dataCols = 0;
+
+  const kesherItem = KESHER_TABLE_LIST.find(t => t.id === tableId);
+  const opticItem = OPTIC_TABLE_LIST.find(t => t.id === tableId);
+
+  if (kesherItem) {
+    category = 'kesher';
+    dataCols = kesherItem.dataCols;
+  } else if (opticItem) {
+    category = 'optic';
+    dataCols = opticItem.dataCols;
+  } else {
+    return;
+  }
+
+  const rowsList = getRowsForWeek(category, week, year);
+  const tbody = table.tBodies[0];
+  if (!tbody) return;
+
+  let tbodyHtml = '';
+  const totalCols = dataCols + 1;
+
+  const isMasterTable = (tableId === 'keshertable' || tableId === 'optictable');
+
+  rowsList.forEach((rowName, rowIndex) => {
+    let deleteBtnHtml = '';
+    if (rowIndex > 0 && isMasterTable) {
+      deleteBtnHtml = `<button type="button" class="row-delete-icon" onclick="deleteRowItem('${category}', ${rowIndex})" title="מחק אמצעי משבוע זה והלאה">✕</button>`;
+    }
+
+    const isTopicRow = (rowIndex === 0);
+    const isSpecialNoteRow = (category === 'kesher' && rowIndex === rowsList.length - 1 && rowName === "משיכה\\זיכוי");
+    const rowClasses = [];
+    if (isTopicRow) rowClasses.push('topic-row');
+    if (isSpecialNoteRow) rowClasses.push('special-note-row');
+    const trClassAttr = rowClasses.length > 0 ? ` class="${rowClasses.join(' ')}"` : '';
+
+    let tds = `<td class="test"><span class="row-name-text">${rowName}</span> ${deleteBtnHtml}</td>`;
+    for (let i = 1; i < totalCols; i++) {
+      if (isTopicRow || isSpecialNoteRow) {
+        tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
+      } else {
+        tds += `<td><input type="text" class="cell-input"></td>`;
+      }
+    }
+    tbodyHtml += `<tr${trClassAttr}>${tds}</tr>`;
+  });
+
+  tbody.innerHTML = tbodyHtml;
+}
+
+function promptAddItemRow(category) {
+  const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
+  const itemName = prompt(`הכנס שם אמצעי חדש לטבלאות ${catName} (משבוע ${currentWeek} והלאה):`);
+  if (!itemName || !itemName.trim()) return;
+  addItemRow(category, itemName.trim());
+}
+
+function addItemRow(category, itemName) {
+  const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
+
+  for (let y = currentYear; y <= currentYear + 1; y++) {
+    const startW = (y === currentYear) ? currentWeek : 1;
+    for (let w = startW; w <= TOTAL_WEEKS; w++) {
+      const currentList = getRowsForWeek(category, w, y);
+      
+      let insertIdx = currentList.length;
+      if (category === 'kesher' && currentList[currentList.length - 1] === "משיכה\\זיכוי") {
+        insertIdx = currentList.length - 1;
+      }
+      
+      const newList = [...currentList];
+      newList.splice(insertIdx, 0, itemName);
+      localStorage.setItem(getRowsStorageKey(category, w, y), JSON.stringify(newList));
+
+      tableList.forEach(t => {
+        const key = getStorageKey(t.id, w, y);
+        const savedRaw = localStorage.getItem(key);
+        if (savedRaw) {
+          const oldData = JSON.parse(savedRaw);
+          const newData = {};
+          const cols = t.dataCols;
+
+          Object.keys(oldData).forEach(idxStr => {
+            const idx = parseInt(idxStr);
+            const r = Math.floor(idx / cols);
+            const c = idx % cols;
+            if (r < insertIdx) {
+              newData[idx] = oldData[idx];
+            } else {
+              const newIdx = (r + 1) * cols + c;
+              newData[newIdx] = oldData[idx];
+            }
+          });
+
+          localStorage.setItem(key, JSON.stringify(newData));
+        }
+      });
+    }
+  }
+
+  updateUIForWeek();
+}
+
+function deleteRowItem(category, rowIndex) {
+  const currentList = getRowsForWeek(category, currentWeek, currentYear);
+  const itemName = currentList[rowIndex];
+  if (!itemName) return;
+
+  if (rowIndex === 0) {
+    alert("לא ניתן למחוק את שורת נושא השבוע.");
+    return;
+  }
+
+  const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
+  if (!confirm(`האם למחוק את האמצעי "${itemName}" מטבלאות ${catName} משבוע ${currentWeek} והלאה?`)) {
+    return;
+  }
+
+  const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
+
+  for (let y = currentYear; y <= currentYear + 1; y++) {
+    const startW = (y === currentYear) ? currentWeek : 1;
+    for (let w = startW; w <= TOTAL_WEEKS; w++) {
+      const listW = getRowsForWeek(category, w, y);
+      const targetIdx = listW.indexOf(itemName);
+      if (targetIdx === -1) continue;
+
+      const newList = listW.filter((_, idx) => idx !== targetIdx);
+      localStorage.setItem(getRowsStorageKey(category, w, y), JSON.stringify(newList));
+
+      tableList.forEach(t => {
+        const key = getStorageKey(t.id, w, y);
+        const savedRaw = localStorage.getItem(key);
+        if (savedRaw) {
+          const oldData = JSON.parse(savedRaw);
+          const newData = {};
+          const cols = t.dataCols;
+
+          Object.keys(oldData).forEach(idxStr => {
+            const idx = parseInt(idxStr);
+            const r = Math.floor(idx / cols);
+            const c = idx % cols;
+            if (r < targetIdx) {
+              newData[idx] = oldData[idx];
+            } else if (r > targetIdx) {
+              const newIdx = (r - 1) * cols + c;
+              newData[newIdx] = oldData[idx];
+            }
+          });
+
+          localStorage.setItem(key, JSON.stringify(newData));
+        }
+      });
+    }
+  }
+
+  updateUIForWeek();
+}
+
+const KESHER_ROW_NAMES = DEFAULT_KESHER_ROWS;
+const OPTIC_ROW_NAMES = DEFAULT_OPTIC_ROWS;
 
 /**
  * בונה שורות הקצאה לתצוגה בלבד על בסיס נתונים שנשמרו בטבלאות המנהל.
  * @param {Object} data - נתוני הטבלה
- * @param {Array<string>} names - שמות השורות
+ * @param {Array<string>|string} names - שמות השורות או שם הקטגוריה
  * @param {number} totalCols - סך העמודות
  * @param {number} startCol - עמודת התחלה
  * @param {number} endCol - עמודת סיום
  * @param {string} tbodyId - מזהה tbody ביעד
- * @param {Array<number>} [specialRowIndices=[0, 19]] - אינדקסים של שורות מיוחדות להדגשה
+ * @param {Array<number>} [specialRowIndices=[0]] - אינדקסים של שורות מיוחדות להדגשה
  */
-function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices = [0, 19]) {
+function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices = [0]) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
+
+  if (typeof names === 'string') {
+    names = getRowsForWeek(names, currentWeek, currentYear);
+  } else if (names === KESHER_ROW_NAMES) {
+    names = getRowsForWeek('kesher', currentWeek, currentYear);
+  } else if (names === OPTIC_ROW_NAMES) {
+    names = getRowsForWeek('optic', currentWeek, currentYear);
+  }
+
   tbody.innerHTML = '';
   let hasAny = false;
 
@@ -981,7 +1253,7 @@ function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, sp
     if (!hasValue) return;
     hasAny = true;
 
-    const isSpecialRow = specialRowIndices.includes(rowIndex);
+    const isSpecialRow = rowIndex === 0 || (name === "משיכה\\זיכוי");
     let tds = `<td class="test">${name}</td>`;
     values.forEach(val => {
       tds += `<td style="text-align:center; font-weight:bold;">${val}</td>`;
@@ -1248,7 +1520,7 @@ function recalcAll(tableId, config) {
   if (!table || !table.tBodies[0]) return;
   
   for (let row of table.tBodies[0].rows) {
-    if (row.sectionRowIndex === 0 || row.rowIndex === 20) continue;
+    if (row.sectionRowIndex === 0 || row.cells[0]?.querySelector('textarea')) continue;
     
     if (tableId === 'keshertable' && row.cells.length >= 50) {
       recalcKesherRow(row);
@@ -1256,6 +1528,10 @@ function recalcAll(tableId, config) {
       recalcRow(row, config);
     }
   }
+}
+
+function getAckStorageKey(tableId, week, year) {
+  return `mgrAck_${tableId}_week${week}_year${year}`;
 }
 
 /**
@@ -1266,10 +1542,29 @@ function initTableListeners() {
   tables.forEach(tableId => {
     const table = document.getElementById(tableId);
     if (table) {
-      table.addEventListener('input', () => {
+      table.addEventListener('input', (e) => {
         saveCurrentWeek();
         if (tableId === 'keshertable') recalcAll('keshertable');
         else if (tableConfigs[tableId]) recalcAll(tableId, tableConfigs[tableId]);
+        if (tableId === 'keshertable' || tableId === 'optictable') {
+          const targetInput = e.target;
+          if (targetInput && targetInput.dataset && targetInput.dataset.subTableId !== undefined) {
+            const subTableId = targetInput.dataset.subTableId;
+            const subIndex = targetInput.dataset.subIndex;
+            const tw = tableWeeks[tableId] || { week: currentWeek, year: currentYear };
+            const subKey = getStorageKey(subTableId, tw.week, tw.year);
+            const subSavedRaw = localStorage.getItem(subKey);
+            const subData = subSavedRaw ? JSON.parse(subSavedRaw) : {};
+            const subVal = subData[subIndex] !== undefined ? String(subData[subIndex]).trim() : '';
+
+            const ackKey = getAckStorageKey(tableId, tw.week, tw.year);
+            const ackSavedRaw = localStorage.getItem(ackKey);
+            const ackData = ackSavedRaw ? JSON.parse(ackSavedRaw) : {};
+            ackData[`${subTableId}_${subIndex}`] = subVal;
+            localStorage.setItem(ackKey, JSON.stringify(ackData));
+          }
+          checkRequirementChanges(tableId);
+        }
       });
     }
   });
@@ -1277,6 +1572,92 @@ function initTableListeners() {
   const hipok = document.getElementById('hipoktable');
   if (hipok) hipok.addEventListener('input', () => {
     if (typeof saveHipokData === 'function') saveHipokData();
+  });
+}
+
+/* ================================
+   בדיקת שינויי דרישה (קשר ואופטיקה)
+================================ */
+
+const SUB_TABLE_MAPS = {
+  keshertable: [
+    { sourceTableId: 'esukkeshertable', targetStartCol: 1, sourceCols: 7 },
+    { sourceTableId: 'kkeshertable', targetStartCol: 11, sourceCols: 6 },
+    { sourceTableId: 'pkeshertable', targetStartCol: 20, sourceCols: 7 },
+    { sourceTableId: 'tkeshertable', targetStartCol: 30, sourceCols: 8 },
+    { sourceTableId: 'bkeshertable', targetStartCol: 41, sourceCols: 1 }
+  ],
+  optictable: [
+    { sourceTableId: 'esukoptictable', targetStartCol: 1, sourceCols: 7 },
+    { sourceTableId: 'koptictable', targetStartCol: 8, sourceCols: 6 },
+    { sourceTableId: 'poptictable', targetStartCol: 14, sourceCols: 7 },
+    { sourceTableId: 'toptictable', targetStartCol: 21, sourceCols: 8 },
+    { sourceTableId: 'boptictable', targetStartCol: 29, sourceCols: 1 }
+  ]
+};
+
+/**
+ * בודקת וצובעת משבצות בטבלאות קשר ואופטיקה שבהן דרישת היחידה השתנתה ביחס לשיוך/אישור המנהל.
+ * @param {string} tableId - מזהה הטבלה ('keshertable' / 'optictable')
+ */
+function checkRequirementChanges(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table || !table.tBodies[0]) return;
+  const configs = SUB_TABLE_MAPS[tableId];
+  if (!configs) return;
+
+  const targetRows = table.tBodies[0].rows;
+  const tw = tableWeeks[tableId] || { week: currentWeek, year: currentYear };
+
+  const ackKey = getAckStorageKey(tableId, tw.week, tw.year);
+  const ackSavedRaw = localStorage.getItem(ackKey);
+  const ackData = ackSavedRaw ? JSON.parse(ackSavedRaw) : {};
+
+  configs.forEach(config => {
+    const subKey = getStorageKey(config.sourceTableId, tw.week, tw.year);
+    const subSavedRaw = localStorage.getItem(subKey);
+    const subData = subSavedRaw ? JSON.parse(subSavedRaw) : {};
+
+    for (let r = 0; r < targetRows.length; r++) {
+      const row = targetRows[r];
+      if (r === 0 || row.classList.contains('topic-row') || row.classList.contains('special-note-row') || row.cells[0]?.querySelector('textarea')) {
+        continue;
+      }
+      for (let c = 0; c < config.sourceCols; c++) {
+        const subIndex = r * config.sourceCols + c;
+        const subVal = subData[subIndex] !== undefined ? String(subData[subIndex]).trim() : '';
+        const targetCell = row.cells[config.targetStartCol + c];
+        if (!targetCell) continue;
+        const input = targetCell.querySelector('.cell-input');
+        if (!input) continue;
+
+        input.dataset.subTableId = config.sourceTableId;
+        input.dataset.subIndex = subIndex;
+
+        const ackVal = ackData[`${config.sourceTableId}_${subIndex}`];
+
+        let isChanged = false;
+        if (ackVal === undefined) {
+          if (subVal !== '') {
+            isChanged = true;
+          }
+        } else {
+          if (subVal !== ackVal) {
+            isChanged = true;
+          }
+        }
+
+        if (isChanged) {
+          input.classList.add('req-changed');
+          targetCell.classList.add('req-changed-td');
+          input.title = `הדרישה עודכנה ביחידה ל: ${subVal || 'ריק'}`;
+        } else {
+          input.classList.remove('req-changed');
+          targetCell.classList.remove('req-changed-td');
+          input.removeAttribute('title');
+        }
+      }
+    }
   });
 }
 
@@ -1332,17 +1713,32 @@ function getHadragRequestsKey(week, year) { return `hadragRequests_week${week}_y
  * טוענת את בקשות החדר"ג לשבוע ושנה נתונים.
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
- * @returns {Array<Object>} מערך בקשות חדר"ג
+ * @returns {Promise<Array<Object>>} מערך בקשות חדר"ג
  */
-function loadHadragRequests(week, year) { const raw = localStorage.getItem(getHadragRequestsKey(week, year)); return raw ? JSON.parse(raw) : []; }
+async function loadHadragRequests(week, year) {
+  const key = getHadragRequestsKey(week, year);
+  if (typeof DataService !== 'undefined') {
+    const data = await DataService.getItem(key);
+    return data || [];
+  }
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : [];
+}
 
 /**
- * שומרת את בקשות החדר"ג ב-LocalStorage.
+ * שומרת את בקשות החדר"ג ב-DataService.
  * @param {Array<Object>} requests - מערך בקשות חדר"ג
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
-function saveHadragRequests(requests, week, year) { localStorage.setItem(getHadragRequestsKey(week, year), JSON.stringify(requests)); }
+async function saveHadragRequests(requests, week, year) {
+  const key = getHadragRequestsKey(week, year);
+  if (typeof DataService !== 'undefined') {
+    await DataService.setItem(key, requests);
+  } else {
+    localStorage.setItem(key, JSON.stringify(requests));
+  }
+}
 
 /**
  * בונה דינמית את שורות ועמודות השעות (06:00 עד 23:30) בטבלאות חדר"ג ושק"ם.
@@ -1391,7 +1787,7 @@ const PAGE_UNIT_NAMES = {
  * @param {string} [unitClass] - מחלקת צבע היחידה
  * @param {string} [unitName] - שם היחידה
  */
-function submitHadragRequest(unitClass, unitName) {
+async function submitHadragRequest(unitClass, unitName) {
   const facility = document.getElementById('hadragFacilityInput').value;
   const text = document.getElementById('hadragTextInput').value.trim();
   const day = parseInt(document.getElementById('hadragDayInput').value);
@@ -1405,36 +1801,36 @@ function submitHadragRequest(unitClass, unitName) {
   if (!unitClass) unitClass = PAGE_UNIT_MAP[currentPage] || 'bg-esuk';
   if (!unitName) unitName = PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק';
 
-  const requests = loadHadragRequests(currentWeek, currentYear);
+  const requests = await loadHadragRequests(currentWeek, currentYear);
   requests.push({ id: Date.now().toString(36), facility, text, day, startTime, endTime, unit: unitClass, unitName: unitName, status: 'pending' });
-  saveHadragRequests(requests, currentWeek, currentYear);
+  await saveHadragRequests(requests, currentWeek, currentYear);
 
   document.getElementById('hadragTextInput').value = '';
   document.getElementById('hadragStartTime').value = '';
   document.getElementById('hadragEndTime').value = '';
   
-  if(typeof renderHadragRequestsList === 'function') renderHadragRequestsList();
+  if(typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
 }
 
 /**
  * מוחקת בקשת חדר"ג ומעדכנת את הרשימות בתצוגה.
  * @param {string} id - מזהה הבקשה
  */
-function deleteHadragRequest(id) {
-  const requests = loadHadragRequests(currentWeek, currentYear).filter(req => req.id !== id);
-  saveHadragRequests(requests, currentWeek, currentYear);
-  if(typeof renderHadragRequestsList === 'function') renderHadragRequestsList();
-  if(typeof renderHadragPendingRequests === 'function') renderHadragPendingRequests();
+async function deleteHadragRequest(id) {
+  const requests = (await loadHadragRequests(currentWeek, currentYear)).filter(req => req.id !== id);
+  await saveHadragRequests(requests, currentWeek, currentYear);
+  if(typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
+  if(typeof renderHadragPendingRequests === 'function') await renderHadragPendingRequests();
 }
 
 /**
  * מרנדרת את רשימת בקשות החדר"ג שהוגשו עבור עמוד היחידה הנוכחי.
  */
-function renderHadragRequestsList() {
+async function renderHadragRequestsList() {
   const container = document.getElementById('hadragRequestsList');
   if (!container) return;
 
-  const requests = loadHadragRequests(currentWeek, currentYear);
+  const requests = await loadHadragRequests(currentWeek, currentYear);
   const currentPage = window.location.pathname.split('/').pop();
   const targetColor = PAGE_UNIT_MAP[currentPage];
 
@@ -1485,11 +1881,11 @@ const UNIT_BG_MAP = {
 /**
  * מרנדרת את כרטיסי הבקשות הממתינות לאישור חדר"ג עבור עמוד ניהול החדר"ג.
  */
-function renderHadragPendingRequests() {
+async function renderHadragPendingRequests() {
   const container = document.getElementById('hadragPendingList');
   if (!container) return; 
 
-  const allRequests = loadHadragRequests(currentWeek, currentYear);
+  const allRequests = await loadHadragRequests(currentWeek, currentYear);
   const pendingRequests = allRequests.filter(req => req.status !== 'approved');
 
   if (pendingRequests.length === 0) {
@@ -1532,8 +1928,8 @@ function renderHadragPendingRequests() {
  * מאשרת בקשת חדר"ג, מחשבת את מיזוג השורות הנדרש, ומשבצת אותה בטבלה.
  * @param {string} reqId - מזהה הבקשה
  */
-function approveHadragRequest(reqId) {
-  const requests = loadHadragRequests(currentWeek, currentYear);
+async function approveHadragRequest(reqId) {
+  const requests = await loadHadragRequests(currentWeek, currentYear);
   const reqIndex = requests.findIndex(r => r.id === reqId);
   if (reqIndex === -1) return;
   
@@ -1596,18 +1992,18 @@ function approveHadragRequest(reqId) {
   }
 
   req.status = 'approved';
-  saveHadragRequests(requests, currentWeek, currentYear);
+  await saveHadragRequests(requests, currentWeek, currentYear);
   if (typeof saveHadragTables === 'function') saveHadragTables(); 
-  renderHadragPendingRequests(); 
+  await renderHadragPendingRequests(); 
 }
 
 /**
  * דוחה ומודקת בקשת חדר"ג לאחר אישור המשתמש.
  * @param {string} reqId - מזהה הבקשה
  */
-function rejectHadragRequest(reqId) {
+async function rejectHadragRequest(reqId) {
   if (confirm('האם אתה בטוח שברצונך לדחות ולמחוק בקשה זו?')) {
-    deleteHadragRequest(reqId);
+    await deleteHadragRequest(reqId);
   }
 }
 
@@ -1709,17 +2105,32 @@ function loadHadragTables(week, year) {
 function getShekemRequestsKey(week, year) { return `shekemRequests_week${week}_year${year}`; }
 
 /** טוענת את בקשות השק"ם לשבוע ושנה נתונים */
-function loadShekemRequests(week, year) { const raw = localStorage.getItem(getShekemRequestsKey(week, year)); return raw ? JSON.parse(raw) : []; }
+async function loadShekemRequests(week, year) {
+  const key = getShekemRequestsKey(week, year);
+  if (typeof DataService !== 'undefined') {
+    const data = await DataService.getItem(key);
+    return data || [];
+  }
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : [];
+}
 
-/** שומרת את בקשות השק"ם ב-LocalStorage */
-function saveShekemRequests(requests, week, year) { localStorage.setItem(getShekemRequestsKey(week, year), JSON.stringify(requests)); }
+/** שומרת את בקשות השק"ם ב-DataService */
+async function saveShekemRequests(requests, week, year) {
+  const key = getShekemRequestsKey(week, year);
+  if (typeof DataService !== 'undefined') {
+    await DataService.setItem(key, requests);
+  } else {
+    localStorage.setItem(key, JSON.stringify(requests));
+  }
+}
 
 /**
  * מגישה בקשת שעות שק"ם חדשה מטעם יחידה.
  * @param {string} [unitClass] - מחלקת צבע היחידה
  * @param {string} [unitName] - שם היחידה
  */
-function submitShekemRequest(unitClass, unitName) {
+async function submitShekemRequest(unitClass, unitName) {
   const text = document.getElementById('shekemTextInput').value.trim();
   const day = parseInt(document.getElementById('shekemDayInput').value);
   const startTime = document.getElementById('shekemStartTime').value;
@@ -1732,36 +2143,36 @@ function submitShekemRequest(unitClass, unitName) {
   if (!unitClass) unitClass = PAGE_UNIT_MAP[currentPage] || 'bg-esuk';
   if (!unitName) unitName = PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק';
 
-  const requests = loadShekemRequests(currentWeek, currentYear);
+  const requests = await loadShekemRequests(currentWeek, currentYear);
   requests.push({ id: Date.now().toString(36), text, day, startTime, endTime, unit: unitClass, unitName: unitName, status: 'pending' });
-  saveShekemRequests(requests, currentWeek, currentYear);
+  await saveShekemRequests(requests, currentWeek, currentYear);
 
   document.getElementById('shekemTextInput').value = '';
   document.getElementById('shekemStartTime').value = '';
   document.getElementById('shekemEndTime').value = '';
   
-  if(typeof renderShekemRequestsList === 'function') renderShekemRequestsList();
+  if(typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
 }
 
 /**
  * מוחקת בקשת שק"ם ומעדכנת את התצוגות.
  * @param {string} id - מזהה הבקשה
  */
-function deleteShekemRequest(id) {
-  const requests = loadShekemRequests(currentWeek, currentYear).filter(req => req.id !== id);
-  saveShekemRequests(requests, currentWeek, currentYear);
-  if(typeof renderShekemRequestsList === 'function') renderShekemRequestsList();
-  if(typeof renderShekemPendingRequests === 'function') renderShekemPendingRequests();
+async function deleteShekemRequest(id) {
+  const requests = (await loadShekemRequests(currentWeek, currentYear)).filter(req => req.id !== id);
+  await saveShekemRequests(requests, currentWeek, currentYear);
+  if(typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
+  if(typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
 }
 
 /**
  * מרנדרת את רשימת בקשות השק"ם בעמוד היחידה.
  */
-function renderShekemRequestsList() {
+async function renderShekemRequestsList() {
   const container = document.getElementById('shekemRequestsList');
   if (!container) return;
 
-  const requests = loadShekemRequests(currentWeek, currentYear);
+  const requests = await loadShekemRequests(currentWeek, currentYear);
   const currentPage = window.location.pathname.split('/').pop();
   const targetColor = PAGE_UNIT_MAP[currentPage];
 
@@ -1792,11 +2203,11 @@ function renderShekemRequestsList() {
 /**
  * מרנדרת את כרטיסי הבקשות הממתינות לאישור שק"ם עבור עמוד ניהול השק"ם.
  */
-function renderShekemPendingRequests() {
+async function renderShekemPendingRequests() {
   const container = document.getElementById('shekemPendingList');
   if (!container) return; 
 
-  const allRequests = loadShekemRequests(currentWeek, currentYear);
+  const allRequests = await loadShekemRequests(currentWeek, currentYear);
   const pendingRequests = allRequests.filter(req => req.status !== 'approved');
 
   if (pendingRequests.length === 0) {
@@ -1838,8 +2249,8 @@ function renderShekemPendingRequests() {
  * מאשרת ומשבצת בקשת שק"ם בטבלת השק"ם.
  * @param {string} reqId - מזהה הבקשה
  */
-function approveShekemRequest(reqId) {
-  const requests = loadShekemRequests(currentWeek, currentYear);
+async function approveShekemRequest(reqId) {
+  const requests = await loadShekemRequests(currentWeek, currentYear);
   const reqIndex = requests.findIndex(r => r.id === reqId);
   if (reqIndex === -1) return;
   
@@ -1901,18 +2312,18 @@ function approveShekemRequest(reqId) {
   }
 
   req.status = 'approved';
-  saveShekemRequests(requests, currentWeek, currentYear);
+  await saveShekemRequests(requests, currentWeek, currentYear);
   if (typeof saveShekemTables === 'function') saveShekemTables(); 
-  renderShekemPendingRequests(); 
+  await renderShekemPendingRequests(); 
 }
 
 /**
  * דוחה בקשת שק"ם ומוחקת אותה.
  * @param {string} reqId - מזהה הבקשה
  */
-function rejectShekemRequest(reqId) {
+async function rejectShekemRequest(reqId) {
   if (confirm('האם אתה בטוח שברצונך לדחות ולמחוק בקשה זו?')) {
-    deleteShekemRequest(reqId);
+    await deleteShekemRequest(reqId);
   }
 }
 
@@ -2142,4 +2553,15 @@ window.onload = function () {
   initWeekInput();
   
   updateUIForWeek();
+
+  if (typeof DataService !== 'undefined') {
+    DataService.startAutoSync(async () => {
+      await updateUIForWeek();
+    });
+  }
+
+  window.addEventListener('storage', () => {
+    checkRequirementChanges('keshertable');
+    checkRequirementChanges('optictable');
+  });
 };

@@ -3,18 +3,174 @@
 <head>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="style.css?v=1">
-  <title>PAKADEX - כללי</title>
+  <title>PAKADEX - טבלאות אקסל</title>
+  <style>
+    .excel-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+    .excel-toolbar label { font-weight: 700; color: #0f172a; }
+    .excel-toolbar select, .excel-toolbar input {
+      height: 38px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0 10px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+    }
+    .excel-toolbar select:focus, .excel-toolbar input:focus { border-color: var(--primary); }
+    #excelUrlInput { flex: 1; min-width: 220px; }
+    .excel-btn {
+      height: 38px;
+      padding: 0 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.2s;
+    }
+    .excel-btn.load { background: linear-gradient(135deg, #0284c7, #0369a1); }
+    .excel-btn.edit { background: linear-gradient(135deg, #16a34a, #15803d); }
+    .excel-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.18); }
+    .excel-note {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      color: #075985;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .excel-frame-wrap {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      height: calc(100vh - 210px);
+      min-height: 380px;
+    }
+    #excelFrame { width: 100%; height: 100%; border: 0; }
+    .excel-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #94a3b8;
+      text-align: center;
+      padding: 24px;
+    }
+    .excel-empty .big { font-size: 46px; margin-bottom: 10px; }
+  </style>
 </head>
 <body>
 
   <div id="top-nav-placeholder"></div>
 
-  <div style="display:flex; gap:20px; align-items:flex-start; margin-top: 10px; width: 100%;">
+  <div style="display:flex; gap:12px; align-items:flex-start; margin-top: 8px; width: 100%;">
+
     <div id="side-nav-placeholder"></div>
+
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+      <div class="excel-note">
+        📅 תצוגת טבלאות אקסל חיצוניות מה-SharePoint (3 שבועות קדימה). בחר קובץ מהרשימה או הדבק קישור הטמעה, ולחץ "טען".
+        לעריכה מלאה לחץ "פתח לעריכה באקסל" — הקובץ ייפתח בתוכנת האקסל המקומית וישמור חזרה לענן.
+      </div>
+
+      <div class="excel-toolbar">
+        <label for="excelSelect">קובץ:</label>
+        <select id="excelSelect" onchange="onSelectExcel()"></select>
+        <input type="text" id="excelUrlInput" placeholder="או הדבק כאן קישור הטמעה (embed) של קובץ אקסל מ-SharePoint">
+        <button class="excel-btn load" onclick="loadExcel()">טען ▶</button>
+        <button class="excel-btn edit" onclick="openInExcel()">📝 פתח לעריכה באקסל</button>
+      </div>
+
+      <div class="excel-frame-wrap">
+        <iframe id="excelFrame" title="Excel" style="display:none;"></iframe>
+        <div id="excelEmpty" class="excel-empty">
+          <div class="big">📊</div>
+          <div style="font-weight:800; font-size:18px; color:#64748b;">לא נטען קובץ</div>
+          <div style="margin-top:6px;">בחר קובץ מהרשימה או הדבק קישור הטמעה ולחץ "טען".</div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
   <script src="config.js?v=1"></script>
   <script src="sharepointService.js?v=1"></script>
   <script src="script.js?v=1"></script>
+
+  <script>
+    // אתחול רשימת הקבצים מתוך CONFIG
+    (function initExcelList() {
+      const sel = document.getElementById('excelSelect');
+      const files = (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.EXCEL_FILES)) ? CONFIG.EXCEL_FILES : [];
+      sel.innerHTML = '<option value="">— בחר קובץ —</option>';
+      files.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = f.name || ('קובץ ' + (i + 1));
+        sel.appendChild(opt);
+      });
+      if (files.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '(לא הוגדרו קבצים ב-config.js)';
+        opt.disabled = true;
+        sel.appendChild(opt);
+      }
+    })();
+
+    function currentFile() {
+      const sel = document.getElementById('excelSelect');
+      const idx = sel.value;
+      if (idx === '' ) return null;
+      return CONFIG.EXCEL_FILES[parseInt(idx)] || null;
+    }
+
+    function onSelectExcel() {
+      const f = currentFile();
+      const urlInput = document.getElementById('excelUrlInput');
+      if (f && f.embedUrl) urlInput.value = f.embedUrl;
+    }
+
+    function loadExcel() {
+      const urlInput = document.getElementById('excelUrlInput');
+      const f = currentFile();
+      const url = (urlInput.value || '').trim() || (f && f.embedUrl) || '';
+      if (!url) { alert('בחר קובץ מהרשימה או הדבק קישור הטמעה תחילה.'); return; }
+
+      const frame = document.getElementById('excelFrame');
+      const empty = document.getElementById('excelEmpty');
+      frame.src = url;
+      frame.style.display = 'block';
+      empty.style.display = 'none';
+    }
+
+    function openInExcel() {
+      const f = currentFile();
+      const urlInput = document.getElementById('excelUrlInput');
+      // עדיפות ל-editUrl של הקובץ שנבחר; אחרת הקישור שהודבק
+      const editUrl = (f && f.editUrl) || (urlInput.value || '').trim();
+      if (!editUrl) { alert('אין קישור עריכה זמין. בחר קובץ עם editUrl מוגדר, או הדבק קישור ישיר לקובץ.'); return; }
+      // פרוטוקול לפתיחת הקובץ בתוכנת ה-Excel המקומית (Office URI Scheme)
+      window.location.href = 'ms-excel:ofe|u|' + editUrl;
+    }
+  </script>
 </body>
 </html>

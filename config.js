@@ -28,5 +28,15 @@ const CONFIG = {
 
   // זיהוי היחידה/הפלוגה העורכת כרגע (משמש לחלוקת קבצים למניעת התנגשויות)
   // ערכים אפשריים: 'esuk', 'hirg', 'pikud', 'tazam', 'bahalag', או 'master'
-  CURRENT_UNIT: 'master'
+  CURRENT_UNIT: 'master',
+
+  // קבצי אקסל חיצוניים מ-SharePoint לתצוגה משובצת (אפיון 1.5) - "3 שבועות קדימה".
+  //   name      - שם לתצוגה בתפריט
+  //   embedUrl  - קישור להטמעה ב-iframe (מ-SharePoint: שתף > הטמע, או ...action=embedview)
+  //   editUrl   - קישור ישיר לקובץ (לפתיחה ב-Excel המקומי דרך פרוטוקול ms-excel)
+  EXCEL_FILES: [
+    // דוגמה (יש להחליף בקישורים אמיתיים מה-SharePoint הצבאי):
+    // { name: 'לו"ז חדר"ג - 3 שבועות', embedUrl: 'https://tikshuv.sharepoint.com/.../Doc.aspx?...&action=embedview', editUrl: 'https://tikshuv.sharepoint.com/.../chadrag.xlsx' },
+    // { name: 'לו"ז שק"ם - 3 שבועות',  embedUrl: '', editUrl: '' }
+  ]
 };

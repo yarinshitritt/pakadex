@@ -226,7 +226,10 @@ function renderNavbars() {
         <button class="sidebar-btn ${isTabels ? 'active' : ''}" onclick="window.location.href='kesher.html'">
           <span>📊</span> <span class="sidebar-text">טבלאות</span>
         </button>
-        
+        <button class="sidebar-btn ${currentPage.includes('general') ? 'active' : ''}" onclick="window.location.href='general.html'">
+          <span>📗</span> <span class="sidebar-text">אקסל (3 שבועות)</span>
+        </button>
+
         <button class="sidebar-btn ${isEsuk ? 'active' : ''}" onclick="toggleMenu('subMenu_esuk')">
           <span>🟡</span> <span class="sidebar-text">בא"ח איסו"ק</span>
         </button>

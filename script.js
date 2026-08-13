@@ -149,6 +149,13 @@ function renderNavbars() {
       <div id="breadcrumb-path" style="display:flex; align-items:center; gap:6px; background:#1e293b; padding:4px 10px; border-radius:6px; border:1px solid #334155; font-size:13px; font-weight:700; color:#38bdf8; white-space:nowrap;"></div>
     ` : '';
 
+    // מזהה הסטטוס לפי העמוד (למנהל בלבד): קשר/אופטיקה/מודיעין/חיפוקים/חדר"ג/שק"ם
+    const statusId = isKesher ? 'kesher' : isOptic ? 'optic' : isModiein ? 'modiein'
+      : isHipok ? 'hipok' : isHadrag ? 'hadrag' : isShekem ? 'shekem' : '';
+    const statusBtnBlock = (!isUnitPage && statusId)
+      ? `<button id="status-btn-${statusId}" class="status-btn not-updated" onclick="toggleTableStatus('${statusId}')">✗ לא מעודכן</button>`
+      : '';
+
     const topNavButtonsBlock = !isMain ? `
       <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
         <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
@@ -157,8 +164,9 @@ function renderNavbars() {
         <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
         <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
         <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
-        ${!isUnitPage 
-          ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים 🚀</button>' 
+        ${statusBtnBlock}
+        ${!isUnitPage
+          ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים 🚀</button>'
           : '<button id="global-export-btn" class="global-export-btn unit-ready" onclick="globalExportUnit()">שמור ומוכן לייבוא ✅</button>'}
       </div>
     ` : '';

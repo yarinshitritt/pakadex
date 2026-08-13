@@ -164,6 +164,13 @@ function renderNavbars() {
       <button class="undo-btn" onclick="doUndo()" title="בטל (Ctrl+Z)">↶</button>
       <button class="undo-btn" onclick="doRedo()" title="בצע שוב (Ctrl+Y)">↷</button>`;
 
+    // מרכז התראות - פעמון (אפיון 1.8)
+    const bellBlock = `
+      <div class="notif-wrap">
+        <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel(event)" title="התראות">🔔<span id="notif-badge" class="notif-badge" style="display:none;">0</span></button>
+        <div id="notif-panel" class="notif-panel" style="display:none;"></div>
+      </div>`;
+
     const topNavButtonsBlock = !isMain ? `
       <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
         <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
@@ -172,6 +179,7 @@ function renderNavbars() {
         <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
         <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
         <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
+        ${bellBlock}
         ${undoRedoBlock}
         ${printBtnBlock}
         ${statusBtnBlock}
@@ -192,6 +200,7 @@ function renderNavbars() {
     `;
 
     updateBreadcrumbPath();
+    if (typeof updateNotifBadge === 'function') updateNotifBadge();
   }
 
   // 2. הזרקת תפריט צדדי (Side Nav)
@@ -675,6 +684,10 @@ async function globalExportManager() {
   if (typeof saveModieinTables === 'function') saveModieinTables();
   if (typeof saveHipokTables === 'function') saveHipokTables();
 
+  if (typeof addNotification === 'function') {
+    addNotification(`📢 המנהל הפיץ שינויים לשבוע ${currentWeek} (${currentYear})`, 'distribute');
+  }
+
   alert('השינויים הופצו בהצלחה!');
 }
 
@@ -734,6 +747,12 @@ async function globalExportUnit() {
     }
   }
   
+  if (typeof addNotification === 'function') {
+    const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
+    const unitName = (typeof UNIT_TITLE_MAP !== 'undefined' && UNIT_TITLE_MAP[page]) || 'יחידה';
+    addNotification(`✅ ${unitName} שמרה נתונים מוכנים לייבוא לשבוע ${currentWeek} (${currentYear})`, 'unit-ready');
+  }
+
   alert('הנתונים נשמרו ומוכנים לייבוא!');
 }
 
@@ -3101,6 +3120,111 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     doRedo();
   }
+});
+
+/* =========================================================
+   מרכז התראות (Notification Center) - אפיון 1.8
+========================================================= */
+const NOTIF_KEY = 'pakadex_notifications';
+
+function loadNotifications() {
+  try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+
+function saveNotifications(list) {
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(list.slice(-100)));
+}
+
+/**
+ * מוסיפה התראה חדשה למרכז ההתראות ומעדכנת את החיווי.
+ */
+function addNotification(message, type = 'info') {
+  const list = loadNotifications();
+  list.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    message, type, ts: Date.now(), read: false
+  });
+  saveNotifications(list);
+  updateNotifBadge();
+}
+
+function getUnreadCount() {
+  return loadNotifications().filter(n => !n.read).length;
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const count = getUnreadCount();
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function _formatNotifTime(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  if (!panel) return;
+  const list = loadNotifications().slice().reverse();
+  let body;
+  if (list.length === 0) {
+    body = '<div class="notif-empty">אין התראות</div>';
+  } else {
+    body = list.map(n => `
+      <div class="notif-item ${n.read ? '' : 'unread'}">
+        <div class="notif-msg">${n.message}</div>
+        <div class="notif-time">${_formatNotifTime(n.ts)}</div>
+      </div>`).join('');
+  }
+  panel.innerHTML = `
+    <div class="notif-header">
+      <span>התראות</span>
+      <button class="notif-clear" onclick="clearNotifications(event)">נקה הכל</button>
+    </div>
+    <div class="notif-list">${body}</div>`;
+}
+
+function toggleNotifPanel(e) {
+  if (e) e.stopPropagation();
+  const panel = document.getElementById('notif-panel');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    panel.style.display = 'none';
+    return;
+  }
+  renderNotifPanel();
+  panel.style.display = 'block';
+  // סימון כל ההתראות כנקראו
+  const list = loadNotifications();
+  let changed = false;
+  list.forEach(n => { if (!n.read) { n.read = true; changed = true; } });
+  if (changed) { saveNotifications(list); }
+  setTimeout(updateNotifBadge, 1500);
+}
+
+function clearNotifications(e) {
+  if (e) e.stopPropagation();
+  saveNotifications([]);
+  renderNotifPanel();
+  updateNotifBadge();
+}
+
+// סגירת הפאנל בלחיצה מחוץ אליו.
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notif-panel');
+  if (!panel || panel.style.display === 'none') return;
+  if (e.target.closest('.notif-wrap')) return;
+  panel.style.display = 'none';
 });
 
 /* =========================================================

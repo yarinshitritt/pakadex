@@ -632,3 +632,82 @@ table tbody tr:hover {
 }
 .undo-btn:hover { background-color: #334155; color: #ffffff; }
 .undo-btn:active { transform: scale(0.94); }
+
+/* ================================
+   מרכז התראות - פעמון (אפיון 1.8)
+================================ */
+.notif-wrap { position: relative; display: inline-flex; }
+.notif-bell {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #334155;
+  border-radius: var(--radius-sm);
+  background-color: #1e293b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+.notif-bell:hover { background-color: #334155; }
+.notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px #0f172a;
+}
+.notif-panel {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  width: 320px;
+  max-height: 420px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  z-index: 1000;
+  overflow: hidden;
+  direction: rtl;
+}
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+}
+.notif-clear {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.notif-clear:hover { background: #334155; color: #fff; }
+.notif-list { max-height: 370px; overflow-y: auto; }
+.notif-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef2f7;
+  background: #ffffff;
+}
+.notif-item.unread { background: #eff6ff; border-right: 3px solid #0284c7; }
+.notif-msg { font-size: 14px; color: #0f172a; font-weight: 600; }
+.notif-time { font-size: 11px; color: #64748b; margin-top: 3px; }
+.notif-empty { padding: 24px 14px; text-align: center; color: #94a3b8; font-weight: 600; }

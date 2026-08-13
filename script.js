@@ -3321,18 +3321,23 @@ document.addEventListener('keydown', (e) => {
 /* =========================================================
    בחירה מרובה + העתק/הדבק בלוק (אפיון 1.3)
    פועל על טבלאות גריד (.cell-input) בלבד - לא על טבלאות המיזוג (חדר"ג/שק"ם).
+   משתמש באירועי copy/paste האמיתיים -> יציב, ומאפשר גם העתקה מ/אל Excel.
 ========================================================= */
 let _msTable = null;
-let _msAnchor = null;
-let _msFocus = null;
+let _msAnchor = null;      // {r, c}
+let _msFocus = null;       // {r, c}
 let _msSelecting = false;
-let _blockClipboard = null; // מערך דו-ממדי של ערכים
+let _msRowMode = false;    // בחירת שורות שלמות (לחיצה על תא-השם)
+let _blockClipboard = null;
 
 function _isGridInput(el) {
   return el && el.classList && el.classList.contains('cell-input');
 }
 function _isMergeTable(table) {
   return !!(table && table.querySelector('td.platoon-cell'));
+}
+function _isGridTable(table) {
+  return !!(table && table.querySelector('.cell-input') && !_isMergeTable(table));
 }
 function _cellCoord(input) {
   const tr = input.closest('tr');
@@ -3348,14 +3353,24 @@ function _inputAt(tbody, r, c) {
   const inputs = tr.querySelectorAll('.cell-input');
   return inputs[c] || null;
 }
+function _maxCols(tbody) {
+  let m = 0;
+  for (const tr of tbody.rows) {
+    const n = tr.querySelectorAll('.cell-input').length;
+    if (n > m) m = n;
+  }
+  return m;
+}
 function _clearRangeHighlight() {
   document.querySelectorAll('td.range-selected').forEach(td => td.classList.remove('range-selected'));
 }
 function _rangeBounds() {
-  return {
-    r1: Math.min(_msAnchor.r, _msFocus.r), r2: Math.max(_msAnchor.r, _msFocus.r),
-    c1: Math.min(_msAnchor.c, _msFocus.c), c2: Math.max(_msAnchor.c, _msFocus.c)
-  };
+  const tbody = _msTable.tBodies[0];
+  const r1 = Math.min(_msAnchor.r, _msFocus.r), r2 = Math.max(_msAnchor.r, _msFocus.r);
+  let c1, c2;
+  if (_msRowMode) { c1 = 0; c2 = _maxCols(tbody) - 1; }
+  else { c1 = Math.min(_msAnchor.c, _msFocus.c); c2 = Math.max(_msAnchor.c, _msFocus.c); }
+  return { r1, r2, c1, c2 };
 }
 function _applyRangeHighlight() {
   _clearRangeHighlight();
@@ -3367,27 +3382,53 @@ function _applyRangeHighlight() {
       const inp = _inputAt(tbody, r, c);
       if (inp) inp.closest('td').classList.add('range-selected');
     }
+    if (_msRowMode) {
+      const nameCell = tbody.rows[r] && tbody.rows[r].querySelector('td.test');
+      if (nameCell) nameCell.classList.add('range-selected');
+    }
   }
 }
-function _hasMultiSelection() {
-  return _msTable && _msAnchor && _msFocus && (_msAnchor.r !== _msFocus.r || _msAnchor.c !== _msFocus.c);
+function _hasSelection() {
+  if (!_msTable || !_msAnchor || !_msFocus) return false;
+  if (_msRowMode) return true;
+  return _msAnchor.r !== _msFocus.r || _msAnchor.c !== _msFocus.c;
 }
 
 document.addEventListener('mousedown', (e) => {
-  const inp = e.target.closest ? e.target.closest('.cell-input') : null;
+  if (!e.target.closest) return;
+
+  // בחירת שורה שלמה: לחיצה על תא-השם (td.test)
+  const nameCell = e.target.closest('td.test');
+  if (nameCell) {
+    const table = nameCell.closest('table');
+    const tr = nameCell.closest('tr');
+    if (table && _isGridTable(table) && tr) {
+      const r = Array.from(table.tBodies[0].rows).indexOf(tr);
+      _msTable = table; _msRowMode = true;
+      if (e.shiftKey && _msAnchor) { _msFocus = { r, c: 0 }; }
+      else { _msAnchor = { r, c: 0 }; _msFocus = { r, c: 0 }; }
+      _msSelecting = true;
+      _applyRangeHighlight();
+      e.preventDefault();
+      return;
+    }
+  }
+
+  const inp = e.target.closest('.cell-input');
   if (!_isGridInput(inp)) return;
   const table = inp.closest('table');
   if (!table || _isMergeTable(table)) return;
 
   const coord = _cellCoord(inp);
   if (e.shiftKey && _msTable === table && _msAnchor) {
-    // הרחבת בחירה עם Shift+קליק
+    _msRowMode = false;
     _msFocus = { r: coord.r, c: coord.c };
     _applyRangeHighlight();
     e.preventDefault();
     return;
   }
   _msTable = table;
+  _msRowMode = false;
   _msAnchor = { r: coord.r, c: coord.c };
   _msFocus = { r: coord.r, c: coord.c };
   _msSelecting = true;
@@ -3397,12 +3438,28 @@ document.addEventListener('mousedown', (e) => {
 document.addEventListener('mousemove', (e) => {
   if (!_msSelecting || !_msTable) return;
   const el = document.elementFromPoint(e.clientX, e.clientY);
-  const inp = el && el.closest ? el.closest('.cell-input') : null;
+  if (!el || !el.closest) return;
+
+  if (_msRowMode) {
+    const nameCell = el.closest('td.test');
+    if (!nameCell || nameCell.closest('table') !== _msTable) return;
+    const tr = nameCell.closest('tr');
+    const r = Array.from(_msTable.tBodies[0].rows).indexOf(tr);
+    if (r !== _msFocus.r) {
+      _msFocus = { r, c: 0 };
+      e.preventDefault();
+      window.getSelection && window.getSelection().removeAllRanges();
+      _applyRangeHighlight();
+    }
+    return;
+  }
+
+  const inp = el.closest('.cell-input');
   if (!_isGridInput(inp) || inp.closest('table') !== _msTable) return;
   const coord = _cellCoord(inp);
   if (coord.r !== _msFocus.r || coord.c !== _msFocus.c) {
     _msFocus = { r: coord.r, c: coord.c };
-    if (_hasMultiSelection()) {
+    if (_hasSelection()) {
       e.preventDefault();
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       window.getSelection && window.getSelection().removeAllRanges();
@@ -3414,12 +3471,11 @@ document.addEventListener('mousemove', (e) => {
 document.addEventListener('mouseup', () => {
   if (!_msSelecting) return;
   _msSelecting = false;
-  if (!_hasMultiSelection()) _clearRangeHighlight();
+  if (!_hasSelection()) _clearRangeHighlight();
 });
 
-// גזירת בלוק לטקסט TSV
-function _copyBlock() {
-  if (!_msTable || !_msAnchor || !_msFocus) return false;
+// בונה בלוק ערכים מהבחירה הנוכחית
+function _selectionBlock() {
   const tbody = _msTable.tBodies[0];
   const { r1, r2, c1, c2 } = _rangeBounds();
   const block = [];
@@ -3431,49 +3487,80 @@ function _copyBlock() {
     }
     block.push(row);
   }
-  _blockClipboard = block;
-  const tsv = block.map(row => row.join('\t')).join('\n');
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(tsv).catch(() => {});
-  }
-  return true;
+  return { block, startR: r1, startC: c1 };
 }
 
-// הדבקת בלוק החל מהתא הפעיל / פינת הבחירה השמאלית-עליונה
-function _pasteBlock() {
-  if (!_blockClipboard || !_msTable) return false;
+// אירוע העתקה אמיתי - יציב יותר מיירוט keydown, ותומך בהעתקה ל-Excel
+document.addEventListener('copy', (e) => {
+  if (!_hasSelection()) return;
+  const { block } = _selectionBlock();
+  _blockClipboard = block;
+  const tsv = block.map(row => row.join('\t')).join('\n');
+  if (e.clipboardData) {
+    e.clipboardData.setData('text/plain', tsv);
+    e.preventDefault();
+  }
+});
+
+document.addEventListener('cut', (e) => {
+  if (!_hasSelection()) return;
+  const { block, startR, startC } = _selectionBlock();
+  _blockClipboard = block;
+  const tsv = block.map(row => row.join('\t')).join('\n');
+  if (e.clipboardData) { e.clipboardData.setData('text/plain', tsv); e.preventDefault(); }
+  // ניקוי התאים שנגזרו
   const tbody = _msTable.tBodies[0];
-  let startR, startC;
+  for (let i = 0; i < block.length; i++) {
+    for (let j = 0; j < block[i].length; j++) {
+      const inp = _inputAt(tbody, startR + i, startC + j);
+      if (inp) { inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+    }
+  }
+});
+
+// אירוע הדבקה אמיתי - מפרק TSV (גם מ-Excel) או משתמש בבלוק הפנימי
+document.addEventListener('paste', (e) => {
   const active = document.activeElement;
-  if (_isGridInput(active) && active.closest('table') === _msTable) {
+  const inGrid = _isGridInput(active) && active.closest('table') && !_isMergeTable(active.closest('table'));
+  if (!inGrid && !_hasSelection()) return;
+
+  const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+  let block = null;
+  if (text) {
+    // יש טקסט בלוח (כולל מ-Excel): טקסט רב-תאי -> בלוק; ערך בודד -> הדבקה טבעית
+    if (text.indexOf('\t') >= 0 || text.indexOf('\n') >= 0) {
+      block = text.replace(/\r/g, '').split('\n').map(line => line.split('\t'));
+      while (block.length > 1 && block[block.length - 1].length === 1 && block[block.length - 1][0] === '') block.pop();
+    } else {
+      return; // ערך בודד -> להשאיר להדבקה טבעית של הדפדפן
+    }
+  } else if (_blockClipboard && (_blockClipboard.length > 1 || (_blockClipboard[0] && _blockClipboard[0].length > 1))) {
+    // גיבוי פנימי (למשל כשאין גישה ללוח המערכת)
+    block = _blockClipboard;
+  }
+  if (!block) return;
+
+  e.preventDefault();
+
+  let tbody, startR, startC;
+  if (inGrid) {
     const coord = _cellCoord(active);
     startR = coord.r; startC = coord.c;
+    tbody = active.closest('table').tBodies[0];
   } else {
     const b = _rangeBounds();
     startR = b.r1; startC = b.c1;
+    tbody = _msTable.tBodies[0];
   }
-  for (let i = 0; i < _blockClipboard.length; i++) {
-    for (let j = 0; j < _blockClipboard[i].length; j++) {
+
+  for (let i = 0; i < block.length; i++) {
+    for (let j = 0; j < block[i].length; j++) {
       const inp = _inputAt(tbody, startR + i, startC + j);
       if (inp) {
-        inp.value = _blockClipboard[i][j];
+        inp.value = block[i][j];
         inp.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }
-  }
-  return true;
-}
-
-document.addEventListener('keydown', (e) => {
-  if (!(e.ctrlKey || e.metaKey)) return;
-  const key = e.key.toLowerCase();
-  const active = document.activeElement;
-  const inGrid = _isGridInput(active) && active.closest('table') && !_isMergeTable(active.closest('table'));
-
-  if (key === 'c' && _hasMultiSelection()) {
-    if (_copyBlock()) e.preventDefault();
-  } else if (key === 'v' && _blockClipboard && (inGrid || _hasMultiSelection())) {
-    if (_pasteBlock()) e.preventDefault();
   }
 });
 

@@ -274,3 +274,15 @@ table.hipoktable {
   background: rgba(255, 255, 255, 0.45);
   transform: translateY(-50%) scale(1.02);
 }
+/* צביעה אדומה אוטומטית ל"רומניות" (אפיון 1.7) - חייב לגבור על צבעי היחידות */
+.cell-wrapper.hipok-romaniot {
+  background-color: #ef4444 !important;
+  border: 1.5px solid #b91c1c !important;
+}
+.cell-wrapper.hipok-romaniot .task-input,
+.cell-wrapper.hipok-romaniot .time-input {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+.cell-wrapper.hipok-romaniot .time-input::placeholder,
+.cell-wrapper.hipok-romaniot .task-input::placeholder { color: #fee2e2 !important; }

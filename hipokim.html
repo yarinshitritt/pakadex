@@ -188,6 +188,7 @@
             if (wrapper) wrapper.classList.add('imported');
           }
         }
+        applyRomaniotRule(el);
       });
       document.querySelectorAll('#hipoktable .time-input').forEach((el, i) => {
         if (data['time_' + i] !== undefined) {
@@ -205,6 +206,36 @@
          }
       });
     }
+
+    /* חוקי עסק לטבלת החיפוקים (אפיון 1.7) */
+
+    // צביעה אדומה אוטומטית כאשר התיאור מכיל את המילה "רומניות"
+    function applyRomaniotRule(taskEl) {
+      if (!taskEl) return;
+      const wrapper = taskEl.closest('.cell-wrapper');
+      if (!wrapper) return;
+      if (/רומניות/.test(taskEl.value || '')) {
+        wrapper.classList.add('hipok-romaniot');
+      } else {
+        wrapper.classList.remove('hipok-romaniot');
+      }
+    }
+
+    // שדה "שעה" מקבל ספרות, נקודתיים, רווח ומקף בלבד (פורמט HH:MM - HH:MM)
+    function sanitizeTimeInput(el) {
+      if (!el) return;
+      const cleaned = (el.value || '').replace(/[^0-9:\-\s]/g, '');
+      if (cleaned !== el.value) el.value = cleaned;
+    }
+
+    document.addEventListener('input', (e) => {
+      if (!e.target) return;
+      if (e.target.classList.contains('task-input')) {
+        applyRomaniotRule(e.target);
+      } else if (e.target.classList.contains('time-input')) {
+        sanitizeTimeInput(e.target);
+      }
+    });
   </script>
 </body>
 </html>

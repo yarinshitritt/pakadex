@@ -541,3 +541,60 @@ table tbody tr:hover {
   background-color: #006d75 !important;
   color: #ffffff !important;
 }
+
+/* כפתור הדפסה (אפיון 1.6) */
+.print-btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(135deg, #64748b, #475569);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+  transition: all 0.2s;
+}
+.print-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+
+/* ================================
+   סגנון הדפסה (אפיון 1.6) - מדפיס רק את הטבלה, בלי סרגלים וכפתורים
+================================ */
+@media print {
+  #top-nav-placeholder,
+  #side-nav-placeholder,
+  .container1,
+  .container2,
+  #nextbt,
+  #pageNumbers, #pageNumbers-optic, #pageNumbers2,
+  .add-row-btn,
+  .table-import-btn,
+  .print-btn,
+  .status-btn,
+  .global-export-btn,
+  .row-delete-icon,
+  .color-picker-toggle,
+  .color-menu {
+    display: none !important;
+  }
+
+  body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
+
+  .table-container { overflow: visible !important; box-shadow: none !important; }
+
+  table { width: 100% !important; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+
+  .cell-input, .task-input, .time-input, textarea, input {
+    border: none !important;
+    background: transparent !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* שמירה על צבעי הרקע (יחידות, כתום, אדום) בהדפסה */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  @page { size: landscape; margin: 1cm; }
+}

@@ -156,6 +156,9 @@ function renderNavbars() {
       ? `<button id="status-btn-${statusId}" class="status-btn not-updated" onclick="toggleTableStatus('${statusId}')">✗ לא מעודכן</button>`
       : '';
 
+    // כפתור הדפסה (אפיון 1.6) - זמין בכל עמודי הטבלאות
+    const printBtnBlock = '<button class="print-btn" onclick="window.print()" title="הדפס טבלה">🖨️ הדפס</button>';
+
     const topNavButtonsBlock = !isMain ? `
       <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
         <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
@@ -164,6 +167,7 @@ function renderNavbars() {
         <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
         <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
         <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
+        ${printBtnBlock}
         ${statusBtnBlock}
         ${!isUnitPage
           ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים 🚀</button>'

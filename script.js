@@ -1488,12 +1488,19 @@ function renderDynamicTableStructure(tableId, week, year) {
 
     const isTopicRow = (rowIndex === 0);
     const isSpecialNoteRow = (category === 'kesher' && rowIndex === rowsList.length - 1 && rowName === "משיכה\\זיכוי");
+    const isReorderable = isMasterTable && !isTopicRow && !isSpecialNoteRow;
     const rowClasses = [];
     if (isTopicRow) rowClasses.push('topic-row');
     if (isSpecialNoteRow) rowClasses.push('special-note-row');
+    if (isReorderable) rowClasses.push('reorderable-row');
     const trClassAttr = rowClasses.length > 0 ? ` class="${rowClasses.join(' ')}"` : '';
 
-    let tds = `<td class="test"><span class="row-name-text">${rowName}</span> ${deleteBtnHtml}</td>`;
+    // ידית גרירה לשינוי סדר האמצעים (אפיון 1.6) - טבלת מנהל בלבד
+    const dragHandleHtml = isReorderable
+      ? `<span class="row-drag-handle" draggable="true" title="גרור לשינוי סדר האמצעי">⠿</span>`
+      : '';
+
+    let tds = `<td class="test">${dragHandleHtml}<span class="row-name-text">${rowName}</span> ${deleteBtnHtml}</td>`;
     for (let i = 1; i < totalCols; i++) {
       if (isTopicRow || isSpecialNoteRow) {
         tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
@@ -1508,15 +1515,113 @@ function renderDynamicTableStructure(tableId, week, year) {
         tds += `<td class="row-total-cell">0</td>`;
       }
     }
-    tbodyHtml += `<tr${trClassAttr}>${tds}</tr>`;
+    tbodyHtml += `<tr${trClassAttr} data-rowindex="${rowIndex}">${tds}</tr>`;
   });
 
   tbody.innerHTML = tbodyHtml;
+
+  if (isMasterTable) {
+    initRowDragForMasterTable(table, category);
+  }
 
   if (!isMasterTable) {
     ensureUnitTotalHeader(table);
     recalcUnitReqTotals(table);
   }
+}
+
+/* ================================
+   גרירת שורות בטבלת המנהל (אפיון 1.6)
+   שינוי סדר האמצעים; ממופה מחדש בנתונים ומשתקף בטבלאות הפלוגות.
+================================ */
+function initRowDragForMasterTable(table, category) {
+  const tbody = table.tBodies[0];
+  if (!tbody) return;
+  let dragSrcIndex = null;
+
+  tbody.querySelectorAll('.row-drag-handle').forEach(handle => {
+    handle.addEventListener('dragstart', (e) => {
+      const tr = handle.closest('tr');
+      dragSrcIndex = parseInt(tr.dataset.rowindex);
+      tr.classList.add('row-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', String(dragSrcIndex)); } catch (err) {}
+    });
+    handle.addEventListener('dragend', () => {
+      tbody.querySelectorAll('.row-dragging, .row-drop-target').forEach(el => el.classList.remove('row-dragging', 'row-drop-target'));
+    });
+  });
+
+  tbody.querySelectorAll('tr.reorderable-row').forEach(tr => {
+    tr.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      tbody.querySelectorAll('.row-drop-target').forEach(el => el.classList.remove('row-drop-target'));
+      tr.classList.add('row-drop-target');
+    });
+    tr.addEventListener('dragleave', () => tr.classList.remove('row-drop-target'));
+    tr.addEventListener('drop', (e) => {
+      e.preventDefault();
+      tr.classList.remove('row-drop-target');
+      const targetIndex = parseInt(tr.dataset.rowindex);
+      let src = dragSrcIndex;
+      if (src == null || isNaN(src)) {
+        const dt = e.dataTransfer.getData('text/plain');
+        src = dt ? parseInt(dt) : null;
+      }
+      if (src != null && !isNaN(src) && src !== targetIndex) {
+        reorderCategoryRow(category, src, targetIndex);
+      }
+    });
+  });
+}
+
+/**
+ * משנה את סדר האמצעים (שורות) עבור השבוע הנוכחי, ממפה מחדש את הנתונים של
+ * כל הטבלאות בקטגוריה (מנהל + פלוגות + גרסאות מאושרות) כדי לשמור התאמה.
+ */
+async function reorderCategoryRow(category, fromIndex, toIndex) {
+  const rows = getRowsForWeek(category, currentWeek, currentYear);
+  // שורת "נושא שבוע" (0) קבועה בראש - לא ניתנת לגרירה או ליעד
+  if (fromIndex <= 0 || toIndex <= 0 || fromIndex >= rows.length || toIndex >= rows.length) return;
+
+  await saveCurrentWeek(); // שמירת עריכות ה-DOM הנוכחיות לפני מיפוי מחדש
+
+  // בניית תמורה (permutation) של אינדקסי השורות
+  const order = rows.map((_, i) => i);
+  const [moved] = order.splice(fromIndex, 1);
+  order.splice(toIndex, 0, moved);
+
+  // רשימת אמצעים חדשה
+  const newRows = order.map(i => rows[i]);
+  localStorage.setItem(getRowsStorageKey(category, currentWeek, currentYear), JSON.stringify(newRows));
+
+  // מיפוי מחדש של הנתונים לכל הטבלאות בקטגוריה
+  const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
+  tableList.forEach(t => {
+    ['', '_published'].forEach(suffix => {
+      const key = getStorageKey(t.id, currentWeek, currentYear) + suffix;
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      let data;
+      try { data = JSON.parse(raw); } catch (e) { return; }
+      const newData = {};
+      order.forEach((oldRow, newRow) => {
+        for (let c = 0; c < t.dataCols; c++) {
+          const oldIdx = oldRow * t.dataCols + c;
+          const newIdx = newRow * t.dataCols + c;
+          if (data[oldIdx] !== undefined) newData[newIdx] = data[oldIdx];
+        }
+      });
+      localStorage.setItem(key, JSON.stringify(newData));
+    });
+  });
+
+  // רענון טבלת המנהל הנוכחית
+  const masterId = category === 'kesher' ? 'keshertable' : 'optictable';
+  await loadTableData(masterId, currentWeek, currentYear);
+  recalcAll(masterId, tableConfigs[masterId]);
+  if (typeof resetUndoHistory === 'function') resetUndoHistory();
 }
 
 function promptAddItemRow(category) {

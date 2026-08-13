@@ -267,7 +267,7 @@ function renderNavbars() {
         </div>
 
         <button class="sidebar-btn ${isTazam ? 'active' : ''}" onclick="toggleMenu('subMenu_tazam')">
-          <span>🟠</span> <span class="sidebar-text">ענף תצ"מ</span>
+          <span>🟣</span> <span class="sidebar-text">ענף תצ"מ</span>
         </button>
         <div id="subMenu_tazam" class="submenu ${isTazam ? 'show' : ''}">
           <button class="sidebar-btn ${isTazam && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='tazam.html?view=bakashot'">
@@ -279,7 +279,7 @@ function renderNavbars() {
         </div>
 
         <button class="sidebar-btn ${isBahalag ? 'active' : ''}" onclick="toggleMenu('subMenu_bahalag')">
-          <span>🟣</span> <span class="sidebar-text">מפח"ט</span>
+          <span>🟠</span> <span class="sidebar-text">מפח"ט</span>
         </button>
         <div id="subMenu_bahalag" class="submenu ${isBahalag ? 'show' : ''}">
           <button class="sidebar-btn ${isBahalag && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='bahalag.html?view=bakashot'">

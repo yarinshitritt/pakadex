@@ -730,6 +730,59 @@ async function globalExportUnit() {
   alert('הנתונים נשמרו ומוכנים לייבוא!');
 }
 
+/* ================================
+   העתקת שבוע / הדבקה לכל השנה (אפיון 1.3) - מנהל בלבד
+================================ */
+
+// מעתיקה גם את מבנה השורות (rowList) כדי לשמור התאמה בין הנתונים לשמות האמצעים.
+function copyRowListToWeek(category, targetWeek, targetYear) {
+  const rows = getRowsForWeek(category, currentWeek, currentYear);
+  localStorage.setItem(getRowsStorageKey(category, targetWeek, targetYear), JSON.stringify(rows));
+}
+
+/**
+ * מעתיקה את תוכן טבלת המנהל (קשר/אופטיקה) משבוע הנוכחי לשבוע יעד שנבחר.
+ */
+async function copyWeekToTarget(tableId) {
+  const catName = tableId === 'keshertable' ? 'קשר' : 'אופטיקה';
+  const category = tableId === 'keshertable' ? 'kesher' : 'optic';
+  const targetStr = prompt(`העתקת נתוני ${catName} משבוע ${currentWeek} (${currentYear}) לשבוע יעד.\nהזן מספר שבוע יעד (1-${TOTAL_WEEKS}):`);
+  if (targetStr === null) return;
+  const target = parseInt(targetStr);
+  if (isNaN(target) || target < 1 || target > TOTAL_WEEKS) { alert('מספר שבוע לא תקין.'); return; }
+  if (target === currentWeek) { alert('שבוע היעד זהה לשבוע הנוכחי.'); return; }
+
+  await saveCurrentWeek();
+  const data = await fetchTableData(getStorageKey(tableId, currentWeek, currentYear));
+  if (!data) { alert('אין נתונים להעתקה בשבוע הנוכחי.'); return; }
+
+  await DataService.setItem(getStorageKey(tableId, target, currentYear), data);
+  copyRowListToWeek(category, target, currentYear);
+  alert(`הנתונים הועתקו לשבוע ${target} (${currentYear}).`);
+}
+
+/**
+ * מדביקה את תוכן השבוע הנוכחי לכל השבועות הבאים באותה שנה (דורס נתונים קיימים).
+ */
+async function applyWeekToRestOfYear(tableId) {
+  const catName = tableId === 'keshertable' ? 'קשר' : 'אופטיקה';
+  const category = tableId === 'keshertable' ? 'kesher' : 'optic';
+  if (currentWeek >= TOTAL_WEEKS) { alert('זהו השבוע האחרון בשנה - אין שבועות הבאים להדבקה.'); return; }
+  if (!confirm(`פעולה זו תעתיק את תוכן טבלת ${catName} משבוע ${currentWeek} לכל השבועות ${currentWeek + 1}-${TOTAL_WEEKS} בשנת ${currentYear}, ותדרוס את הנתונים הקיימים בהם.\n\nלהמשיך?`)) return;
+
+  await saveCurrentWeek();
+  const data = await fetchTableData(getStorageKey(tableId, currentWeek, currentYear));
+  if (!data) { alert('אין נתונים להעתקה בשבוע הנוכחי.'); return; }
+
+  let count = 0;
+  for (let w = currentWeek + 1; w <= TOTAL_WEEKS; w++) {
+    await DataService.setItem(getStorageKey(tableId, w, currentYear), data);
+    copyRowListToWeek(category, w, currentYear);
+    count++;
+  }
+  alert(`הנתונים הועתקו ל-${count} שבועות (${currentWeek + 1}-${TOTAL_WEEKS}).`);
+}
+
 /**
  * מייצרת ומציגה כפתורי ניווט מהיר לשבועות הסמוכים (טווח של +-2 שבועות).
  */

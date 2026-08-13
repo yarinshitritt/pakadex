@@ -18,8 +18,12 @@
 
     <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
 
-      <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom: 6px; gap:8px;">
         <button type="button" onclick="promptAddItemRow('kesher')" class="add-row-btn" style="align-self: flex-start;">➕ הוסף אמצעי (קשר)</button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" onclick="copyWeekToTarget('keshertable')" class="week-copy-btn" title="העתק את נתוני השבוע לשבוע אחר">📋 העתק שבוע</button>
+          <button type="button" onclick="applyWeekToRestOfYear('keshertable')" class="week-copy-btn" title="הדבק את תוכן השבוע לכל השבועות הבאים בשנה">📅 הדבק לכל השנה</button>
+        </div>
       </div>
 
       <div class="table-container" style="margin-top: 0;">

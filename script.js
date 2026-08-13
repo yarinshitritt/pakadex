@@ -159,6 +159,11 @@ function renderNavbars() {
     // כפתור הדפסה (אפיון 1.6) - זמין בכל עמודי הטבלאות
     const printBtnBlock = '<button class="print-btn" onclick="window.print()" title="הדפס טבלה">🖨️ הדפס</button>';
 
+    // כפתורי בטל/בצע-שוב (אפיון 1.4)
+    const undoRedoBlock = `
+      <button class="undo-btn" onclick="doUndo()" title="בטל (Ctrl+Z)">↶</button>
+      <button class="undo-btn" onclick="doRedo()" title="בצע שוב (Ctrl+Y)">↷</button>`;
+
     const topNavButtonsBlock = !isMain ? `
       <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
         <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
@@ -167,6 +172,7 @@ function renderNavbars() {
         <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
         <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
         <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
+        ${undoRedoBlock}
         ${printBtnBlock}
         ${statusBtnBlock}
         ${!isUnitPage
@@ -512,6 +518,7 @@ async function loadWeek(year, week) {
   currentWeek = week;
   currentYear = year;
   await updateUIForWeek();
+  if (typeof resetUndoHistory === 'function') resetUndoHistory();
 }
 
 /**
@@ -2972,8 +2979,10 @@ window.onload = function () {
   initTopicExpansion();
   initDynamicRows();
   initWeekInput();
-  
-  updateUIForWeek();
+
+  Promise.resolve(updateUIForWeek()).then(() => {
+    if (typeof resetUndoHistory === 'function') resetUndoHistory();
+  });
 
   if (typeof DataService !== 'undefined') {
     DataService.startAutoSync(async () => {
@@ -2986,6 +2995,113 @@ window.onload = function () {
     checkRequirementChanges('optictable');
   });
 };
+
+/* =========================================================
+   מנגנון בטל / בצע שוב (Undo / Redo) - אפיון 1.4
+   מבוסס צילומי-מצב (snapshots) של שדות העריכה בעמוד.
+========================================================= */
+let _undoStack = [];
+let _redoStack = [];
+let _undoCurrentState = null;
+let _undoSuppressed = false;
+let _undoRecordTimer = null;
+const UNDO_LIMIT = 100;
+
+function _getUndoFields() {
+  return Array.from(document.querySelectorAll('.cell-input, .task-input, .time-input'));
+}
+
+function _captureUndoState() {
+  return _getUndoFields().map(el => el.value);
+}
+
+function _applyUndoState(values) {
+  const fields = _getUndoFields();
+  if (fields.length !== values.length) {
+    // מבנה הטבלה השתנה (נוספו/הוסרו שורות) - לא ניתן לשחזר בבטחה.
+    return false;
+  }
+  _undoSuppressed = true;
+  fields.forEach((el, i) => {
+    if (el.value !== values[i]) {
+      el.value = values[i];
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+  _undoSuppressed = false;
+  return true;
+}
+
+// מאפסת את ההיסטוריה ומגדירה את מצב הבסיס הנוכחי (נקרא בעת מעבר שבוע/טעינה).
+function resetUndoHistory() {
+  _undoStack = [];
+  _redoStack = [];
+  _undoCurrentState = _captureUndoState();
+}
+
+// רושמת שינוי (מדורג) - דוחפת את המצב הקודם למחסנית הביטול.
+function _recordUndoChange() {
+  if (_undoSuppressed) return;
+  clearTimeout(_undoRecordTimer);
+  _undoRecordTimer = setTimeout(() => {
+    const newState = _captureUndoState();
+    if (_undoCurrentState && JSON.stringify(newState) !== JSON.stringify(_undoCurrentState)) {
+      _undoStack.push(_undoCurrentState);
+      if (_undoStack.length > UNDO_LIMIT) _undoStack.shift();
+      _redoStack = [];
+    }
+    _undoCurrentState = newState;
+  }, 350);
+}
+
+function doUndo() {
+  clearTimeout(_undoRecordTimer);
+  // אם יש שינוי שטרם נרשם (בתוך זמן ההשהיה), נרשום אותו קודם.
+  const live = _captureUndoState();
+  if (_undoCurrentState && JSON.stringify(live) !== JSON.stringify(_undoCurrentState)) {
+    _undoStack.push(_undoCurrentState);
+    _undoCurrentState = live;
+  }
+  if (!_undoStack.length) return;
+  const prev = _undoStack.pop();
+  if (_applyUndoState(prev)) {
+    _redoStack.push(_undoCurrentState);
+    _undoCurrentState = prev;
+    if (typeof saveCurrentWeek === 'function') saveCurrentWeek();
+  }
+}
+
+function doRedo() {
+  clearTimeout(_undoRecordTimer);
+  if (!_redoStack.length) return;
+  const next = _redoStack.pop();
+  if (_applyUndoState(next)) {
+    _undoStack.push(_undoCurrentState);
+    _undoCurrentState = next;
+    if (typeof saveCurrentWeek === 'function') saveCurrentWeek();
+  }
+}
+
+// רישום שינויים בעת הקלדה בשדות העריכה.
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (el && el.classList && (el.classList.contains('cell-input') || el.classList.contains('task-input') || el.classList.contains('time-input'))) {
+    _recordUndoChange();
+  }
+});
+
+// קיצורי מקלדת: Ctrl+Z לביטול, Ctrl+Y או Ctrl+Shift+Z לביצוע חוזר.
+document.addEventListener('keydown', (e) => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  const key = e.key.toLowerCase();
+  if (key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    doUndo();
+  } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+    e.preventDefault();
+    doRedo();
+  }
+});
 
 /* =========================================================
    הקצאות מתקדמות (חדר"ג, שק"ם, חיפוקים) לפי צבע יחידה

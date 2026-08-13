@@ -614,3 +614,21 @@ table tbody tr:hover {
   transition: all 0.2s;
 }
 .week-copy-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(8, 145, 178, 0.4); }
+
+/* כפתורי בטל / בצע-שוב (אפיון 1.4) */
+.undo-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #334155;
+  border-radius: var(--radius-sm);
+  background-color: #1e293b;
+  color: #cbd5e1;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.undo-btn:hover { background-color: #334155; color: #ffffff; }
+.undo-btn:active { transform: scale(0.94); }

@@ -3,8 +3,8 @@
 
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="kesher.css">
+  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="kesher.css?v=1">
   <title>PAKADEX - קשר</title>
 </head>
 
@@ -18,7 +18,9 @@
 
     <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
 
-      <button type="button" onclick="promptAddItemRow('kesher')" class="add-row-btn" style="margin-bottom: 6px; align-self: flex-start;">➕ הוסף אמצעי (קשר)</button>
+      <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+        <button type="button" onclick="promptAddItemRow('kesher')" class="add-row-btn" style="align-self: flex-start;">➕ הוסף אמצעי (קשר)</button>
+      </div>
 
       <div class="table-container" style="margin-top: 0;">
 
@@ -60,7 +62,7 @@
             <th colspan="3" style="background:#006d75; color:white;">סה"כ</th>
 
             <th colspan="1" style="position:relative;">
-              בהל"ג
+              מפח"ט
               <button onclick="importFromSubTable('bkeshertable', 'keshertable', 41, 1)"
                 style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); height: 35px;">ייבוא</button>
             </th>
@@ -94,16 +96,16 @@
     </div>
 
     <div id="nextbt">
-      <button onclick="prevWeek()">▶</button>
+      <button onclick="nextWeek()">▶</button>
       <div id="pageNumbers"></div>
-      <button onclick="nextWeek()">◀</button>
+      <button onclick="prevWeek()">◀</button>
     </div>
 
   </div>
 
-  <script src="config.js"></script>
-  <script src="sharepointService.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=1"></script>
+  <script src="sharepointService.js?v=1"></script>
+  <script src="script.js?v=1"></script>
 
 </body>
 

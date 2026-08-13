@@ -70,6 +70,36 @@ h1 {
   flex-wrap: nowrap;
 }
 
+/* ================== כפתורי סטטוס עדכון (Updated Status) ================== */
+.global-export-btn {
+  margin-right: 16px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.global-export-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(245, 158, 11, 0.4);
+}
+.global-export-btn.unit-ready {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+}
+.global-export-btn.unit-ready:hover {
+  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4);
+}
+
 /* ================== סרגל צדדי (Side Nav Sidebar) ================== */
 .container2 {
   display: flex;
@@ -423,4 +453,78 @@ table tbody tr:hover {
   background: linear-gradient(135deg, #0369a1, #075985) !important;
   transform: translateY(-2px) !important;
   box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
+}
+
+/* ================== מסך הבית (Shortcuts Dashboard) ================== */
+.dashboard-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 24px 24px;
+  max-width: 1200px;
+}
+
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.shortcut-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-speed) ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.shortcut-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.shortcut-icon {
+  font-size: 28px;
+}
+
+.shortcut-title {
+  font-weight: 800;
+  font-size: 18px;
+}
+/* ================================
+   כפתור סטטוס טבלה (מעודכן / לא מעודכן)
+================================ */
+.status-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  color: white;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+.status-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+.status-btn.not-updated {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+.status-btn.updated {
+  background: linear-gradient(135deg, #10b981, #059669);
 }

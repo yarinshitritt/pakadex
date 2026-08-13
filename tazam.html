@@ -2,12 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="esuk.css">
-  <link rel="stylesheet" href="kesher.css">
-  <link rel="stylesheet" href="optic.css">
-  <link rel="stylesheet" href="modiein.css">
-  <link rel="stylesheet" href="hipokim.css">
+  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="esuk.css?v=1">
+  <link rel="stylesheet" href="kesher.css?v=1">
+  <link rel="stylesheet" href="optic.css?v=1">
+  <link rel="stylesheet" href="modiein.css?v=1">
+  <link rel="stylesheet" href="hipokim.css?v=1">
   <title>PAKADEX - ענף תצ"מ</title>
 </head>
 <body>
@@ -196,9 +196,9 @@
         </div>
  
         <div id="nextbt">
-          <button onclick="prevWeek()">▶</button>
+          <button onclick="nextWeek()">▶</button>
           <div id="pageNumbers"></div>
-          <button onclick="nextWeek()">◀</button>
+          <button onclick="prevWeek()">◀</button>
         </div>
  
       </div>
@@ -255,6 +255,34 @@
           </div>
         </div>
 
+        
+        <div id="haktzaot-hipok" class="haktzaot-sub" style="display:none;">
+          <div class="table-container">
+            <table id="haktzaot-tazam-hipok-table" dir="rtl" border="1" class="keshertable" style="width:100%;">
+              <thead><tr><th>יום</th><th>משימה</th><th>זמן</th></tr></thead>
+              <tbody id="haktzaot-hipok-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="haktzaot-chadrag" class="haktzaot-sub" style="display:none;">
+          <div class="table-container">
+            <table id="haktzaot-tazam-chadrag-table" dir="rtl" border="1" class="keshertable" style="width:100%;">
+              <thead><tr><th>יום</th><th>מתחם</th><th>שעות</th><th>הערות</th></tr></thead>
+              <tbody id="haktzaot-chadrag-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="haktzaot-shekem" class="haktzaot-sub" style="display:none;">
+          <div class="table-container">
+            <table id="haktzaot-tazam-shekem-table" dir="rtl" border="1" class="keshertable" style="width:100%;">
+              <thead><tr><th>יום</th><th>שעות</th><th>הערות</th></tr></thead>
+              <tbody id="haktzaot-shekem-body"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div id="haktzaot-none" class="haktzaot-sub" style="display:none;">
           <div class="table-container" style="text-align:center; padding:30px;">
             <p style="color:#666; font-size:18px; font-weight:bold;">אין הקצאות להצגה בקטגוריה זו</p>
@@ -262,9 +290,9 @@
         </div>
 
         <div id="nextbt2">
-          <button onclick="prevWeek()">▶</button>
+          <button onclick="nextWeek()">▶</button>
           <div id="pageNumbers2"></div>
-          <button onclick="nextWeek()">◀</button>
+          <button onclick="prevWeek()">◀</button>
         </div>
 
       </div>
@@ -340,13 +368,17 @@
       if (id === 'haktzaot') {
         if (typeof renderHaktzaot === 'function') renderHaktzaot();
         if (typeof renderHaktzaotOptic === 'function') renderHaktzaotOptic();
+        if (typeof renderHaktzaotHadrag === 'function') renderHaktzaotHadrag();
+        if (typeof renderHaktzaotShekem === 'function') renderHaktzaotShekem();
+        if (typeof renderHaktzaotHipok === 'function') renderHaktzaotHipok();
+
         if (typeof renderHaktzaotTazam === 'function') renderHaktzaotTazam();
         
-        if (btnShekem) btnShekem.style.display = 'none';
-        if (btnChadrag) btnChadrag.style.display = 'none';
-        if (btnHipok) btnHipok.style.display = 'none';
+        
+        
+        
 
-        if (['shekem', 'chadrag', 'hipok'].includes(currentCategory)) {
+        if (false) {
           currentCategory = 'kesher';
         }
       } else {
@@ -415,30 +447,39 @@
       }
     }
 
-    function renderHaktzaot() {
+    async function renderHaktzaot() {
       const key = getStorageKey('keshertable', currentWeek, currentYear);
-      const saved = localStorage.getItem(key);
-      if (!saved) {
+      const data = await fetchTableData(key);
+      if (!data) {
         document.getElementById('haktzaot-body').innerHTML = '<tr><td colspan="9" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
         return;
       }
-      const data = JSON.parse(saved);
-      buildHaktzaotRows(data, KESHER_ROW_NAMES, 50, 30, 37, 'haktzaot-body', [0, KESHER_ROW_NAMES.length - 1]);
+      await buildHaktzaotRows(data, KESHER_ROW_NAMES, 50, 30, 37, 'haktzaot-body', [0, KESHER_ROW_NAMES.length - 1]);
     }
 
-    function renderHaktzaotOptic() {
+    async function renderHaktzaotOptic() {
       const key = getStorageKey('optictable', currentWeek, currentYear);
-      const saved = localStorage.getItem(key);
-      if (!saved) {
+      const data = await fetchTableData(key);
+      if (!data) {
         document.getElementById('haktzaot-optic-body').innerHTML = '<tr><td colspan="9" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
         return;
       }
-      const data = JSON.parse(saved);
-      buildHaktzaotRows(data, OPTIC_ROW_NAMES, 35, 21, 28, 'haktzaot-optic-body', [0]);
+      await buildHaktzaotRows(data, OPTIC_ROW_NAMES, 35, 21, 28, 'haktzaot-optic-body', [0]);
     }
 
-    function renderHaktzaotTazam() {
-      renderHaktzaotModieinUnit('tazamTable', 'haktzaot-tazam-body', 8);
+    async function renderHaktzaotTazam() {
+      await renderHaktzaotModieinUnit('tazamTable', 'haktzaot-tazam-body', 8);
+    }
+
+    
+    async function renderHaktzaotHadrag() {
+      await renderUnitHaktzaotExtra('haktzaot-chadrag-body', 'hadrag', PAGE_UNIT_MAP['tazam.html']);
+    }
+    async function renderHaktzaotShekem() {
+      await renderUnitHaktzaotExtra('haktzaot-shekem-body', 'shekem', PAGE_UNIT_MAP['tazam.html']);
+    }
+    async function renderHaktzaotHipok() {
+      await renderUnitHaktzaotExtra('haktzaot-hipok-body', 'hipokim', PAGE_UNIT_MAP['tazam.html']);
     }
 
     function renderPageNumbers2() {
@@ -529,9 +570,9 @@
       }
     });
   </script>
-  <script src="config.js"></script>
-  <script src="sharepointService.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=1"></script>
+  <script src="sharepointService.js?v=1"></script>
+  <script src="script.js?v=1"></script>
 
 </body>
 </html>

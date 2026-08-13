@@ -41,7 +41,7 @@ const UNIT_TITLE_MAP = {
   'hirg.html': 'בא"ח חיר"ג',
   'pikud.html': 'גדוד הפיקוד',
   'tazam.html': 'ענף תצ"מ',
-  'bahalag.html': 'בהל"ג',
+  'bahalag.html': 'מפח"ט',
   'kesher.html': 'טבלאות מנהל',
   'optic.html': 'טבלאות מנהל',
   'modiein.html': 'טבלאות מנהל',
@@ -127,6 +127,8 @@ function renderNavbars() {
   
   const isCollapsedStored = localStorage.getItem('sidebar_collapsed') === 'true';
 
+  const isMain = currentPage.includes('main') || currentPage === '' || currentPage.includes('index');
+
   // 1. הזרקת תפריט עליון (Top Nav)
   if (topNav) {
     const isKesher = currentPage.includes('kesher');
@@ -147,17 +149,24 @@ function renderNavbars() {
       <div id="breadcrumb-path" style="display:flex; align-items:center; gap:6px; background:#1e293b; padding:4px 10px; border-radius:6px; border:1px solid #334155; font-size:13px; font-weight:700; color:#38bdf8; white-space:nowrap;"></div>
     ` : '';
 
+    const topNavButtonsBlock = !isMain ? `
+      <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
+        <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
+        <button class="topnav-btn ${isOptic ? 'active' : ''}" id="btn-optic" onclick="${isUnitPage ? "showTopSection('optic')" : "window.location.href='optic.html'"}">אופטיקה</button>
+        <button class="topnav-btn ${isModiein ? 'active' : ''}" id="btn-modiein" onclick="${isUnitPage ? "showTopSection('modiein')" : "window.location.href='modiein.html'"}">מודיעין</button>
+        <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
+        <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
+        <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
+        ${!isUnitPage 
+          ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים 🚀</button>' 
+          : '<button id="global-export-btn" class="global-export-btn unit-ready" onclick="globalExportUnit()">שמור ומוכן לייבוא ✅</button>'}
+      </div>
+    ` : '';
+
     topNav.innerHTML = `
       <div class="container1">
         <div style="display:flex; align-items:center; gap:12px;">
-          <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
-            <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
-            <button class="topnav-btn ${isOptic ? 'active' : ''}" id="btn-optic" onclick="${isUnitPage ? "showTopSection('optic')" : "window.location.href='optic.html'"}">אופטיקה</button>
-            <button class="topnav-btn ${isModiein ? 'active' : ''}" id="btn-modiein" onclick="${isUnitPage ? "showTopSection('modiein')" : "window.location.href='modiein.html'"}">מודיעין</button>
-            <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}" style="${isHaktzaotView ? 'display:none;' : ''}">חיפוקים</button>
-            <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}" style="${isHaktzaotView ? 'display:none;' : ''}">חדר"ג</button>
-            <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}" style="${isHaktzaotView ? 'display:none;' : ''}">שעות שקם</button>
-          </div>
+          ${topNavButtonsBlock}
           ${breadcrumbsBlock}
         </div>
         ${logoBlock}
@@ -169,7 +178,6 @@ function renderNavbars() {
 
   // 2. הזרקת תפריט צדדי (Side Nav)
   if (sideNav) {
-    const isMain = currentPage.includes('main') || currentPage === '' || currentPage.includes('index');
     const isTabels = ['tabels', 'kesher', 'optic', 'modiein', 'hipok', 'hadrag', 'shekem'].some(p => currentPage.includes(p));
 
     const isEsuk = currentPage.includes('esuk');
@@ -241,7 +249,7 @@ function renderNavbars() {
         </div>
 
         <button class="sidebar-btn ${isBahalag ? 'active' : ''}" onclick="toggleMenu('subMenu_bahalag')">
-          <span>🟠</span> <span class="sidebar-text">בהל"ג</span>
+          <span>🟠</span> <span class="sidebar-text">מפח"ט</span>
         </button>
         <div id="subMenu_bahalag" class="submenu ${isBahalag ? 'show' : ''}">
           <button class="sidebar-btn ${isBahalag && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='bahalag.html?view=bakashot'">
@@ -362,6 +370,19 @@ async function saveCurrentWeek() {
 }
 
 /**
+ * שולפת אובייקט נתונים לטבלה, תוך שימוש ב-DataService במידה וקיים (גיבוי ב-localStorage).
+ * @param {string} key - מפתח הנתונים
+ * @returns {Promise<Object|null>}
+ */
+async function fetchTableData(key) {
+  if (typeof DataService !== 'undefined') {
+    return await DataService.getItem(key);
+  }
+  const saved = localStorage.getItem(key);
+  return saved ? JSON.parse(saved) : null;
+}
+
+/**
  * טוענת את נתוני הטבלה המאוחסנים עבור שבוע ושנה ספציפיים מ-DataService, ומעדכנת את שדות הקלט ב-DOM.
  * @param {string} tableId - מזהה הטבלה
  * @param {number} week - מספר השבוע
@@ -396,13 +417,7 @@ async function loadTableData(tableId, week, year) {
   });
 
   const key = getStorageKey(tableId, week, year);
-  let data = null;
-  if (typeof DataService !== 'undefined') {
-    data = await DataService.getItem(key);
-  } else {
-    const saved = localStorage.getItem(key);
-    if (saved) data = JSON.parse(saved);
-  }
+  const data = await fetchTableData(key);
 
   if (data) {
     if (isDynamic) {
@@ -424,9 +439,32 @@ async function loadTableData(tableId, week, year) {
     }
 
     const inputs = table.querySelectorAll('.cell-input');
+    
+    // Check for manager published data to highlight changes in orange
+    let managerPublishedData = {};
+    if (tableId === 'keshertable' || tableId === 'optictable') {
+      const managerPublishedKey = getStorageKey(tableId, week, year) + '_published';
+      if (typeof fetchTableData === 'function') {
+        managerPublishedData = await fetchTableData(managerPublishedKey) || {};
+      } else {
+        managerPublishedData = JSON.parse(localStorage.getItem(managerPublishedKey) || '{}');
+      }
+    }
+
     Object.keys(data).forEach(indexStr => {
       const idx = parseInt(indexStr);
-      if (inputs[idx]) inputs[idx].value = data[indexStr];
+      if (inputs[idx]) {
+        inputs[idx].value = data[indexStr];
+        
+        // Add conflict-overlap if this is a manager table and value differs from published
+        if (tableId === 'keshertable' || tableId === 'optictable') {
+          const publishedVal = managerPublishedData[indexStr] || '';
+          if (data[indexStr] !== publishedVal) {
+            const td = inputs[idx].closest('td');
+            if (td) td.classList.add('conflict-overlap');
+          }
+        }
+      }
     });
 
     inputs.forEach(input => {
@@ -455,11 +493,11 @@ async function loadTableData(tableId, week, year) {
  * @param {number} year - השנה
  * @param {number} week - מספר השבוע
  */
-function loadWeek(year, week) {
-  saveCurrentWeek();
+async function loadWeek(year, week) {
+  await saveCurrentWeek();
   currentWeek = week;
   currentYear = year;
-  updateUIForWeek();
+  await updateUIForWeek();
 }
 
 /**
@@ -490,12 +528,12 @@ async function updateUIForWeek() {
   if (weekInputOptic) weekInputOptic.value = currentWeek;
 
   const tables = getActiveTables();
-  tables.forEach(tableId => {
+  for (const tableId of tables) {
     tableWeeks[tableId] = { week: currentWeek, year: currentYear };
-    loadTableData(tableId, currentWeek, currentYear);
-  });
+    await loadTableData(tableId, currentWeek, currentYear);
+  }
 
-  if (typeof loadHipokData === 'function') loadHipokData(currentWeek, currentYear);
+  if (typeof loadHipokData === 'function') await loadHipokData(currentWeek, currentYear);
 
   recalcAll('keshertable');
   recalcAll('optictable', tableConfigs.optictable);
@@ -506,13 +544,16 @@ async function updateUIForWeek() {
 
   const haktzaot = document.getElementById('haktzaot');
   if (haktzaot && haktzaot.style.display !== 'none') {
-    if (typeof renderHaktzaot === 'function') renderHaktzaot();
-    if (typeof renderHaktzaotOptic === 'function') renderHaktzaotOptic();
-    if (typeof renderHaktzaotEsuk === 'function') renderHaktzaotEsuk();
-    if (typeof renderHaktzaotHirg === 'function') renderHaktzaotHirg();
-    if (typeof renderHaktzaotPikud === 'function') renderHaktzaotPikud();
-    if (typeof renderHaktzaotTazam === 'function') renderHaktzaotTazam();
-    if (typeof renderHaktzaotBahalag === 'function') renderHaktzaotBahalag();
+    if (typeof renderHaktzaot === 'function') await renderHaktzaot();
+    if (typeof renderHaktzaotOptic === 'function') await renderHaktzaotOptic();
+    if (typeof renderHaktzaotEsuk === 'function') await renderHaktzaotEsuk();
+    if (typeof renderHaktzaotHirg === 'function') await renderHaktzaotHirg();
+    if (typeof renderHaktzaotPikud === 'function') await renderHaktzaotPikud();
+    if (typeof renderHaktzaotTazam === 'function') await renderHaktzaotTazam();
+    if (typeof renderHaktzaotBahalag === 'function') await renderHaktzaotBahalag();
+    if (typeof renderHaktzaotHadrag === 'function') await renderHaktzaotHadrag();
+    if (typeof renderHaktzaotShekem === 'function') await renderHaktzaotShekem();
+    if (typeof renderHaktzaotHipok === 'function') await renderHaktzaotHipok();
   }
 
   if (typeof renderHipokEntriesList === 'function') await renderHipokEntriesList();
@@ -524,6 +565,119 @@ async function updateUIForWeek() {
   if (typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
   if (typeof loadShekemTables === 'function') loadShekemTables(currentWeek, currentYear);
   if (typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
+
+  await loadTableStatuses();
+}
+
+/* ================================
+   סטטוס טבלה (מעודכן / לא מעודכן)
+   נשמר לפי שבוע ושנה, עקבי עם שאר המערכת.
+================================ */
+function getTableStatusKey(tableId, week, year) {
+  return `status_${tableId}_week${week}_year${year}`;
+}
+
+function applyStatusToButton(btn, isUpdated) {
+  if (!btn) return;
+  btn.classList.toggle('updated', isUpdated);
+  btn.classList.toggle('not-updated', !isUpdated);
+  btn.textContent = isUpdated ? '✓ מעודכן' : '✗ לא מעודכן';
+}
+
+/**
+ * טוענת ומחילה את סטטוס הטבלאות (מעודכן/לא) עבור השבוע הנוכחי.
+ * סורקת את כל כפתורי הסטטוס בעמוד (id שמתחיל ב-status-btn-).
+ */
+async function loadTableStatuses() {
+  const buttons = document.querySelectorAll('[id^="status-btn-"]');
+  for (const btn of buttons) {
+    const tableId = btn.id.replace('status-btn-', '');
+    let status = null;
+    const key = getTableStatusKey(tableId, currentWeek, currentYear);
+    if (typeof DataService !== 'undefined') {
+      status = await DataService.getItem(key);
+    } else {
+      const val = localStorage.getItem(key);
+      status = val ? JSON.parse(val) : null;
+    }
+    applyStatusToButton(btn, status === true || status === 'updated');
+  }
+}
+
+/**
+ * מחליפה את סטטוס הטבלה (מעודכן/לא מעודכן) ושומרת לשבוע הנוכחי.
+ */
+async function toggleTableStatus(tableId) {
+  const btn = document.getElementById(`status-btn-${tableId}`);
+  const isUpdated = btn ? !btn.classList.contains('updated') : true;
+  applyStatusToButton(btn, isUpdated);
+  const key = getTableStatusKey(tableId, currentWeek, currentYear);
+  if (typeof DataService !== 'undefined') {
+    await DataService.setItem(key, isUpdated);
+  } else {
+    localStorage.setItem(key, JSON.stringify(isUpdated));
+  }
+}
+
+/**
+ * פונקציית ייצוא מנהל: שומרת את הנתונים הנוכחיים למצב 'published'.
+ * מנקה צבעים כתומים שסימנו שינויים.
+ */
+async function globalExportManager() {
+  if (!confirm('האם אתה בטוח שברצונך להפיץ את כלל השינויים לשבוע זה? (פעולה זו תאשר את המצב הנוכחי ותנקה סימונים כתומים)')) return;
+
+  const currentPrefix = `week${currentWeek}_year${currentYear}`;
+  
+  // 1. Copy all draft keys to published
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.includes(currentPrefix) && !key.includes('_published') && !key.startsWith('status_')) {
+      const data = localStorage.getItem(key);
+      if (typeof DataService !== 'undefined') {
+        await DataService.setItem(`${key}_published`, JSON.parse(data));
+      } else {
+        localStorage.setItem(`${key}_published`, data);
+      }
+    }
+  }
+
+  // 2. Remove orange highlights
+  document.querySelectorAll('.conflict-overlap').forEach(el => {
+    el.classList.remove('conflict-overlap');
+  });
+
+  // 3. Trigger save again so the orange class removal is saved
+  if (typeof saveHadragTables === 'function') saveHadragTables();
+  if (typeof saveShekemTables === 'function') saveShekemTables();
+  if (typeof saveKesherTables === 'function') saveKesherTables();
+  if (typeof saveOpticTables === 'function') saveOpticTables();
+  if (typeof saveModieinTables === 'function') saveModieinTables();
+  if (typeof saveHipokTables === 'function') saveHipokTables();
+
+  alert('השינויים הופצו בהצלחה!');
+}
+
+/**
+ * פונקציית ייצוא פלוגה: שומרת את הטיוטה למצב שמאפשר למנהל לייבא.
+ */
+async function globalExportUnit() {
+  if (!confirm('האם סיימת את השיבוץ וברצונך לשמור את הנתונים כך שיהיו מוכנים לייבוא על ידי המנהל?')) return;
+
+  const currentPrefix = `week${currentWeek}_year${currentYear}`;
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.includes(currentPrefix) && !key.includes('_published') && !key.startsWith('status_')) {
+      const data = localStorage.getItem(key);
+      if (typeof DataService !== 'undefined') {
+        await DataService.setItem(`${key}_published`, JSON.parse(data));
+      } else {
+        localStorage.setItem(`${key}_published`, data);
+      }
+    }
+  }
+  
+  alert('הנתונים נשמרו ומוכנים לייבוא!');
 }
 
 /**
@@ -757,25 +911,31 @@ async function renderHipokEntriesList() {
 
   if (filteredEntries.length === 0) {
     container.innerHTML = '<p style="color:#666; text-align:center; padding: 15px; font-weight:bold;">אין חיפוקים שהוזנו לשבוע זה.</p>';
-    return;
+  } else {
+    container.innerHTML = filteredEntries.map(entry => {
+      const typeText = entry.type === 'dry' ? 'חיפוק יבש' : 'חיפוק רטוב';
+      const dayText = HIPOK_DAY_LABELS[entry.day] !== undefined ? 'יום ' + HIPOK_DAY_LABELS[entry.day] : '';
+      const styleObj = UNIT_BG_MAP[entry.color] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
+
+      return `
+        <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <span style="font-weight: bold; width: 100px; color: ${styleObj.text}; text-align: right;">${typeText}</span>
+          <span style="font-weight: bold; width: 80px; color: #333;">${dayText}</span>
+          <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${entry.text || '-'}</span>
+          <span style="direction: ltr; font-weight: bold; color: #333; margin-left: 15px;">${entry.time}</span>
+          <button class="hipok-delete-btn" onclick="removeHipokEntry('${entry.id}')">✕</button>
+        </div>
+      `;
+    }).join('');
   }
 
-  container.innerHTML = filteredEntries.map(entry => {
-    const typeText = entry.type === 'dry' ? 'חיפוק יבש' : 'חיפוק רטוב';
-    const dayText = HIPOK_DAY_LABELS[entry.day] !== undefined ? 'יום ' + HIPOK_DAY_LABELS[entry.day] : '';
-    const styleObj = UNIT_BG_MAP[entry.color] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
-
-    return `
-      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <span style="font-weight: bold; width: 100px; color: ${styleObj.text}; text-align: right;">${typeText}</span>
-        <span style="font-weight: bold; width: 80px; color: #333;">${dayText}</span>
-        <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${entry.text || '-'}</span>
-        <span style="direction: ltr; font-weight: bold; color: #333; margin-left: 15px;">${entry.time}</span>
-        <button class="hipok-delete-btn" onclick="removeHipokEntry('${entry.id}')">✕</button>
-      </div>
-    `;
-  }).join('');
+  // רענון טבלת ההקצאות אם היא גלויה
+  const haktzaotSection = document.getElementById('haktzaot');
+  if (haktzaotSection && haktzaotSection.style.display !== 'none') {
+    if (typeof renderHaktzaotHipok === 'function') await renderHaktzaotHipok();
+  }
 }
+
 
 /**
  * מוצאת ומחזירה תא ספציפי בטבלת החיפוקים לפי סוג החיפוק, היום ואינדקס המשבצת.
@@ -819,24 +979,59 @@ async function importHipukim() {
 
   entries.forEach(entry => {
     const key = `${entry.type}_${entry.day}`;
-    const slot = slotCounters[key] || 0;
-    slotCounters[key] = slot + 1;
-
-    if (slot >= HIPOK_MAX_SLOTS_PER_GROUP) { overflow.push(entry); return; }
-
-    const cell = getHipokTableCell(entry.type, entry.day, slot);
-    if (!cell) { overflow.push(entry); return; }
-
-    const wrapper = cell.querySelector('.cell-wrapper');
-    const timeInput = cell.querySelector('.time-input');
-    const taskInput = cell.querySelector('.task-input');
-
-    if (timeInput && entry.time) timeInput.value = entry.time;
-    if (taskInput && entry.text) taskInput.value = entry.text;
+    let slot = slotCounters[key] || 0;
     
-    if (wrapper) {
-      wrapper.classList.add('imported');
-      if (entry.color) wrapper.classList.add(entry.color); 
+    let targetCell = null;
+    let targetTimeInput = null;
+    let targetTaskInput = null;
+    let targetWrapper = null;
+
+    // Find the next empty slot that doesn't have manual data
+    while (slot < HIPOK_MAX_SLOTS_PER_GROUP) {
+      const cell = getHipokTableCell(entry.type, entry.day, slot);
+      if (!cell) break;
+      
+      const timeInput = cell.querySelector('.time-input');
+      const taskInput = cell.querySelector('.task-input');
+      const wrapper = cell.querySelector('.cell-wrapper');
+      
+      let isOccupied = false;
+      if (timeInput && timeInput.value.trim() !== '') isOccupied = true;
+      if (taskInput && taskInput.value.trim() !== '') isOccupied = true;
+      if (wrapper && typeof ALL_COLOR_CLASSES !== 'undefined') {
+        if (ALL_COLOR_CLASSES.some(c => c !== 'imported' && c !== 'conflict-overlap' && wrapper.classList.contains(c))) {
+          isOccupied = true;
+        }
+      }
+
+      if (!isOccupied) {
+        targetCell = cell;
+        targetTimeInput = timeInput;
+        targetTaskInput = taskInput;
+        targetWrapper = wrapper;
+        break;
+      }
+      slot++;
+    }
+
+    if (!targetCell) {
+      overflow.push(entry);
+      slotCounters[key] = slot; // update to where we stopped
+      return;
+    }
+
+    slotCounters[key] = slot + 1; // start searching from next slot next time
+
+    if (targetTimeInput && entry.time) targetTimeInput.value = entry.time;
+    if (targetTaskInput && entry.text) targetTaskInput.value = entry.text;
+    
+    if (targetWrapper) {
+      targetWrapper.classList.add('imported');
+      if (typeof ALL_COLOR_CLASSES !== 'undefined') {
+        const colorClassesOnly = ALL_COLOR_CLASSES.filter(c => c !== 'imported' && c !== 'conflict-overlap');
+        targetWrapper.classList.remove(...colorClassesOnly);
+      }
+      if (entry.color) targetWrapper.classList.add(entry.color); 
     }
   });
 
@@ -913,17 +1108,22 @@ function initDynamicRows() {
  * @param {number} targetStartCol - עמודת התחלה ביעד
  * @param {number} [sourceCols] - מספר עמודות במקור
  */
-function importFromSubTable(sourceTableId, targetTableId, targetStartCol, sourceCols) {
+async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, sourceCols) {
   const target = document.getElementById(targetTableId);
   if (!target) return;
-  const key = getStorageKey(sourceTableId, currentWeek, currentYear);
-  const saved = localStorage.getItem(key);
-  if (!saved) { alert(`אין נתונים לשבוע ${currentWeek}`); return; }
-  const data = JSON.parse(saved);
+  const key = getStorageKey(sourceTableId, currentWeek, currentYear) + '_published';
+  const data = await fetchTableData(key);
+  if (!data) { alert(`אין נתונים מאושרים (לא בוצע ייצוא) לשבוע ${currentWeek}`); return; }
+  
   if (!sourceCols) {
     const sourceTable = document.getElementById(sourceTableId);
     sourceCols = sourceTable ? sourceTable.tBodies[0].rows[0].cells.length - 1 : 7;
   }
+  
+  // Get manager's published data to compare
+  const managerPublishedKey = getStorageKey(targetTableId, currentWeek, currentYear) + '_published';
+  const managerPublishedData = await fetchTableData(managerPublishedKey) || {};
+
   const targetRows = target.tBodies[0].rows;
   Object.entries(data).forEach(([indexStr, value]) => {
     if (value === undefined || value === null || value.trim() === '') return;
@@ -931,10 +1131,19 @@ function importFromSubTable(sourceTableId, targetTableId, targetStartCol, source
     const row = Math.floor(index / sourceCols);
     const col = index % sourceCols;
     if (!targetRows[row]) return;
-    const targetCell = targetRows[row].cells[targetStartCol + col];
+    const targetColIdx = targetStartCol + col;
+    const targetCell = targetRows[row].cells[targetColIdx];
     if (targetCell) {
       const input = targetCell.querySelector('.cell-input');
-      if (input) input.value = value;
+      if (input) {
+        input.value = value;
+        // Compare with manager's published data
+        const globalIndex = row * (targetRows[0].cells.length - 1) + (targetColIdx - 1);
+        const publishedVal = managerPublishedData[globalIndex] || '';
+        if (value !== publishedVal) {
+          targetCell.classList.add('conflict-overlap');
+        }
+      }
     }
   });
   saveCurrentWeek();
@@ -959,13 +1168,12 @@ function importFromSubTable(sourceTableId, targetTableId, targetStartCol, source
  * @param {string} sourceTableId - מזהה טבלת המקור
  * @param {string} targetTableId - מזהה טבלת היעד
  */
-function importDirectToTable(sourceTableId, targetTableId) {
+async function importDirectToTable(sourceTableId, targetTableId) {
   const target = document.getElementById(targetTableId);
   if (!target) return;
   const key = getStorageKey(sourceTableId, currentWeek, currentYear);
-  const saved = localStorage.getItem(key);
-  if (!saved) { alert(`אין נתונים לשבוע ${currentWeek}`); return; }
-  const data = JSON.parse(saved);
+  const data = await fetchTableData(key);
+  if (!data) { alert(`אין נתונים לשבוע ${currentWeek}`); return; }
   
   const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
   if (keysWithData.length > 0) {
@@ -1112,10 +1320,21 @@ function promptAddItemRow(category) {
 function addItemRow(category, itemName) {
   const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
 
+  const snapshots = {};
+  const hasExplicitSave = {};
   for (let y = currentYear; y <= currentYear + 1; y++) {
     const startW = (y === currentYear) ? currentWeek : 1;
     for (let w = startW; w <= TOTAL_WEEKS; w++) {
-      const currentList = getRowsForWeek(category, w, y);
+      const key = getRowsStorageKey(category, w, y);
+      snapshots[`${w}_${y}`] = [...getRowsForWeek(category, w, y)];
+      hasExplicitSave[`${w}_${y}`] = (localStorage.getItem(key) !== null);
+    }
+  }
+
+  for (let y = currentYear; y <= currentYear + 1; y++) {
+    const startW = (y === currentYear) ? currentWeek : 1;
+    for (let w = startW; w <= TOTAL_WEEKS; w++) {
+      const currentList = snapshots[`${w}_${y}`];
       
       let insertIdx = currentList.length;
       if (category === 'kesher' && currentList[currentList.length - 1] === "משיכה\\זיכוי") {
@@ -1124,7 +1343,10 @@ function addItemRow(category, itemName) {
       
       const newList = [...currentList];
       newList.splice(insertIdx, 0, itemName);
-      localStorage.setItem(getRowsStorageKey(category, w, y), JSON.stringify(newList));
+      
+      if ((w === currentWeek && y === currentYear) || hasExplicitSave[`${w}_${y}`]) {
+        localStorage.setItem(getRowsStorageKey(category, w, y), JSON.stringify(newList));
+      }
 
       tableList.forEach(t => {
         const key = getStorageKey(t.id, w, y);
@@ -1172,15 +1394,29 @@ function deleteRowItem(category, rowIndex) {
 
   const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
 
+  const snapshots = {};
+  const hasExplicitSave = {};
   for (let y = currentYear; y <= currentYear + 1; y++) {
     const startW = (y === currentYear) ? currentWeek : 1;
     for (let w = startW; w <= TOTAL_WEEKS; w++) {
-      const listW = getRowsForWeek(category, w, y);
+      const key = getRowsStorageKey(category, w, y);
+      snapshots[`${w}_${y}`] = [...getRowsForWeek(category, w, y)];
+      hasExplicitSave[`${w}_${y}`] = (localStorage.getItem(key) !== null);
+    }
+  }
+
+  for (let y = currentYear; y <= currentYear + 1; y++) {
+    const startW = (y === currentYear) ? currentWeek : 1;
+    for (let w = startW; w <= TOTAL_WEEKS; w++) {
+      const listW = snapshots[`${w}_${y}`];
       const targetIdx = listW.indexOf(itemName);
       if (targetIdx === -1) continue;
 
       const newList = listW.filter((_, idx) => idx !== targetIdx);
-      localStorage.setItem(getRowsStorageKey(category, w, y), JSON.stringify(newList));
+      
+      if ((w === currentWeek && y === currentYear) || hasExplicitSave[`${w}_${y}`]) {
+        localStorage.setItem(getRowsStorageKey(category, w, y), JSON.stringify(newList));
+      }
 
       tableList.forEach(t => {
         const key = getStorageKey(t.id, w, y);
@@ -1194,6 +1430,9 @@ function deleteRowItem(category, rowIndex) {
             const idx = parseInt(idxStr);
             const r = Math.floor(idx / cols);
             const c = idx % cols;
+            
+            if (r === targetIdx) return;
+            
             if (r < targetIdx) {
               newData[idx] = oldData[idx];
             } else if (r > targetIdx) {
@@ -1224,16 +1463,16 @@ const OPTIC_ROW_NAMES = DEFAULT_OPTIC_ROWS;
  * @param {string} tbodyId - מזהה tbody ביעד
  * @param {Array<number>} [specialRowIndices=[0]] - אינדקסים של שורות מיוחדות להדגשה
  */
-function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices = [0]) {
+async function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices = [0]) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
 
   if (typeof names === 'string') {
-    names = getRowsForWeek(names, currentWeek, currentYear);
+    names = await getRowsForWeek(names, currentWeek, currentYear);
   } else if (names === KESHER_ROW_NAMES) {
-    names = getRowsForWeek('kesher', currentWeek, currentYear);
+    names = await getRowsForWeek('kesher', currentWeek, currentYear);
   } else if (names === OPTIC_ROW_NAMES) {
-    names = getRowsForWeek('optic', currentWeek, currentYear);
+    names = await getRowsForWeek('optic', currentWeek, currentYear);
   }
 
   tbody.innerHTML = '';
@@ -1352,7 +1591,7 @@ function renderHaktzaotTazam() {
   renderHaktzaotModieinUnit('tazamTable', 'haktzaot-tazam-body', 8);
 }
 
-/** מרנדרת הקצאות מודיעין עבור בהל"ג */
+/** מרנדרת הקצאות מודיעין עבור מפח"ט */
 function renderHaktzaotBahalag() {
   renderHaktzaotModieinUnit('bahalagTable', 'haktzaot-bahalag-body', 1);
 }
@@ -1779,7 +2018,7 @@ const PAGE_UNIT_NAMES = {
   'hirg.html': 'בא"ח חיר"ג',
   'pikud.html': 'גדוד הפיקוד',
   'tazam.html': 'ענף תצ"מ',
-  'bahalag.html': 'בהל"ג'
+  'bahalag.html': 'מפח"ט'
 };
 
 /**
@@ -2061,14 +2300,15 @@ function resetHadragOrShekemTable(tbody) {
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
-function loadHadragTables(week, year) {
+async function loadHadragTables(week, year) {
   const TABLE_IDS = ['body-chadrag', 'body-anafit8', 'body-anafit-bah', 'body-tavor'];
   if (typeof generateTimeSlots !== 'function') return;
 
-  TABLE_IDS.forEach(tableId => {
+  for (const tableId of TABLE_IDS) {
     const tbody = document.getElementById(tableId);
-    if (!tbody) return;
+    if (!tbody) continue;
     
+    tbody.innerHTML = '';
     generateTimeSlots(tableId); 
     resetHadragOrShekemTable(tbody);
 
@@ -2094,7 +2334,7 @@ function loadHadragTables(week, year) {
         }
       }
     }
-  });
+  }
 }
 
 /* =========================================================
@@ -2305,7 +2545,7 @@ async function approveShekemRequest(reqId) {
   firstCell.rowSpan = (endRow - startRow + 1);
   const textarea = firstCell.querySelector('textarea');
   if (textarea) {
-    textarea.style.height = (firstCell.rowSpan * 17.5) + 'px';
+    textarea.style.height = '100%';
     textarea.value = req.text;
     const unitClass = req.unit || 'bg-esuk';
     firstCell.classList.add(unitClass, 'imported');
@@ -2356,11 +2596,12 @@ function saveShekemTables() {
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
-function loadShekemTables(week, year) {
+async function loadShekemTables(week, year) {
   if (typeof generateTimeSlots !== 'function') return;
   const tbody = document.getElementById('body-shekem');
   if (!tbody) return;
   
+  tbody.innerHTML = '';
   generateTimeSlots('body-shekem'); 
   resetHadragOrShekemTable(tbody);
 
@@ -2378,7 +2619,7 @@ function loadShekemTables(week, year) {
         const textarea = cell.querySelector('textarea');
         if (textarea) {
           textarea.value = data.val || '';
-          textarea.style.height = (data.span > 1) ? (data.span * 17.5) + 'px' : '100%';
+          textarea.style.height = '100%';
         }
         cell.rowSpan = data.span || 1;
         cell.style.display = data.disp || '';
@@ -2565,3 +2806,726 @@ window.onload = function () {
     checkRequirementChanges('optictable');
   });
 };
+
+/* =========================================================
+   הקצאות מתקדמות (חדר"ג, שק"ם, חיפוקים) לפי צבע יחידה
+========================================================= */
+
+function rowToTimeStr(r) {
+  const hour = Math.floor(6 + r / 2).toString().padStart(2, '0');
+  const minutes = r % 2 === 0 ? '00' : '30';
+  return `${hour}:${minutes}`;
+}
+
+const DAYS_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+const HADRAG_TABLES_MAP = {
+  'body-chadrag': 'חדר"ג',
+  'body-anafit8': 'אנפית 8',
+  'body-anafit-bah': 'אנפית בא"ח',
+  'body-tavor': 'תבור'
+};
+
+async function getHadragAllocationsForUnit(unitColor, week, year) {
+  const allocations = [];
+  const tableIds = Object.keys(HADRAG_TABLES_MAP);
+
+  for (const tableId of tableIds) {
+    const key = `hadragData_${tableId}_week${week}_year${year}`;
+    let data = null;
+    if (typeof DataService !== 'undefined') {
+      data = await DataService.getItem(key);
+    } else {
+      const saved = localStorage.getItem(key);
+      if (saved) data = JSON.parse(saved);
+    }
+
+    if (!data) continue;
+
+    for (let c = 0; c < 7; c++) {
+      for (let r = 0; r < 36; r++) {
+        const cellData = data[`${r}_${c}`];
+        if (cellData && cellData.classes && cellData.classes.includes(unitColor)) {
+          const span = cellData.span || 1;
+          const startTime = rowToTimeStr(r);
+          const endTime = rowToTimeStr(r + span);
+          
+          allocations.push({
+            day: DAYS_NAMES[c],
+            facility: HADRAG_TABLES_MAP[tableId],
+            startTime: startTime,
+            endTime: endTime,
+            text: cellData.val || ''
+          });
+          
+          r += (span - 1);
+        }
+      }
+    }
+  }
+  return allocations;
+}
+
+async function getShekemAllocationsForUnit(unitColor, week, year) {
+  const allocations = [];
+  const key = `shekemData_body-shekem_week${week}_year${year}`;
+  let data = null;
+  if (typeof DataService !== 'undefined') {
+    data = await DataService.getItem(key);
+  } else {
+    const saved = localStorage.getItem(key);
+    if (saved) data = JSON.parse(saved);
+  }
+
+  if (!data) return allocations;
+
+  for (let c = 0; c < 7; c++) {
+    for (let r = 0; r < 36; r++) {
+      const cellData = data[`${r}_${c}`];
+      if (cellData && cellData.classes && cellData.classes.includes(unitColor)) {
+        const span = cellData.span || 1;
+        const startTime = rowToTimeStr(r);
+        const endTime = rowToTimeStr(r + span);
+        
+        allocations.push({
+          day: DAYS_NAMES[c],
+          startTime: startTime,
+          endTime: endTime,
+          text: cellData.val || ''
+        });
+        
+        r += (span - 1);
+      }
+    }
+  }
+  return allocations;
+}
+
+async function getHipokimAllocationsForUnit(unitColor, week, year) {
+  const allocations = [];
+  const key = getStorageKey('hipoktable', week, year);
+  let data = null;
+  if (typeof DataService !== 'undefined') {
+    data = await DataService.getItem(key);
+  } else {
+    const saved = localStorage.getItem(key);
+    if (saved) data = JSON.parse(saved);
+  }
+
+  if (!data) return allocations;
+
+  const DAY_LABELS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+
+  // הטבלה ב-hipokim.html מכילה 12 שורות כפול 7 ימים = 84 תאים
+  // אינדקסים 0-41 הם חיפוק יבש (6 שורות)
+  // אינדקסים 42-83 הם חיפוק רטוב (6 שורות)
+  for (let i = 0; i < 84; i++) {
+    const taskColor = data[`color_${i}`] || '';
+    if (taskColor === unitColor) {
+      const typeText = i < 42 ? 'חיפוק יבש' : 'חיפוק רטוב';
+      const dayIndex = i % 7;
+      const dayText = DAY_LABELS[dayIndex] || '';
+      
+      const taskText = data[`task_${i}`] || '';
+      const timeText = data[`time_${i}`] || '';
+      
+      const fullTask = typeText + (taskText ? ' - ' + taskText : '');
+      
+      allocations.push({
+        task: fullTask,
+        day: dayText,
+        time: timeText
+      });
+    }
+  }
+  
+  return allocations;
+}
+
+async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  // צבע כותרת הטבלה לפי הקבוצה
+  const colorInfo = (typeof UNIT_BG_MAP !== 'undefined' && UNIT_BG_MAP[unitColor]) || null;
+  const theadThs = tbody.closest('table')?.querySelectorAll('thead th') || [];
+  if (colorInfo) {
+    theadThs.forEach(th => {
+      th.style.backgroundColor = colorInfo.bg;
+      th.style.color = colorInfo.text;
+      th.style.borderColor = colorInfo.border;
+    });
+  }
+
+  if (type === 'hadrag') {
+    const allocations = await getHadragAllocationsForUnit(unitColor, currentWeek, currentYear);
+    if (allocations.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
+      return;
+    }
+    allocations.forEach(a => {
+      tbody.innerHTML += `<tr>
+        <td style="text-align:center; font-weight:bold;">${a.day}</td>
+        <td style="text-align:center; font-weight:bold;">${a.facility}</td>
+        <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
+        <td style="text-align:center;">${a.text.replace(/\\n/g, '<br>')}</td>
+      </tr>`;
+    });
+  } 
+  else if (type === 'shekem') {
+    const allocations = await getShekemAllocationsForUnit(unitColor, currentWeek, currentYear);
+    if (allocations.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
+      return;
+    }
+    allocations.forEach(a => {
+      tbody.innerHTML += `<tr>
+        <td style="text-align:center; font-weight:bold;">${a.day}</td>
+        <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
+        <td style="text-align:center;">${a.text.replace(/\\n/g, '<br>')}</td>
+      </tr>`;
+    });
+  }
+  else if (type === 'hipokim') {
+    const allocations = await getHipokimAllocationsForUnit(unitColor, currentWeek, currentYear);
+    if (allocations.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
+      return;
+    }
+    allocations.forEach(a => {
+      tbody.innerHTML += `<tr>
+        <td style="text-align:center; font-weight:bold;">${a.day}</td>
+        <td style="text-align:center; font-weight:bold;">${a.task}</td>
+        <td style="text-align:center; font-weight:bold;">${a.time}</td>
+      </tr>`;
+    });
+  }
+}
+
+/* =========================================================
+   Excel-like Features: Drag & Drop, Copy & Paste
+========================================================= */
+let hadragClipboard = null;
+
+function isHadragCell(cell) {
+  return cell && cell.classList && cell.classList.contains('platoon-cell');
+}
+
+function clearHadragCellData(cell) {
+  const tbody = cell.closest('tbody');
+  const startRow = parseInt(cell.dataset.row);
+  const col = parseInt(cell.dataset.col);
+  const span = cell.rowSpan || 1;
+  
+  cell.rowSpan = 1;
+  cell.className = 'platoon-cell';
+  const ta = cell.querySelector('textarea');
+  if (ta) {
+    ta.value = '';
+    ta.style.height = '100%';
+  }
+  
+  for (let i = startRow + 1; i < startRow + span; i++) {
+    const hiddenCell = tbody ? tbody.querySelector(`td.platoon-cell[data-row="${i}"][data-col="${col}"]`) : null;
+    if (hiddenCell) {
+      hiddenCell.style.display = '';
+      hiddenCell.rowSpan = 1;
+      hiddenCell.className = 'platoon-cell';
+      const hiddenTa = hiddenCell.querySelector('textarea');
+      if (hiddenTa) hiddenTa.value = '';
+    }
+  }
+}
+
+function pasteOrMoveBlock(targetCell, dataObj, preventOverwrite = false) {
+  const tbody = targetCell.closest('tbody');
+  const startRow = parseInt(targetCell.dataset.row);
+  const col = parseInt(targetCell.dataset.col);
+  const endRow = Math.min(35, startRow + dataObj.rowSpan - 1);
+  const actualSpan = endRow - startRow + 1;
+  
+  if (preventOverwrite) {
+    let hasConflict = false;
+    for (let r = startRow; r <= endRow; r++) {
+      const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
+      if (!c) continue;
+      if (c.style.display === 'none') { hasConflict = true; break; }
+      const ta = c.querySelector('textarea');
+      if (ta && ta.value.trim() !== '') { hasConflict = true; break; }
+      if (typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
+    }
+    if (hasConflict) {
+      alert('לא ניתן לבצע: השטח חופף לשיבוץ קיים. נא לפנות את השעות תחילה.');
+      return false;
+    }
+  }
+  
+  // 1. Clear target space
+  for (let r = startRow; r <= endRow; r++) {
+    const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
+    if (c && c.style.display !== 'none') {
+       clearHadragCellData(c);
+    }
+  }
+  
+  // 2. Hide cells for merge
+  for (let r = startRow + 1; r <= endRow; r++) {
+    const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
+    if (c) {
+      c.style.display = 'none';
+      c.rowSpan = 1;
+      c.className = 'platoon-cell';
+    }
+  }
+  
+  // 3. Apply data
+  targetCell.rowSpan = actualSpan;
+  targetCell.className = 'platoon-cell';
+  targetCell.classList.add('merged');
+  if (dataObj.cellClass) {
+    dataObj.cellClass.forEach(cls => {
+      if(cls !== 'merged' && cls !== 'platoon-cell') {
+        targetCell.classList.add(cls);
+      }
+    });
+  }
+  
+  const ta = targetCell.querySelector('textarea');
+  if (ta) {
+    ta.value = dataObj.text;
+    ta.style.height = '100%';
+  }
+  
+  if (typeof saveHadragTables === 'function') saveHadragTables();
+  if (typeof saveShekemTables === 'function') saveShekemTables();
+}
+
+// 1. Copy and Paste (Ctrl+C, Ctrl+V)
+document.addEventListener('keydown', function(e) {
+  if (!e.ctrlKey) return;
+  const activeElement = document.activeElement;
+  let cell = null;
+  
+  if (typeof activeSelectedCell !== 'undefined' && activeSelectedCell) {
+    cell = activeSelectedCell;
+  } else if (activeElement && activeElement.tagName === 'TEXTAREA') {
+    cell = activeElement.closest('td.platoon-cell');
+  } else if (activeElement && isHadragCell(activeElement)) {
+    cell = activeElement;
+  }
+  
+  if (!cell) {
+    const hoverEl = document.querySelector('td.platoon-cell:hover');
+    if (hoverEl) cell = hoverEl;
+  }
+  if (!cell) return;
+  
+  if (e.code === 'KeyC' || e.key.toLowerCase() === 'c' || e.key === 'ב') {
+    e.preventDefault();
+    const ta = cell.querySelector('textarea');
+    hadragClipboard = {
+      text: ta ? ta.value : '',
+      rowSpan: cell.rowSpan || 1,
+      cellClass: Array.from(cell.classList).filter(c => c !== 'selected-cell' && c !== 'resize-handle')
+    };
+    cell.style.outline = '3px dashed #0284c7';
+    cell.style.outlineOffset = '-3px';
+    setTimeout(() => cell.style.outline = '', 600);
+  } else if (e.code === 'KeyV' || e.key.toLowerCase() === 'v' || e.key === 'ה') {
+    e.preventDefault();
+    if (!hadragClipboard) return;
+    pasteOrMoveBlock(cell, hadragClipboard, true);
+    if (typeof selectCell === 'function') selectCell(cell);
+  }
+});
+
+// 2. HTML5 Drag & Drop
+let draggedHadragData = null;
+let draggedSourceCell = null;
+
+document.addEventListener('mouseover', function(e) {
+  const cell = e.target.closest('td.platoon-cell');
+  if (cell && typeof isDragging !== 'undefined' && !isDragging) {
+    const ta = cell.querySelector('textarea');
+    const hasContent = ta && ta.value.trim() !== '';
+    const hasColor = typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => cell.classList.contains(cls));
+    if (hasContent || hasColor) {
+      cell.setAttribute('draggable', 'true');
+    } else {
+      cell.removeAttribute('draggable');
+    }
+  }
+});
+
+document.addEventListener('dragstart', function(e) {
+  const cell = e.target.closest('td.platoon-cell');
+  if (!cell) return;
+  
+  const ta = cell.querySelector('textarea');
+  draggedHadragData = {
+    text: ta ? ta.value : '',
+    rowSpan: cell.rowSpan || 1,
+    cellClass: Array.from(cell.classList)
+  };
+  draggedSourceCell = cell;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', 'hadrag-cell');
+  setTimeout(() => cell.style.opacity = '0.5', 0);
+});
+
+document.addEventListener('dragover', function(e) {
+  const cell = e.target.closest('td.platoon-cell');
+  if (cell && draggedHadragData) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+});
+
+document.addEventListener('dragend', function(e) {
+  if (draggedSourceCell) draggedSourceCell.style.opacity = '1';
+  draggedHadragData = null;
+  draggedSourceCell = null;
+});
+
+document.addEventListener('drop', function(e) {
+  const cell = e.target.closest('td.platoon-cell');
+  if (!cell || !draggedHadragData) return;
+  e.preventDefault();
+  
+  if (draggedSourceCell && draggedSourceCell !== cell) {
+    const tbody = cell.closest('tbody');
+    const startRow = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+    const endRow = Math.min(35, startRow + draggedHadragData.rowSpan - 1);
+    
+    const srcStart = parseInt(draggedSourceCell.dataset.row);
+    const srcEnd = srcStart + (draggedSourceCell.rowSpan || 1) - 1;
+    const srcCol = parseInt(draggedSourceCell.dataset.col);
+    
+    let hasConflict = false;
+    for (let r = startRow; r <= endRow; r++) {
+      if (col === srcCol && r >= srcStart && r <= srcEnd) continue;
+      
+      const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
+      if (!c) continue;
+      if (c.style.display === 'none') { hasConflict = true; break; }
+      const ta = c.querySelector('textarea');
+      if (ta && ta.value.trim() !== '') { hasConflict = true; break; }
+      if (typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
+    }
+    
+    if (hasConflict) {
+      alert('לא ניתן להזיז: השטח חופף לשיבוץ קיים.');
+      return;
+    }
+    
+    clearHadragCellData(draggedSourceCell);
+    pasteOrMoveBlock(cell, draggedHadragData, false);
+    if (typeof saveHadragTables === 'function') saveHadragTables();
+    if (typeof saveShekemTables === 'function') saveShekemTables();
+  }
+});
+
+/* =========================================================
+   Excel-like Selection and Resizing Handle
+========================================================= */
+let activeSelectedCell = null;
+let isResizing = false;
+let resizeStartCell = null;
+let resizeCurrentRow = -1;
+let resizePreviewElement = null;
+
+function clearSelection() {
+  if (activeSelectedCell) {
+    activeSelectedCell.classList.remove('selected-cell');
+    const handle = activeSelectedCell.querySelector('.resize-handle');
+    if (handle) handle.remove();
+    activeSelectedCell = null;
+  }
+}
+
+function selectCell(cell) {
+  if (!cell || cell === activeSelectedCell) return;
+  clearSelection();
+  
+  activeSelectedCell = cell;
+  cell.classList.add('selected-cell');
+  
+  const handle = document.createElement('div');
+  handle.className = 'resize-handle';
+  handle.addEventListener('mousedown', startResize);
+  handle.addEventListener('click', e => e.stopPropagation());
+  
+  cell.appendChild(handle);
+}
+
+document.addEventListener('mousedown', function(e) {
+  if (e.target.classList.contains('resize-handle')) return;
+  
+  const cell = e.target.closest('td.platoon-cell');
+  if (cell) {
+    selectCell(cell);
+  } else {
+    clearSelection();
+  }
+});
+
+function startResize(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (!activeSelectedCell) return;
+  
+  isResizing = true;
+  resizeStartCell = activeSelectedCell;
+  
+  resizePreviewElement = document.createElement('div');
+  resizePreviewElement.style.position = 'absolute';
+  resizePreviewElement.style.border = '2px dashed #22c55e';
+  resizePreviewElement.style.pointerEvents = 'none';
+  resizePreviewElement.style.zIndex = '100';
+  resizePreviewElement.style.background = 'rgba(34, 197, 94, 0.1)';
+  document.body.appendChild(resizePreviewElement);
+  
+  updateResizePreview(e);
+}
+
+document.addEventListener('mousemove', function(e) {
+  if (!isResizing || !resizeStartCell) return;
+  
+  const tbody = resizeStartCell.closest('tbody');
+  
+  for (let i = 0; i < tbody.rows.length; i++) {
+    const tr = tbody.rows[i];
+    const timeCell = tr.firstElementChild;
+    if (timeCell) {
+      const rect = timeCell.getBoundingClientRect();
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        resizeCurrentRow = i;
+        break;
+      }
+    }
+  }
+  
+  const startRow = parseInt(resizeStartCell.dataset.row);
+  if (resizeCurrentRow < startRow && resizeCurrentRow !== -1) {
+    resizeCurrentRow = startRow;
+  }
+  
+  updateResizePreview(e);
+});
+
+function updateResizePreview(e) {
+  if (!resizeStartCell || !resizePreviewElement) return;
+  
+  const startRow = parseInt(resizeStartCell.dataset.row);
+  let endRow = resizeCurrentRow !== -1 ? resizeCurrentRow : (startRow + resizeStartCell.rowSpan - 1);
+  if (endRow < startRow) endRow = startRow;
+  
+  const tbody = resizeStartCell.closest('tbody');
+  const col = parseInt(resizeStartCell.dataset.col);
+  
+  const startDom = tbody.querySelector(`td.platoon-cell[data-row="${startRow}"][data-col="${col}"]`);
+  if (!startDom) return;
+  const startRect = startDom.getBoundingClientRect();
+  
+  const endTr = tbody.rows[endRow];
+  if (endTr) {
+    const timeCellEnd = endTr.firstElementChild;
+    if (timeCellEnd) {
+      const endRect = timeCellEnd.getBoundingClientRect();
+      resizePreviewElement.style.top = startRect.top + window.scrollY + 'px';
+      resizePreviewElement.style.left = startRect.left + window.scrollX + 'px';
+      resizePreviewElement.style.width = startRect.width + 'px';
+      resizePreviewElement.style.height = (endRect.bottom - startRect.top) + 'px';
+    }
+  }
+}
+
+document.addEventListener('mouseup', function(e) {
+  if (!isResizing || !resizeStartCell) return;
+  
+  if (resizePreviewElement) {
+    resizePreviewElement.remove();
+    resizePreviewElement = null;
+  }
+  
+  isResizing = false;
+  
+  const startRow = parseInt(resizeStartCell.dataset.row);
+  let newEndRow = resizeCurrentRow !== -1 ? resizeCurrentRow : (startRow + resizeStartCell.rowSpan - 1);
+  if (newEndRow < startRow) newEndRow = startRow;
+  
+  const oldSpan = resizeStartCell.rowSpan || 1;
+  const newSpan = newEndRow - startRow + 1;
+  
+  if (newSpan !== oldSpan) {
+    const tbody = resizeStartCell.closest('tbody');
+    const col = parseInt(resizeStartCell.dataset.col);
+    
+    const ta = resizeStartCell.querySelector('textarea');
+    const dataObj = {
+      text: ta ? ta.value : '',
+      rowSpan: newSpan,
+      cellClass: Array.from(resizeStartCell.classList).filter(c => c !== 'platoon-cell' && c !== 'selected-cell' && c !== 'dragging')
+    };
+    
+    clearHadragCellData(resizeStartCell);
+    
+    const targetCell = tbody.querySelector(`td.platoon-cell[data-row="${startRow}"][data-col="${col}"]`);
+    if (targetCell) {
+      pasteOrMoveBlock(targetCell, dataObj);
+      selectCell(targetCell);
+      
+      if (typeof saveHadragTables === 'function') saveHadragTables();
+      if (typeof saveShekemTables === 'function') saveShekemTables();
+    }
+  }
+  
+  resizeStartCell = null;
+  resizeCurrentRow = -1;
+});
+
+/* =========================================================
+   Custom Context Menu
+========================================================= */
+document.addEventListener('DOMContentLoaded', () => {
+  const menuHTML = `
+    <div id="custom-context-menu" style="display: none;">
+      <button id="ctx-btn-copy">העתק שיבוץ</button>
+      <button id="ctx-btn-paste">הדבק שיבוץ</button>
+      <div class="ctx-divider"></div>
+      <div class="ctx-colors-title">שנה יחידה:</div>
+      <div class="ctx-colors-row">
+        <div class="ctx-color-dot bg-esuk" data-color="bg-esuk" title="איסו&quot;ק"></div>
+        <div class="ctx-color-dot bg-hirg" data-color="bg-hirg" title="חיר&quot;ג"></div>
+        <div class="ctx-color-dot bg-pikud" data-color="bg-pikud" title="פיקוד"></div>
+        <div class="ctx-color-dot bg-tazam" data-color="bg-tazam" title="תצ&quot;מ"></div>
+        <div class="ctx-color-dot bg-maphat" data-color="bg-maphat" title="מפח&quot;ט"></div>
+      </div>
+      <div class="ctx-divider"></div>
+      <button id="ctx-btn-delete">מחק שיבוץ</button>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', menuHTML);
+  
+  const ctxMenu = document.getElementById('custom-context-menu');
+  let currentCtxCell = null;
+  
+  document.addEventListener('contextmenu', function(e) {
+    const cell = e.target.closest('td.platoon-cell');
+    if (cell) {
+      e.preventDefault();
+      
+      currentCtxCell = cell;
+      selectCell(cell);
+      
+      ctxMenu.style.display = 'flex';
+      
+      let x = e.pageX;
+      let y = e.pageY;
+      
+      if (x + ctxMenu.offsetWidth > window.innerWidth) {
+        x -= ctxMenu.offsetWidth;
+      }
+      if (y + ctxMenu.offsetHeight > window.innerHeight) {
+        y -= ctxMenu.offsetHeight;
+      }
+      
+      ctxMenu.style.left = x + 'px';
+      ctxMenu.style.top = y + 'px';
+    } else {
+      ctxMenu.style.display = 'none';
+    }
+  });
+  
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('#custom-context-menu')) return;
+    if (ctxMenu) ctxMenu.style.display = 'none';
+  });
+  
+  document.getElementById('ctx-btn-copy')?.addEventListener('click', function() {
+    if (currentCtxCell) {
+      const ta = currentCtxCell.querySelector('textarea');
+      hadragClipboard = {
+        text: ta ? ta.value : '',
+        rowSpan: currentCtxCell.rowSpan || 1,
+        cellClass: Array.from(currentCtxCell.classList).filter(c => c !== 'selected-cell' && c !== 'resize-handle' && c !== 'dragging')
+      };
+      currentCtxCell.style.outline = '3px dashed #0284c7';
+      currentCtxCell.style.outlineOffset = '-3px';
+      setTimeout(() => currentCtxCell.style.outline = '', 600);
+    }
+    ctxMenu.style.display = 'none';
+  });
+
+  document.getElementById('ctx-btn-paste')?.addEventListener('click', function() {
+    if (currentCtxCell && typeof hadragClipboard !== 'undefined' && hadragClipboard) {
+      pasteOrMoveBlock(currentCtxCell, hadragClipboard, true);
+      if (typeof selectCell === 'function') selectCell(currentCtxCell);
+    }
+    ctxMenu.style.display = 'none';
+  });
+  
+  document.getElementById('ctx-btn-delete')?.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (currentCtxCell) {
+      clearHadragCellData(currentCtxCell);
+      clearSelection();
+      if (typeof saveHadragTables === 'function') saveHadragTables();
+      if (typeof saveShekemTables === 'function') saveShekemTables();
+    }
+    ctxMenu.style.display = 'none';
+  });
+  
+  document.querySelectorAll('.ctx-color-dot').forEach(dot => {
+    dot.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (currentCtxCell) {
+        const colors = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'imported', 'conflict-overlap'];
+        colors.forEach(c => currentCtxCell.classList.remove(c));
+        currentCtxCell.classList.add(this.dataset.color);
+        
+        clearSelection();
+        
+        if (typeof saveHadragTables === 'function') saveHadragTables();
+        if (typeof saveShekemTables === 'function') saveShekemTables();
+      }
+      ctxMenu.style.display = 'none';
+    });
+  });
+  // Track manual edits in manager tables and highlight orange if different from published
+  document.addEventListener('input', async function(e) {
+    if (e.target && e.target.classList.contains('cell-input')) {
+      const table = e.target.closest('table');
+      if (!table) return;
+      const tableId = table.id;
+      if (tableId === 'keshertable' || tableId === 'optictable') {
+        const td = e.target.closest('td');
+        if (!td) return;
+        const tr = td.closest('tr');
+        const tbody = table.tBodies[0];
+        const rowIdx = Array.from(tbody.rows).indexOf(tr);
+        const colIdx = Array.from(tr.cells).indexOf(td);
+        if (rowIdx < 0 || colIdx < 1) return;
+        
+        const globalIndex = rowIdx * (tr.cells.length - 1) + (colIdx - 1);
+        
+        const managerPublishedKey = getStorageKey(tableId, currentWeek, currentYear) + '_published';
+        let managerPublishedData = {};
+        if (typeof fetchTableData === 'function') {
+          managerPublishedData = await fetchTableData(managerPublishedKey) || {};
+        } else {
+          managerPublishedData = JSON.parse(localStorage.getItem(managerPublishedKey) || '{}');
+        }
+        
+        const publishedVal = managerPublishedData[globalIndex] || '';
+        if (e.target.value !== publishedVal) {
+          td.classList.add('conflict-overlap');
+        } else {
+          td.classList.remove('conflict-overlap');
+        }
+      }
+    }
+  });
+});

@@ -3,8 +3,8 @@
 
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="modiein.css">
+  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="modiein.css?v=1">
   <title>PAKADEX - מודיעין</title>
 </head>
 
@@ -20,9 +20,12 @@
 
       <div class="table-container" style="margin-top: 0;">
 
-      <div style="display:flex; align-items:center; gap:8px; background:#f1f5f9; padding:6px 14px; border-radius:6px; width:fit-content; color:#000000; margin:10px 10px 14px; border:1px solid #cbd5e1;">
-        <span style="font-weight:bold; font-size:15px; color:#000000;">שבוע:</span>
-        <input type="text" id="weekInput" style="width:55px; height:28px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 10px 14px;">
+        <div style="display:flex; align-items:center; gap:8px; background:#f1f5f9; padding:6px 14px; border-radius:6px; width:fit-content; color:#000000; border:1px solid #cbd5e1;">
+          <span style="font-weight:bold; font-size:15px; color:#000000;">שבוע:</span>
+          <input type="text" id="weekInput" style="width:55px; height:28px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+        </div>
+        <button id="status-btn-modiein" class="status-btn not-updated" onclick="toggleTableStatus('modiein')">✗ לא מעודכן</button>
       </div>
 
       <div style="padding:0 12px 12px;">
@@ -176,12 +179,12 @@
           </tbody>
         </table>
 
-        <h2 class="unit-title">🟠 בהל"ג</h2>
+        <h2 class="unit-title">🟠 מפח"ט</h2>
         <table class="modieintable" id="bahalagTable" dir="rtl" border="1">
           <thead>
             <tr>
               <th colspan="2" style="position:relative;">
-                בהל"ג
+                מפח"ט
                 <button onclick="importDirectToTable('reqbahalagTable', 'bahalagTable')" class="table-import-btn">ייבוא</button>
               </th>
             </tr>
@@ -206,16 +209,16 @@
     </div>
 
     <div id="nextbt">
-      <button onclick="prevWeek()">▶</button>
+      <button onclick="nextWeek()">▶</button>
       <div id="pageNumbers"></div>
-      <button onclick="nextWeek()">◀</button>
+      <button onclick="prevWeek()">◀</button>
     </div>
 
   </div>
 
-  <script src="config.js"></script>
-  <script src="sharepointService.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=1"></script>
+  <script src="sharepointService.js?v=1"></script>
+  <script src="script.js?v=1"></script>
 
 </body>
 

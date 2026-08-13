@@ -20,7 +20,7 @@
 .optictable thead tr:last-child th:nth-child(n+22):nth-child(-n+29) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
 .optictable tbody tr td:nth-child(n+22):nth-child(-n+29) { background-color: #f3e5f5 !important; }
 
-/* 5. בהל"ג (עמודה 30) */
+/* 5. מפח"ט (עמודה 30) */
 .optictable thead tr:last-child th:nth-child(30) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
 .optictable tbody tr td:nth-child(30) { background-color: #fff3e0 !important; }
 

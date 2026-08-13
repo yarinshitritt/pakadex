@@ -284,24 +284,29 @@
 .keshertable thead tr:last-child th:nth-child(n+31):nth-child(-n+38) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
 .keshertable tbody tr td:nth-child(n+31):nth-child(-n+41) { background-color: #f3e5f5 !important; }
 
-/* קבוצה 5: בהל"ג (עמודות 42 עד 45) */
+/* קבוצה 5: מפח"ט (עמודות 42 עד 45) */
 .keshertable thead tr:last-child th:nth-child(42) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
 .keshertable tbody tr td:nth-child(n+42):nth-child(-n+45) { background-color: #fff3e0 !important; }
 
-/* ================== צבעי טבלאות דרישות והקצאות לפי יחידה ================== */
 /* 1. בא"ח איסו"ק (צהוב) */
 #esukkeshertable thead tr th,
 #esukoptictable thead tr th,
 #reqesukTable thead tr th,
 #haktzaot-esuk-kesher-table thead tr th,
 #haktzaot-esuk-optic-table thead tr th,
-#haktzaot-esuk-table thead tr th { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
+#haktzaot-esuk-table thead tr th,
+#haktzaot-esuk-hipok-table thead tr th,
+#haktzaot-esuk-chadrag-table thead tr th,
+#haktzaot-esuk-shekem-table thead tr th { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
 #esukkeshertable tbody tr td:nth-child(n+2),
 #esukoptictable tbody tr td:nth-child(n+2),
 #reqesukTable tbody tr td:nth-child(n+2),
 #haktzaot-esuk-kesher-table tbody tr td:nth-child(n+2),
 #haktzaot-esuk-optic-table tbody tr td:nth-child(n+2),
-#haktzaot-esuk-table tbody tr td:nth-child(n+2) { background-color: #fffde7 !important; }
+#haktzaot-esuk-table tbody tr td:nth-child(n+2),
+#haktzaot-esuk-hipok-table tbody tr td,
+#haktzaot-esuk-chadrag-table tbody tr td,
+#haktzaot-esuk-shekem-table tbody tr td { background-color: #fffde7 !important; }
 
 /* 2. בא"ח חיר"ג (ירוק) */
 #kkeshertable thead tr th,
@@ -309,13 +314,19 @@
 #reqhirgTable thead tr th,
 #haktzaot-hirg-kesher-table thead tr th,
 #haktzaot-hirg-optic-table thead tr th,
-#haktzaot-hirg-table thead tr th { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
+#haktzaot-hirg-table thead tr th,
+#haktzaot-hirg-hipok-table thead tr th,
+#haktzaot-hirg-chadrag-table thead tr th,
+#haktzaot-hirg-shekem-table thead tr th { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
 #kkeshertable tbody tr td:nth-child(n+2),
 #koptictable tbody tr td:nth-child(n+2),
 #reqhirgTable tbody tr td:nth-child(n+2),
 #haktzaot-hirg-kesher-table tbody tr td:nth-child(n+2),
 #haktzaot-hirg-optic-table tbody tr td:nth-child(n+2),
-#haktzaot-hirg-table tbody tr td:nth-child(n+2) { background-color: #e8f5e9 !important; }
+#haktzaot-hirg-table tbody tr td:nth-child(n+2),
+#haktzaot-hirg-hipok-table tbody tr td,
+#haktzaot-hirg-chadrag-table tbody tr td,
+#haktzaot-hirg-shekem-table tbody tr td { background-color: #e8f5e9 !important; }
 
 /* 3. גדוד הפיקוד (כחול) */
 #pkeshertable thead tr th,
@@ -323,13 +334,19 @@
 #reqpikudTable thead tr th,
 #haktzaot-pikud-kesher-table thead tr th,
 #haktzaot-pikud-optic-table thead tr th,
-#haktzaot-pikud-table thead tr th { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
+#haktzaot-pikud-table thead tr th,
+#haktzaot-pikud-hipok-table thead tr th,
+#haktzaot-pikud-chadrag-table thead tr th,
+#haktzaot-pikud-shekem-table thead tr th { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
 #pkeshertable tbody tr td:nth-child(n+2),
 #poptictable tbody tr td:nth-child(n+2),
 #reqpikudTable tbody tr td:nth-child(n+2),
 #haktzaot-pikud-kesher-table tbody tr td:nth-child(n+2),
 #haktzaot-pikud-optic-table tbody tr td:nth-child(n+2),
-#haktzaot-pikud-table tbody tr td:nth-child(n+2) { background-color: #e3f2fd !important; }
+#haktzaot-pikud-table tbody tr td:nth-child(n+2),
+#haktzaot-pikud-hipok-table tbody tr td,
+#haktzaot-pikud-chadrag-table tbody tr td,
+#haktzaot-pikud-shekem-table tbody tr td { background-color: #e3f2fd !important; }
 
 /* 4. ענף תצ"מ (סגול) */
 #tkeshertable thead tr th,
@@ -337,27 +354,39 @@
 #reqtazamTable thead tr th,
 #haktzaot-tazam-kesher-table thead tr th,
 #haktzaot-tazam-optic-table thead tr th,
-#haktzaot-tazam-table thead tr th { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
+#haktzaot-tazam-table thead tr th,
+#haktzaot-tazam-hipok-table thead tr th,
+#haktzaot-tazam-chadrag-table thead tr th,
+#haktzaot-tazam-shekem-table thead tr th { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
 #tkeshertable tbody tr td:nth-child(n+2),
 #toptictable tbody tr td:nth-child(n+2),
 #reqtazamTable tbody tr td:nth-child(n+2),
 #haktzaot-tazam-kesher-table tbody tr td:nth-child(n+2),
 #haktzaot-tazam-optic-table tbody tr td:nth-child(n+2),
-#haktzaot-tazam-table tbody tr td:nth-child(n+2) { background-color: #f3e5f5 !important; }
+#haktzaot-tazam-table tbody tr td:nth-child(n+2),
+#haktzaot-tazam-hipok-table tbody tr td,
+#haktzaot-tazam-chadrag-table tbody tr td,
+#haktzaot-tazam-shekem-table tbody tr td { background-color: #f3e5f5 !important; }
 
-/* 5. בהל"ג (כתום) */
+/* 5. מפח"ט (כתום) */
 #bkeshertable thead tr th,
 #boptictable thead tr th,
 #reqbahalagTable thead tr th,
 #haktzaot-bahalag-kesher-table thead tr th,
 #haktzaot-bahalag-optic-table thead tr th,
-#haktzaot-bahalag-table thead tr th { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
+#haktzaot-bahalag-table thead tr th,
+#haktzaot-bahalag-hipok-table thead tr th,
+#haktzaot-bahalag-chadrag-table thead tr th,
+#haktzaot-bahalag-shekem-table thead tr th { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
 #bkeshertable tbody tr td:nth-child(n+2),
 #boptictable tbody tr td:nth-child(n+2),
 #reqbahalagTable tbody tr td:nth-child(n+2),
 #haktzaot-bahalag-kesher-table tbody tr td:nth-child(n+2),
 #haktzaot-bahalag-optic-table tbody tr td:nth-child(n+2),
-#haktzaot-bahalag-table tbody tr td:nth-child(n+2) { background-color: #fff3e0 !important; }
+#haktzaot-bahalag-table tbody tr td:nth-child(n+2),
+#haktzaot-bahalag-hipok-table tbody tr td,
+#haktzaot-bahalag-chadrag-table tbody tr td,
+#haktzaot-bahalag-shekem-table tbody tr td { background-color: #fff3e0 !important; }
 
 /* הכהיה עדינה ויזואלית לעמודות הסיכום הפנימיות כדי להבדילן מעמודות הפלוגות */
 .keshertable tbody tr td:nth-child(9), .keshertable tbody tr td:nth-child(10), .keshertable tbody tr td:nth-child(11),

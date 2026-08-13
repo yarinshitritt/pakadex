@@ -2,8 +2,8 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="hadrag.css">
+  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="hadrag.css?v=1">
   <title>PAKADEX - חדר"ג ומתקנים</title>
 </head>
 <body>
@@ -18,9 +18,16 @@
 
       <div class="manager-panel" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:6px 12px; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
         <!-- בצד ימין באמצע: הצגת השבוע -->
-        <div style="display:flex; align-items:center; gap:6px; background:#f1f5f9; padding:4px 10px; border-radius:6px; color:#000000; border:1px solid #cbd5e1; flex-shrink:0;">
-          <span style="font-weight:bold; font-size:14px; color:#000000;">שבוע:</span>
-          <input type="text" id="weekInput" style="width:48px; height:26px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+        <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:6px; background:#f1f5f9; padding:4px 10px; border-radius:6px; color:#000000; border:1px solid #cbd5e1;">
+            <span style="font-weight:bold; font-size:14px; color:#000000;">שבוע:</span>
+            <input type="text" id="weekInput" style="width:48px; height:26px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+          </div>
+          <div style="display:flex; align-items:center; gap:4px; margin-right:8px; background:#f1f5f9; padding:2px 8px; border-radius:6px; border:1px solid #cbd5e1;">
+            <span style="font-size:16px;">🔍</span>
+            <input type="range" id="zoomSlider" min="40" max="120" value="70" style="width: 80px; cursor:pointer;" 
+                   oninput="document.querySelector('.table-container').style.zoom = this.value + '%'">
+          </div>
         </div>
 
         <!-- במרכז: שיבוץ ישיר למנהל -->
@@ -39,7 +46,7 @@
             <option value="bg-hirg">בא"ח חיר"ג (ירוק)</option>
             <option value="bg-pikud">גדוד הפיקוד (כחול)</option>
             <option value="bg-tazam">ענף תצ"מ (סגול)</option>
-            <option value="bg-maphat">מפח"ט/בהל"ג (כתום)</option>
+            <option value="bg-maphat">מפח"ט (כתום)</option>
           </select>
 
           <input type="text" id="directText" placeholder="טקסט לשיבוץ..." class="hadrag-input" style="width:120px;">
@@ -68,16 +75,10 @@
         <div id="hadragPendingList" style="display:flex; flex-direction:column; gap:4px; max-height:110px; overflow-y:auto;"></div>
       </div>
 
-      <div class="tabs-container" style="display:flex; gap:6px; margin-bottom:4px; padding:3px 6px; border-radius:6px;">
-        <button class="tab-btn active" onclick="showFacility(event, 'chadrag')">חדר"ג</button>
-        <button class="tab-btn" onclick="showFacility(event, 'anafit8')">ענפית 8</button>
-        <button class="tab-btn" onclick="showFacility(event, 'anafit-bah')">ענפית בא"ח</button>
-        <button class="tab-btn" onclick="showFacility(event, 'tavor')">תבור</button>
-      </div>
-
-      <div class="table-container" style="flex:1; margin-top:0; padding:0 4px 4px 4px; overflow-y:auto; max-height: calc(100vh - 220px);">
+      <div class="table-container" style="flex:1; margin-top:0; padding:0 4px 4px 4px; display: flex; gap: 24px; zoom: 70%;">
         
-        <div id="table-chadrag" class="facility-table-wrapper">
+        <div id="table-chadrag" class="facility-table-wrapper" style="min-width: 600px;">
+          <h3 style="text-align:center; color:#1e293b; margin-bottom: 8px;">חדר"ג</h3>
           <table class="hadrag-table" dir="rtl">
             <thead>
               <tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr>
@@ -86,7 +87,8 @@
           </table>
         </div>
 
-        <div id="table-anafit8" class="facility-table-wrapper" style="display:none;">
+        <div id="table-anafit8" class="facility-table-wrapper" style="min-width: 600px;">
+          <h3 style="text-align:center; color:#1e293b; margin-bottom: 8px;">ענפית 8</h3>
           <table class="hadrag-table" dir="rtl">
             <thead>
               <tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr>
@@ -95,7 +97,8 @@
           </table>
         </div>
 
-        <div id="table-anafit-bah" class="facility-table-wrapper" style="display:none;">
+        <div id="table-anafit-bah" class="facility-table-wrapper" style="min-width: 600px;">
+          <h3 style="text-align:center; color:#1e293b; margin-bottom: 8px;">ענפית בא"ח</h3>
           <table class="hadrag-table" dir="rtl">
             <thead>
               <tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr>
@@ -104,7 +107,8 @@
           </table>
         </div>
 
-        <div id="table-tavor" class="facility-table-wrapper" style="display:none;">
+        <div id="table-tavor" class="facility-table-wrapper" style="min-width: 600px;">
+          <h3 style="text-align:center; color:#1e293b; margin-bottom: 8px;">תבור</h3>
           <table class="hadrag-table" dir="rtl">
             <thead>
               <tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr>
@@ -116,9 +120,9 @@
       </div>
 
       <div id="nextbt">
-        <button onclick="prevWeek()">▶</button>
+        <button onclick="nextWeek()">▶</button>
         <div id="pageNumbers"></div>
-        <button onclick="nextWeek()">◀</button>
+        <button onclick="prevWeek()">◀</button>
       </div>
 
     </div>
@@ -166,44 +170,13 @@
       });
     }
 
-    // ניקוי בקשות בטעינה (קליק ימני)
-    document.addEventListener('contextmenu', function(e) {
-      const cell = e.target.closest('td.platoon-cell');
-      if (cell) {
-        e.preventDefault();
-        if (confirm('האם תרצה למחוק את השיבוץ הזה ולפנות את השעות?')) {
-          const tbody = cell.closest('tbody');
-          const col = cell.dataset.col;
-          const startRow = parseInt(cell.dataset.row);
-          const span = cell.rowSpan || 1;
 
-          cell.rowSpan = 1;
-          cell.className = 'platoon-cell';
-          const ta = cell.querySelector('textarea');
-          if (ta) {
-            ta.value = '';
-            ta.style.height = '100%';
-          }
-          for (let i = startRow + 1; i < startRow + span; i++) {
-             const hiddenCell = tbody ? tbody.querySelector(`td.platoon-cell[data-row="${i}"][data-col="${col}"]`) : null;
-             if (hiddenCell) {
-                hiddenCell.style.display = '';
-                hiddenCell.rowSpan = 1;
-                hiddenCell.className = 'platoon-cell';
-                const hiddenTa = hiddenCell.querySelector('textarea');
-                if (hiddenTa) hiddenTa.value = '';
-             }
-          }
-          if (typeof saveHadragTables === 'function') saveHadragTables();
-        }
-      }
-    });
 
   </script>
   
-  <script src="config.js"></script>
-  <script src="sharepointService.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=1"></script>
+  <script src="sharepointService.js?v=1"></script>
+  <script src="script.js?v=1"></script>
 
 </body>
 </html>

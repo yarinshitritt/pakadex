@@ -7,7 +7,7 @@ const CONFIG = {
   // 'sharepoint'   - שמירה בקבצי JSON ב-SharePoint Document Library בענן
   // 'military_net' - שמירה בשרת API צה"לי פנימי (למצב מבצעי/מסווג)
   // 'local'        - שמירה מקומית ב-localStorage של הדפדפן (לפיתוח/אופליין)
-  DATA_SOURCE: 'sharepoint',
+  DATA_SOURCE: 'local',
 
   // הגדרות SharePoint
   SHAREPOINT: {

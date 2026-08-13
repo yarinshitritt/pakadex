@@ -2,12 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="esuk.css">
-  <link rel="stylesheet" href="kesher.css">
-  <link rel="stylesheet" href="optic.css">
-  <link rel="stylesheet" href="modiein.css">
-  <link rel="stylesheet" href="hipokim.css">
+  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="esuk.css?v=1">
+  <link rel="stylesheet" href="kesher.css?v=1">
+  <link rel="stylesheet" href="optic.css?v=1">
+  <link rel="stylesheet" href="modiein.css?v=1">
+  <link rel="stylesheet" href="hipokim.css?v=1">
   <title>PAKADEX - בא"ח איסו"ק</title>
 </head>
 <body>
@@ -197,9 +197,9 @@
         </div>
  
         <div id="nextbt">
-          <button onclick="prevWeek()">▶</button>
+          <button onclick="nextWeek()">▶</button>
           <div id="pageNumbers"></div>
-          <button onclick="nextWeek()">◀</button>
+          <button onclick="prevWeek()">◀</button>
         </div>
  
       </div>
@@ -257,6 +257,34 @@
           </div>
         </div>
 
+        
+        <div id="haktzaot-hipok" class="haktzaot-sub" style="display:none;">
+          <div class="table-container">
+            <table id="haktzaot-esuk-hipok-table" dir="rtl" border="1" class="keshertable" style="width:100%;">
+              <thead><tr><th>יום</th><th>משימה</th><th>זמן</th></tr></thead>
+              <tbody id="haktzaot-hipok-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="haktzaot-chadrag" class="haktzaot-sub" style="display:none;">
+          <div class="table-container">
+            <table id="haktzaot-esuk-chadrag-table" dir="rtl" border="1" class="keshertable" style="width:100%;">
+              <thead><tr><th>יום</th><th>מתחם</th><th>שעות</th><th>הערות</th></tr></thead>
+              <tbody id="haktzaot-chadrag-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="haktzaot-shekem" class="haktzaot-sub" style="display:none;">
+          <div class="table-container">
+            <table id="haktzaot-esuk-shekem-table" dir="rtl" border="1" class="keshertable" style="width:100%;">
+              <thead><tr><th>יום</th><th>שעות</th><th>הערות</th></tr></thead>
+              <tbody id="haktzaot-shekem-body"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div id="haktzaot-none" class="haktzaot-sub" style="display:none;">
           <div class="table-container" style="text-align:center; padding:30px;">
             <p style="color:#666; font-size:18px; font-weight:bold;">אין הקצאות להצגה בקטגוריה זו</p>
@@ -264,9 +292,9 @@
         </div>
 
         <div id="nextbt2">
-          <button onclick="prevWeek()">▶</button>
+          <button onclick="nextWeek()">▶</button>
           <div id="pageNumbers2"></div>
-          <button onclick="nextWeek()">◀</button>
+          <button onclick="prevWeek()">◀</button>
         </div>
 
       </div>
@@ -349,13 +377,17 @@
       if (sectionId === 'haktzaot') {
         if (typeof renderHaktzaot === 'function') renderHaktzaot();
         if (typeof renderHaktzaotOptic === 'function') renderHaktzaotOptic();
+        if (typeof renderHaktzaotHadrag === 'function') renderHaktzaotHadrag();
+        if (typeof renderHaktzaotShekem === 'function') renderHaktzaotShekem();
+        if (typeof renderHaktzaotHipok === 'function') renderHaktzaotHipok();
+
         if (typeof renderHaktzaotEsuk === 'function') renderHaktzaotEsuk();
         
-        if (btnShekem) btnShekem.style.display = 'none';
-        if (btnChadrag) btnChadrag.style.display = 'none';
-        if (btnHipok) btnHipok.style.display = 'none';
+        
+        
+        
 
-        if (['shekem', 'chadrag', 'hipok'].includes(currentCategory)) {
+        if (false) {
           currentCategory = 'kesher';
         }
       } else {
@@ -432,91 +464,51 @@
     }
  
     /**
-     * בונה את שורות ההקצאה עבור טבלאות.
-     */
-    function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbodyId, specialRowIndices) {
-      const tbody = document.getElementById(tbodyId);
-      if (!tbody) return;
-      tbody.innerHTML = '';
-      let hasAny = false;
- 
-      names.forEach((name, rowIndex) => {
-        let hasValue = false;
-        const values = [];
- 
-        for (let col = startCol; col <= endCol; col++) {
-          const globalIndex = rowIndex * (totalCols - 1) + (col - 1);
-          const val = data[globalIndex] || '';
-          values.push(val);
-          if (val !== '') hasValue = true;
-        }
- 
-        if (!hasValue) return;
-        hasAny = true;
- 
-        const isSpecialRow = specialRowIndices.includes(rowIndex);
-        let tds = `<td class="test">${name}</td>`;
-        values.forEach(val => {
-          tds += `<td style="text-align:center; font-weight:bold;">${val}</td>`;
-        });
-        tbody.innerHTML += `<tr class="${isSpecialRow ? 'special-row' : ''}">${tds}</tr>`;
-      });
- 
-      if (!hasAny) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
-      }
-    }
- 
-    /**
      * בונה את שורות ההקצאה עבור טבלת הקשר.
      */
-    function renderHaktzaot() {
+    async function renderHaktzaot() {
       const key = getStorageKey('keshertable', currentWeek, currentYear);
-      const saved = localStorage.getItem(key);
- 
-      if (!saved) {
+      const data = await fetchTableData(key);
+      if (!data) {
         document.getElementById('haktzaot-body').innerHTML =
           '<tr><td colspan="8" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
         if (typeof renderPageNumbers2 === 'function') renderPageNumbers2();
         return;
       }
  
-      const data = JSON.parse(saved);
-      const rowNames = [
-        "נושא שבוע","715/709","POC","710","שקדון","CF-33","700","דיסקית","סל\"צ","נתונים",
-        "מגבר","מח-120","מח-121","מח-122","מדונה","אול\"רים","מר2791",
-        "מזוודת הטענה בומבה","מזוודת הטענה ליתיום","משיכה\\זיכוי"
-      ];
-      buildHaktzaotRows(data, rowNames, 50, 1, 7, 'haktzaot-body', [0, rowNames.length - 1]);
+      await buildHaktzaotRows(data, KESHER_ROW_NAMES, 50, 1, 7, 'haktzaot-body', [0, KESHER_ROW_NAMES.length - 1]);
       if (typeof renderPageNumbers2 === 'function') renderPageNumbers2();
     }
  
     /**
      * בונה את שורות ההקצאה עבור טבלת האופטיקה.
      */
-    function renderHaktzaotOptic() {
+    async function renderHaktzaotOptic() {
       const key = getStorageKey('optictable', currentWeek, currentYear);
-      const saved = localStorage.getItem(key);
- 
-      if (!saved) {
+      const data = await fetchTableData(key);
+      if (!data) {
         document.getElementById('haktzaot-optic-body').innerHTML =
           '<tr><td colspan="8" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
         return;
       }
  
-      const data = JSON.parse(saved);
-      const opticRowNames = [
-        "נושא שבוע","מת\"ן","עמית","עמית איכון","חצובת עמית","חצובת תבל","יובל","תבל ידני",
-        "מיני תבל ידני","תבל נשלט","מיני תבל נשלט","רחפן מטריס 300","רחפן איבו",
-        "רחפן אווטא (ערכה זוגית)","15X80","מצפן מעלות","שטיינר","צגון","מצלמת NIKON",
-        "איבו אלפא","התקני הטלה/ כדור ברזל"
-      ];
-      buildHaktzaotRows(data, opticRowNames, 35, 1, 7, 'haktzaot-optic-body', [0]);
+      await buildHaktzaotRows(data, OPTIC_ROW_NAMES, 35, 1, 7, 'haktzaot-optic-body', [0]);
     }
  
     /**
      * מייצרת את כפתורי הניווט בין השבועות בתצוגת ההקצאות.
      */
+    
+    async function renderHaktzaotHadrag() {
+      await renderUnitHaktzaotExtra('haktzaot-chadrag-body', 'hadrag', PAGE_UNIT_MAP['esuk.html']);
+    }
+    async function renderHaktzaotShekem() {
+      await renderUnitHaktzaotExtra('haktzaot-shekem-body', 'shekem', PAGE_UNIT_MAP['esuk.html']);
+    }
+    async function renderHaktzaotHipok() {
+      await renderUnitHaktzaotExtra('haktzaot-hipok-body', 'hipokim', PAGE_UNIT_MAP['esuk.html']);
+    }
+
     function renderPageNumbers2() {
       const container = document.getElementById('pageNumbers2');
       if (!container) return;
@@ -651,8 +643,8 @@
     });
   </script>
  
-  <script src="config.js"></script>
-  <script src="sharepointService.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=1"></script>
+  <script src="sharepointService.js?v=1"></script>
+  <script src="script.js?v=1"></script>
 </body>
 </html>

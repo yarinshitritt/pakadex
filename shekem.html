@@ -2,8 +2,8 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="shekem.css">
+  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="shekem.css?v=1">
   <title>PAKADEX - שעות שק"ם</title>
 </head>
 <body>
@@ -18,9 +18,11 @@
 
       <div class="manager-panel" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:6px 12px; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
         <!-- בצד ימין באמצע: הצגת השבוע -->
-        <div style="display:flex; align-items:center; gap:6px; background:#f1f5f9; padding:4px 10px; border-radius:6px; color:#000000; border:1px solid #cbd5e1; flex-shrink:0;">
-          <span style="font-weight:bold; font-size:14px; color:#000000;">שבוע:</span>
-          <input type="text" id="weekInput" style="width:48px; height:26px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+        <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:6px; background:#f1f5f9; padding:4px 10px; border-radius:6px; color:#000000; border:1px solid #cbd5e1;">
+            <span style="font-weight:bold; font-size:14px; color:#000000;">שבוע:</span>
+            <input type="text" id="weekInput" style="width:48px; height:26px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
+          </div>
         </div>
 
         <!-- במרכז: שיבוץ ישיר לשעות שק"ם -->
@@ -32,7 +34,7 @@
             <option value="bg-hirg">בא"ח חיר"ג (ירוק)</option>
             <option value="bg-pikud">גדוד הפיקוד (כחול)</option>
             <option value="bg-tazam">ענף תצ"מ (סגול)</option>
-            <option value="bg-maphat">מפח"ט/בהל"ג (כתום)</option>
+            <option value="bg-maphat">מפח"ט (כתום)</option>
           </select>
 
           <input type="text" id="directText" placeholder="פרטי הפלוגה / הפעילות..." class="shekem-input" style="width:150px;">
@@ -80,9 +82,9 @@
       </div>
 
       <div id="nextbt">
-        <button onclick="prevWeek()">▶</button>
+        <button onclick="nextWeek()">▶</button>
         <div id="pageNumbers"></div>
-        <button onclick="nextWeek()">◀</button>
+        <button onclick="prevWeek()">◀</button>
       </div>
 
     </div>
@@ -121,43 +123,12 @@
       });
     }
 
-    // ניקוי משבצת בלחיצה ימנית (Right Click)
-    document.addEventListener('contextmenu', function(e) {
-      const cell = e.target.closest('td.platoon-cell');
-      if (cell && cell.closest('#body-shekem')) {
-        e.preventDefault();
-        if (confirm('האם תרצה למחוק את השיבוץ הזה ולפנות את שעות השק"ם?')) {
-          const tbody = cell.closest('tbody');
-          const col = cell.dataset.col;
-          const startRow = parseInt(cell.dataset.row);
-          const span = cell.rowSpan || 1;
 
-          cell.rowSpan = 1;
-          cell.className = 'platoon-cell';
-          const ta = cell.querySelector('textarea');
-          if (ta) {
-            ta.value = '';
-            ta.style.height = '100%';
-          }
-          for (let i = startRow + 1; i < startRow + span; i++) {
-             const hiddenCell = tbody ? tbody.querySelector(`td.platoon-cell[data-row="${i}"][data-col="${col}"]`) : null;
-             if (hiddenCell) {
-                hiddenCell.style.display = '';
-                hiddenCell.rowSpan = 1;
-                hiddenCell.className = 'platoon-cell';
-                const hiddenTa = hiddenCell.querySelector('textarea');
-                if (hiddenTa) hiddenTa.value = '';
-             }
-          }
-          if (typeof saveShekemTables === 'function') saveShekemTables();
-        }
-      }
-    });
   </script>
   
-  <script src="config.js"></script>
-  <script src="sharepointService.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=1"></script>
+  <script src="sharepointService.js?v=1"></script>
+  <script src="script.js?v=1"></script>
 
 </body>
 </html>

@@ -2,8 +2,8 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="hipokim.css">
+  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="hipokim.css?v=1">
   <title>PAKADEX - חיפוקים</title>
 </head>
 <body>
@@ -15,6 +15,10 @@
     <div id="side-nav-placeholder"></div>
 
     <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+      <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+        <button type="button" onclick="promptAddItemRow('hipokim')" class="add-row-btn" style="align-self: flex-start;">➕ הוסף אמצעי (חיפוקים)</button>
+      </div>
 
       <div class="table-container" style="margin-top: 0;">
       <table class="hipoktable" id="hipoktable" dir="rtl" border="1">
@@ -79,16 +83,16 @@
     </div>
 
     <div id="nextbt">
-      <button onclick="prevWeek()">▶</button>
+      <button onclick="nextWeek()">▶</button>
       <div id="pageNumbers"></div>
-      <button onclick="nextWeek()">◀</button>
+      <button onclick="prevWeek()">◀</button>
     </div>
 
   </div>
 
-  <script src="config.js"></script>
-  <script src="sharepointService.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=1"></script>
+  <script src="sharepointService.js?v=1"></script>
+  <script src="script.js?v=1"></script>
 
   <script>
     const ALL_HIPOK_COLORS = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat'];
@@ -156,7 +160,7 @@
       return data;
     }
 
-    function loadHipokData(week, year) {
+    async function loadHipokData(week, year) {
       const table = document.getElementById('hipoktable');
       if (!table) return;
 
@@ -166,10 +170,16 @@
          wrapper.className = 'cell-wrapper';
       });
 
-      const saved = localStorage.getItem(getStorageKey('hipoktable', week, year));
-      if (!saved) return;
+      const key = getStorageKey('hipoktable', week, year);
+      let data = null;
+      if (typeof fetchTableData === 'function') {
+        data = await fetchTableData(key);
+      } else {
+        const saved = localStorage.getItem(key);
+        if (saved) data = JSON.parse(saved);
+      }
+      if (!data) return;
 
-      const data = JSON.parse(saved);
       document.querySelectorAll('#hipoktable .task-input').forEach((el, i) => {
         if (data['task_' + i] !== undefined) {
           el.value = data['task_' + i];

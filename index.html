@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=1">
   <title>PAKADEX - ראשי</title>
   <style>
     .welcome-container {
@@ -30,17 +30,70 @@
   <div style="display:flex; gap:20px; align-items:flex-start; margin-top: 10px; width: 100%;">
     <div id="side-nav-placeholder"></div>
     
-    <div class="table-container" style="margin-top: 0; display:flex; justify-content:center; align-items:center;">
-      <div class="welcome-container">
-        <h1>PAKADEX</h1>
-        <p>ברוכים הבאים למערכת ניהול הציוד והאימונים של בהל"ג.</p>
-        <p style="color: #0aa1b2; font-size:18px;">אנא בחרו יחידה או טבלה מהתפריט בצד כדי להתחיל.</p>
+    <div class="dashboard-content">
+      
+      <h2 style="color: #334155; margin: 0 0 16px 0;">גישה מהירה לניהול</h2>
+      <div class="shortcuts-grid">
+        <a href="kesher.html" class="shortcut-card">
+          <div class="shortcut-icon">📻</div>
+          <div class="shortcut-title">קשר</div>
+          <div style="font-size: 14px; color: var(--text-muted);">הקצאות אמצעי קשר</div>
+        </a>
+        <a href="optic.html" class="shortcut-card">
+          <div class="shortcut-icon">🔭</div>
+          <div class="shortcut-title">אופטיקה</div>
+          <div style="font-size: 14px; color: var(--text-muted);">  הקצאות אמצעי אופטיקה</div>
+        </a>
+        <a href="modiein.html" class="shortcut-card">
+          <div class="shortcut-icon">📡</div>
+          <div class="shortcut-title">מודיעין</div>
+          <div style="font-size: 14px; color: var(--text-muted);">הקצאות אמצעי מודיעין</div>
+        </a>
+        <a href="hipokim.html" class="shortcut-card">
+          <div class="shortcut-icon">🚑</div>
+          <div class="shortcut-title">חיפוקים</div>
+          <div style="font-size: 14px; color: var(--text-muted);">שיבוץ לחיפוקים</div>
+        </a>
+        <a href="hadrag.html" class="shortcut-card">
+          <div class="shortcut-icon">🎯</div>
+          <div class="shortcut-title">חדר"ג</div>
+          <div style="font-size: 14px; color: var(--text-muted);">שיבוצים לכיתות</div>
+        </a>
+        <a href="shekem.html" class="shortcut-card">
+          <div class="shortcut-icon">🏪</div>
+          <div class="shortcut-title">שק"ם</div>
+          <div style="font-size: 14px; color: var(--text-muted);">שעות שק"ם</div>
+        </a>
+      </div>
+
+      <h2 style="color: #334155; margin-top: 36px; margin-bottom: 16px;">מסכי פלוגות ויחידות</h2>
+      <div class="shortcuts-grid">
+        <a href="esuk.html" class="shortcut-card">
+          <div class="shortcut-icon">🟡</div>
+          <div class="shortcut-title">בא"ח איסו"ק</div>
+        </a>
+        <a href="hirg.html" class="shortcut-card">
+          <div class="shortcut-icon">🟢</div>
+          <div class="shortcut-title">בא"ח חיר"ג</div>
+        </a>
+        <a href="pikud.html" class="shortcut-card">
+          <div class="shortcut-icon">🔵</div>
+          <div class="shortcut-title">גדוד הפיקוד</div>
+        </a>
+        <a href="tazam.html" class="shortcut-card">
+          <div class="shortcut-icon">🟣</div>
+          <div class="shortcut-title">ענף תצ"מ</div>
+        </a>
+        <a href="bahalag.html" class="shortcut-card">
+          <div class="shortcut-icon">🟠</div>
+          <div class="shortcut-title">מפח"ט</div>
+        </a>
       </div>
     </div>
   </div>
 
-  <script src="config.js"></script>
-  <script src="sharepointService.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js?v=1"></script>
+  <script src="sharepointService.js?v=1"></script>
+  <script src="script.js?v=1"></script>
 </body>
 </html>

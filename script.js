@@ -3231,6 +3231,165 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* =========================================================
+   בחירה מרובה + העתק/הדבק בלוק (אפיון 1.3)
+   פועל על טבלאות גריד (.cell-input) בלבד - לא על טבלאות המיזוג (חדר"ג/שק"ם).
+========================================================= */
+let _msTable = null;
+let _msAnchor = null;
+let _msFocus = null;
+let _msSelecting = false;
+let _blockClipboard = null; // מערך דו-ממדי של ערכים
+
+function _isGridInput(el) {
+  return el && el.classList && el.classList.contains('cell-input');
+}
+function _isMergeTable(table) {
+  return !!(table && table.querySelector('td.platoon-cell'));
+}
+function _cellCoord(input) {
+  const tr = input.closest('tr');
+  const tbody = tr.parentElement;
+  const r = Array.from(tbody.rows).indexOf(tr);
+  const inputs = Array.from(tr.querySelectorAll('.cell-input'));
+  const c = inputs.indexOf(input);
+  return { r, c, tbody };
+}
+function _inputAt(tbody, r, c) {
+  const tr = tbody.rows[r];
+  if (!tr) return null;
+  const inputs = tr.querySelectorAll('.cell-input');
+  return inputs[c] || null;
+}
+function _clearRangeHighlight() {
+  document.querySelectorAll('td.range-selected').forEach(td => td.classList.remove('range-selected'));
+}
+function _rangeBounds() {
+  return {
+    r1: Math.min(_msAnchor.r, _msFocus.r), r2: Math.max(_msAnchor.r, _msFocus.r),
+    c1: Math.min(_msAnchor.c, _msFocus.c), c2: Math.max(_msAnchor.c, _msFocus.c)
+  };
+}
+function _applyRangeHighlight() {
+  _clearRangeHighlight();
+  if (!_msTable || !_msAnchor || !_msFocus) return;
+  const tbody = _msTable.tBodies[0];
+  const { r1, r2, c1, c2 } = _rangeBounds();
+  for (let r = r1; r <= r2; r++) {
+    for (let c = c1; c <= c2; c++) {
+      const inp = _inputAt(tbody, r, c);
+      if (inp) inp.closest('td').classList.add('range-selected');
+    }
+  }
+}
+function _hasMultiSelection() {
+  return _msTable && _msAnchor && _msFocus && (_msAnchor.r !== _msFocus.r || _msAnchor.c !== _msFocus.c);
+}
+
+document.addEventListener('mousedown', (e) => {
+  const inp = e.target.closest ? e.target.closest('.cell-input') : null;
+  if (!_isGridInput(inp)) return;
+  const table = inp.closest('table');
+  if (!table || _isMergeTable(table)) return;
+
+  const coord = _cellCoord(inp);
+  if (e.shiftKey && _msTable === table && _msAnchor) {
+    // הרחבת בחירה עם Shift+קליק
+    _msFocus = { r: coord.r, c: coord.c };
+    _applyRangeHighlight();
+    e.preventDefault();
+    return;
+  }
+  _msTable = table;
+  _msAnchor = { r: coord.r, c: coord.c };
+  _msFocus = { r: coord.r, c: coord.c };
+  _msSelecting = true;
+  _clearRangeHighlight();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!_msSelecting || !_msTable) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const inp = el && el.closest ? el.closest('.cell-input') : null;
+  if (!_isGridInput(inp) || inp.closest('table') !== _msTable) return;
+  const coord = _cellCoord(inp);
+  if (coord.r !== _msFocus.r || coord.c !== _msFocus.c) {
+    _msFocus = { r: coord.r, c: coord.c };
+    if (_hasMultiSelection()) {
+      e.preventDefault();
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      window.getSelection && window.getSelection().removeAllRanges();
+      _applyRangeHighlight();
+    }
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (!_msSelecting) return;
+  _msSelecting = false;
+  if (!_hasMultiSelection()) _clearRangeHighlight();
+});
+
+// גזירת בלוק לטקסט TSV
+function _copyBlock() {
+  if (!_msTable || !_msAnchor || !_msFocus) return false;
+  const tbody = _msTable.tBodies[0];
+  const { r1, r2, c1, c2 } = _rangeBounds();
+  const block = [];
+  for (let r = r1; r <= r2; r++) {
+    const row = [];
+    for (let c = c1; c <= c2; c++) {
+      const inp = _inputAt(tbody, r, c);
+      row.push(inp ? inp.value : '');
+    }
+    block.push(row);
+  }
+  _blockClipboard = block;
+  const tsv = block.map(row => row.join('\t')).join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(tsv).catch(() => {});
+  }
+  return true;
+}
+
+// הדבקת בלוק החל מהתא הפעיל / פינת הבחירה השמאלית-עליונה
+function _pasteBlock() {
+  if (!_blockClipboard || !_msTable) return false;
+  const tbody = _msTable.tBodies[0];
+  let startR, startC;
+  const active = document.activeElement;
+  if (_isGridInput(active) && active.closest('table') === _msTable) {
+    const coord = _cellCoord(active);
+    startR = coord.r; startC = coord.c;
+  } else {
+    const b = _rangeBounds();
+    startR = b.r1; startC = b.c1;
+  }
+  for (let i = 0; i < _blockClipboard.length; i++) {
+    for (let j = 0; j < _blockClipboard[i].length; j++) {
+      const inp = _inputAt(tbody, startR + i, startC + j);
+      if (inp) {
+        inp.value = _blockClipboard[i][j];
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  }
+  return true;
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const key = e.key.toLowerCase();
+  const active = document.activeElement;
+  const inGrid = _isGridInput(active) && active.closest('table') && !_isMergeTable(active.closest('table'));
+
+  if (key === 'c' && _hasMultiSelection()) {
+    if (_copyBlock()) e.preventDefault();
+  } else if (key === 'v' && _blockClipboard && (inGrid || _hasMultiSelection())) {
+    if (_pasteBlock()) e.preventDefault();
+  }
+});
+
+/* =========================================================
    מרכז התראות (Notification Center) - אפיון 1.8
 ========================================================= */
 const NOTIF_KEY = 'pakadex_notifications';

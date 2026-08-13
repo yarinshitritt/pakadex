@@ -770,3 +770,21 @@ td.range-selected {
 .req-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 800; white-space: nowrap; }
 .req-badge.pending { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
 .req-badge.approved { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+/* חיווי מצב סנכרון (אפיון חלק 2) */
+.sync-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.sync-chip.sync-local    { background: #334155; color: #cbd5e1; border-color: #475569; }
+.sync-chip.sync-ok       { background: #dcfce7; color: #166534; border-color: #86efac; }
+.sync-chip.sync-pending  { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.sync-chip.sync-offline  { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.sync-chip.sync-disabled { background: #e2e8f0; color: #475569; border-color: #cbd5e1; }

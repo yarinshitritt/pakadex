@@ -14,6 +14,20 @@ let currentYear = new Date().getFullYear();
 const TOTAL_WEEKS = 52;
 const tableWeeks = {};
 
+/**
+ * שמירת נתון דרך שכבת הסנכרון ההיברידית (אפיון חלק 2):
+ * מנתב ל-DataService (localStorage מיידי + סנכרון לשרת/תור), עם נפילה חזרה ל-localStorage.
+ * @param {string} key - מפתח השמירה
+ * @param {*} data - אובייקט הנתונים (לא מחרוזת)
+ */
+function persist(key, data) {
+  if (typeof DataService !== 'undefined') {
+    DataService.setItem(key, data);
+  } else {
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {}
+  }
+}
+
 /* ================================
    יצירת תפריטי ניווט גלובליים
 ================================ */
@@ -171,6 +185,9 @@ function renderNavbars() {
         <div id="notif-panel" class="notif-panel" style="display:none;"></div>
       </div>`;
 
+    // חיווי מצב סנכרון (אפיון חלק 2)
+    const syncChipBlock = `<div class="sync-chip" id="sync-chip" title="מצב סנכרון נתונים"></div>`;
+
     const topNavButtonsBlock = !isMain ? `
       <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
         <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
@@ -179,6 +196,7 @@ function renderNavbars() {
         <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
         <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
         <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
+        ${syncChipBlock}
         ${bellBlock}
         ${undoRedoBlock}
         ${printBtnBlock}
@@ -201,6 +219,7 @@ function renderNavbars() {
 
     updateBreadcrumbPath();
     if (typeof updateNotifBadge === 'function') updateNotifBadge();
+    if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
   }
 
   // 2. הזרקת תפריט צדדי (Side Nav)
@@ -766,7 +785,7 @@ async function globalExportUnit() {
 // מעתיקה גם את מבנה השורות (rowList) כדי לשמור התאמה בין הנתונים לשמות האמצעים.
 function copyRowListToWeek(category, targetWeek, targetYear) {
   const rows = getRowsForWeek(category, currentWeek, currentYear);
-  localStorage.setItem(getRowsStorageKey(category, targetWeek, targetYear), JSON.stringify(rows));
+  persist(getRowsStorageKey(category, targetWeek, targetYear), rows);
 }
 
 /**
@@ -1288,7 +1307,7 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
     const subVal = value !== undefined && value !== null ? String(value).trim() : '';
     ackData[`${sourceTableId}_${idx}`] = subVal;
   });
-  localStorage.setItem(ackKey, JSON.stringify(ackData));
+  persist(ackKey, ackData);
 
   if (targetTableId === 'keshertable') recalcAll(targetTableId);
   else recalcAll(targetTableId, tableConfigs[targetTableId]);
@@ -1594,7 +1613,7 @@ async function reorderCategoryRow(category, fromIndex, toIndex) {
 
   // רשימת אמצעים חדשה
   const newRows = order.map(i => rows[i]);
-  localStorage.setItem(getRowsStorageKey(category, currentWeek, currentYear), JSON.stringify(newRows));
+  persist(getRowsStorageKey(category, currentWeek, currentYear), newRows);
 
   // מיפוי מחדש של הנתונים לכל הטבלאות בקטגוריה
   const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
@@ -1613,7 +1632,7 @@ async function reorderCategoryRow(category, fromIndex, toIndex) {
           if (data[oldIdx] !== undefined) newData[newIdx] = data[oldIdx];
         }
       });
-      localStorage.setItem(key, JSON.stringify(newData));
+      persist(key, newData);
     });
   });
 
@@ -1659,7 +1678,7 @@ function addItemRow(category, itemName) {
       newList.splice(insertIdx, 0, itemName);
       
       if ((w === currentWeek && y === currentYear) || hasExplicitSave[`${w}_${y}`]) {
-        localStorage.setItem(getRowsStorageKey(category, w, y), JSON.stringify(newList));
+        persist(getRowsStorageKey(category, w, y), newList);
       }
 
       tableList.forEach(t => {
@@ -1682,7 +1701,7 @@ function addItemRow(category, itemName) {
             }
           });
 
-          localStorage.setItem(key, JSON.stringify(newData));
+          persist(key, newData);
         }
       });
     }
@@ -1729,7 +1748,7 @@ function deleteRowItem(category, rowIndex) {
       const newList = listW.filter((_, idx) => idx !== targetIdx);
       
       if ((w === currentWeek && y === currentYear) || hasExplicitSave[`${w}_${y}`]) {
-        localStorage.setItem(getRowsStorageKey(category, w, y), JSON.stringify(newList));
+        persist(getRowsStorageKey(category, w, y), newList);
       }
 
       tableList.forEach(t => {
@@ -1755,7 +1774,7 @@ function deleteRowItem(category, rowIndex) {
             }
           });
 
-          localStorage.setItem(key, JSON.stringify(newData));
+          persist(key, newData);
         }
       });
     }
@@ -2114,7 +2133,7 @@ function initTableListeners() {
             const ackSavedRaw = localStorage.getItem(ackKey);
             const ackData = ackSavedRaw ? JSON.parse(ackSavedRaw) : {};
             ackData[`${subTableId}_${subIndex}`] = subVal;
-            localStorage.setItem(ackKey, JSON.stringify(ackData));
+            persist(ackKey, ackData);
           }
           checkRequirementChanges(tableId);
         }
@@ -2654,7 +2673,7 @@ function saveHadragTables() {
         };
       }
     }
-    localStorage.setItem(`hadragData_${tableId}_week${currentWeek}_year${currentYear}`, JSON.stringify(tableData));
+    persist(`hadragData_${tableId}_week${currentWeek}_year${currentYear}`, tableData);
   });
 }
 
@@ -2697,10 +2716,12 @@ async function loadHadragTables(week, year) {
     generateTimeSlots(tableId); 
     resetHadragOrShekemTable(tbody);
 
-    const saved = localStorage.getItem(`hadragData_${tableId}_week${week}_year${year}`);
-    if (!saved) return; 
-    
-    const tableData = JSON.parse(saved);
+    const hKey = `hadragData_${tableId}_week${week}_year${year}`;
+    const tableData = (typeof DataService !== 'undefined')
+      ? await DataService.getItem(hKey)
+      : JSON.parse(localStorage.getItem(hKey) || 'null');
+    if (!tableData) continue;
+
     for (let r = 0; r < 36; r++) {
       for (let c = 0; c < 7; c++) {
         const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
@@ -2990,7 +3011,7 @@ function saveShekemTables() {
       };
     }
   }
-  localStorage.setItem(`shekemData_body-shekem_week${currentWeek}_year${currentYear}`, JSON.stringify(tableData));
+  persist(`shekemData_body-shekem_week${currentWeek}_year${currentYear}`, tableData);
 }
 
 /**
@@ -3007,10 +3028,12 @@ async function loadShekemTables(week, year) {
   generateTimeSlots('body-shekem'); 
   resetHadragOrShekemTable(tbody);
 
-  const saved = localStorage.getItem(`shekemData_body-shekem_week${week}_year${year}`);
-  if (!saved) return; 
-  
-  const tableData = JSON.parse(saved);
+  const sKey = `shekemData_body-shekem_week${week}_year${year}`;
+  const tableData = (typeof DataService !== 'undefined')
+    ? await DataService.getItem(sKey)
+    : JSON.parse(localStorage.getItem(sKey) || 'null');
+  if (!tableData) return;
+
   for (let r = 0; r < 36; r++) {
     for (let c = 0; c < 7; c++) {
       const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
@@ -3563,6 +3586,28 @@ document.addEventListener('paste', (e) => {
     }
   }
 });
+
+/* =========================================================
+   חיווי מצב סנכרון נתונים (אפיון חלק 2)
+========================================================= */
+function updateSyncIndicator() {
+  const chip = document.getElementById('sync-chip');
+  if (!chip) return;
+  if (typeof DataService === 'undefined' || typeof DataService.getSyncStatus !== 'function') {
+    chip.style.display = 'none';
+    return;
+  }
+  const s = DataService.getSyncStatus();
+  chip.style.display = 'inline-flex';
+  chip.classList.remove('sync-ok', 'sync-pending', 'sync-offline', 'sync-local', 'sync-disabled');
+
+  if (!s.remote) { chip.classList.add('sync-local'); chip.textContent = '💾 מקומי'; return; }
+  if (s.disabled) { chip.classList.add('sync-disabled'); chip.textContent = '⚪ שרת לא זמין'; return; }
+  if (!s.online) { chip.classList.add('sync-offline'); chip.textContent = `🔴 לא מקוון${s.pending ? ` (${s.pending})` : ''}`; return; }
+  if (s.pending > 0) { chip.classList.add('sync-pending'); chip.textContent = `🟡 מסנכרן… ${s.pending}`; return; }
+  chip.classList.add('sync-ok'); chip.textContent = '🟢 מסונכרן';
+}
+if (typeof window !== 'undefined') window.updateSyncIndicator = updateSyncIndicator;
 
 /* =========================================================
    מרכז התראות (Notification Center) - אפיון 1.8

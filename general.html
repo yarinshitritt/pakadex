@@ -5,73 +5,59 @@
   <link rel="stylesheet" href="style.css?v=1">
   <title>PAKADEX - טבלאות אקסל</title>
   <style>
-    .excel-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 12px 14px;
-      margin-bottom: 8px;
-      box-shadow: var(--shadow-sm);
-    }
-    .excel-toolbar label { font-weight: 700; color: #0f172a; }
-    .excel-toolbar select, .excel-toolbar input {
-      height: 38px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 0 10px;
-      font-family: inherit;
-      font-size: 14px;
-      outline: none;
-    }
-    .excel-toolbar select:focus, .excel-toolbar input:focus { border-color: var(--primary); }
-    #excelUrlInput { flex: 1; min-width: 220px; }
-    .excel-btn {
-      height: 38px;
-      padding: 0 16px;
-      border: none;
-      border-radius: 6px;
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-      color: #fff;
-      transition: all 0.2s;
-    }
-    .excel-btn.load { background: linear-gradient(135deg, #0284c7, #0369a1); }
-    .excel-btn.edit { background: linear-gradient(135deg, #16a34a, #15803d); }
-    .excel-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.18); }
     .excel-note {
-      background: #f0f9ff;
-      border: 1px solid #bae6fd;
-      color: #075985;
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 8px;
+      background: #f0f9ff; border: 1px solid #bae6fd; color: #075985;
+      border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 600; margin-bottom: 8px;
     }
-    .excel-frame-wrap {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      overflow: hidden;
-      height: calc(100vh - 210px);
-      min-height: 380px;
+    .excel-weekbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--card-bg); border: 1px solid var(--border-color);
+      border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 8px; box-shadow: var(--shadow-sm);
     }
-    #excelFrame { width: 100%; height: 100%; border: 0; }
+    .excel-navbtn {
+      height: 38px; padding: 0 14px; border: 1px solid var(--border-color); border-radius: 6px;
+      background: #1e293b; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    .excel-navbtn:hover { background: #334155; }
+    .week-btn {
+      height: 40px; min-width: 96px; padding: 0 14px; border: 2px solid var(--border-color);
+      border-radius: 8px; background: #f8fafc; color: #0f172a; font-weight: 800; font-size: 14px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1;
+    }
+    .week-btn small { font-weight: 600; font-size: 11px; color: var(--text-muted); }
+    .week-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .week-btn.has-file { border-color: #16a34a; }
+    .week-btn.active small, .week-btn.active { color: #fff; }
+    .week-btn .dot { color: #16a34a; font-size: 11px; }
+    .week-btn.active .dot { color: #d1fae5; }
+
+    .excel-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-right: auto; }
+    .excel-upload-btn {
+      height: 38px; padding: 0 16px; border: none; border-radius: 6px;
+      background: linear-gradient(135deg,#0284c7,#0369a1); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    .excel-upload-btn:hover { transform: translateY(-1px); }
+    .excel-edit-btn { background: linear-gradient(135deg,#16a34a,#15803d); }
+    .excel-del-btn { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    .excel-file-name { font-weight: 700; color: #334155; font-size: 13px; }
+
+    .sheet-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: -1px; }
+    .sheet-tab {
+      padding: 7px 14px; border: 1px solid var(--border-color); border-bottom: none;
+      border-radius: 8px 8px 0 0; background: #eef2f7; color: #334155; font-weight: 700; font-size: 13px; cursor: pointer;
+    }
+    .sheet-tab.active { background: #fff; color: var(--primary); border-color: var(--primary); border-bottom: 1px solid #fff; }
+
+    .excel-viewer {
+      background: #fff; border: 1px solid var(--border-color); border-radius: 0 8px 8px 8px;
+      box-shadow: var(--shadow-sm); overflow: auto; height: calc(100vh - 250px); min-height: 340px; padding: 10px;
+    }
+    .excel-viewer table { border-collapse: collapse; width: max-content; min-width: 100%; }
+    .excel-viewer td, .excel-viewer th { border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 13px; white-space: nowrap; }
+    .excel-viewer tr:first-child td { background: #f1f5f9; font-weight: 700; }
     .excel-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #94a3b8;
-      text-align: center;
-      padding: 24px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; color: #94a3b8; text-align: center; padding: 24px;
     }
     .excel-empty .big { font-size: 46px; margin-bottom: 10px; }
   </style>
@@ -87,24 +73,29 @@
     <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
 
       <div class="excel-note">
-        📅 תצוגת טבלאות אקסל חיצוניות מה-SharePoint (3 שבועות קדימה). בחר קובץ מהרשימה או הדבק קישור הטמעה, ולחץ "טען".
-        לעריכה מלאה לחץ "פתח לעריכה באקסל" — הקובץ ייפתח בתוכנת האקסל המקומית וישמור חזרה לענן.
+        📅 טבלאות אקסל לפי שבוע (חלון של 3 שבועות קדימה). לכל שבוע ניתן להעלות קובץ אקסל מהמחשב — הוא יישמר ויוצג כאן, כולל כל הלשוניות שבו. הניווט מדלג 3 שבועות בכל פעם.
       </div>
 
-      <div class="excel-toolbar">
-        <label for="excelSelect">קובץ:</label>
-        <select id="excelSelect" onchange="onSelectExcel()"></select>
-        <input type="text" id="excelUrlInput" placeholder="או הדבק כאן קישור הטמעה (embed) של קובץ אקסל מ-SharePoint">
-        <button class="excel-btn load" onclick="loadExcel()">טען ▶</button>
-        <button class="excel-btn edit" onclick="openInExcel()">📝 פתח לעריכה באקסל</button>
+      <div class="excel-weekbar">
+        <button class="excel-navbtn" onclick="shiftWeeks(-3)" title="3 שבועות אחורה">◀ הקודם</button>
+        <div id="weekButtons" style="display:flex; gap:8px;"></div>
+        <button class="excel-navbtn" onclick="shiftWeeks(3)" title="3 שבועות קדימה">הבא ▶</button>
+
+        <div class="excel-actions">
+          <span id="fileNameLabel" class="excel-file-name"></span>
+          <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="onFileChosen(event)">
+          <button class="excel-upload-btn" onclick="document.getElementById('excelFileInput').click()">⬆️ העלה קובץ לשבוע זה</button>
+          <button class="excel-upload-btn excel-edit-btn" onclick="downloadCurrentFile()" title="הורד את הקובץ לעריכה במחשב">📝 הורד לעריכה</button>
+          <button class="excel-upload-btn excel-del-btn" onclick="deleteCurrentFile()">🗑️ מחק</button>
+        </div>
       </div>
 
-      <div class="excel-frame-wrap">
-        <iframe id="excelFrame" title="Excel" style="display:none;"></iframe>
-        <div id="excelEmpty" class="excel-empty">
+      <div id="sheetTabs" class="sheet-tabs"></div>
+      <div id="excelViewer" class="excel-viewer">
+        <div class="excel-empty" id="excelEmpty">
           <div class="big">📊</div>
-          <div style="font-weight:800; font-size:18px; color:#64748b;">לא נטען קובץ</div>
-          <div style="margin-top:6px;">בחר קובץ מהרשימה או הדבק קישור הטמעה ולחץ "טען".</div>
+          <div style="font-weight:800; font-size:18px; color:#64748b;">אין קובץ לשבוע זה</div>
+          <div style="margin-top:6px;">לחץ "העלה קובץ לשבוע זה" כדי לטעון גיליון אקסל מהמחשב.</div>
         </div>
       </div>
 
@@ -114,63 +105,142 @@
   <script src="config.js?v=1"></script>
   <script src="sharepointService.js?v=1"></script>
   <script src="script.js?v=1"></script>
+  <script src="xlsx.full.min.js?v=1"></script>
 
   <script>
-    // אתחול רשימת הקבצים מתוך CONFIG
-    (function initExcelList() {
-      const sel = document.getElementById('excelSelect');
-      const files = (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.EXCEL_FILES)) ? CONFIG.EXCEL_FILES : [];
-      sel.innerHTML = '<option value="">— בחר קובץ —</option>';
-      files.forEach((f, i) => {
-        const opt = document.createElement('option');
-        opt.value = String(i);
-        opt.textContent = f.name || ('קובץ ' + (i + 1));
-        sel.appendChild(opt);
-      });
-      if (files.length === 0) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = '(לא הוגדרו קבצים ב-config.js)';
-        opt.disabled = true;
-        sel.appendChild(opt);
+    let baseWeek, curYear, selectedWeek;
+    let currentWorkbook = null;
+
+    function excelKey(week, year) { return `pakadex_excel_week${week}_year${year}`; }
+
+    function initWeeks() {
+      const wy = (typeof getCurrentWeekAndYear === 'function') ? getCurrentWeekAndYear() : { week: 1, year: new Date().getFullYear() };
+      baseWeek = wy.week;
+      curYear = wy.year;
+      selectedWeek = baseWeek;
+      renderWeekButtons();
+      loadWeekFile(selectedWeek);
+    }
+
+    function shiftWeeks(delta) {
+      baseWeek += delta;
+      if (baseWeek < 1) baseWeek = 1;
+      if (baseWeek > 52) baseWeek = 52;
+      selectedWeek = baseWeek;
+      renderWeekButtons();
+      loadWeekFile(selectedWeek);
+    }
+
+    function renderWeekButtons() {
+      const cont = document.getElementById('weekButtons');
+      cont.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const w = baseWeek + i;
+        if (w > 52) break;
+        const hasFile = !!localStorage.getItem(excelKey(w, curYear));
+        const btn = document.createElement('button');
+        btn.className = 'week-btn' + (w === selectedWeek ? ' active' : '') + (hasFile ? ' has-file' : '');
+        btn.innerHTML = `שבוע ${w} ${hasFile ? '<span class="dot">●</span>' : ''}<small>${curYear}</small>`;
+        btn.onclick = () => { selectedWeek = w; renderWeekButtons(); loadWeekFile(w); };
+        cont.appendChild(btn);
       }
-    })();
-
-    function currentFile() {
-      const sel = document.getElementById('excelSelect');
-      const idx = sel.value;
-      if (idx === '' ) return null;
-      return CONFIG.EXCEL_FILES[parseInt(idx)] || null;
     }
 
-    function onSelectExcel() {
-      const f = currentFile();
-      const urlInput = document.getElementById('excelUrlInput');
-      if (f && f.embedUrl) urlInput.value = f.embedUrl;
+    function onFileChosen(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const b64 = ev.target.result.split(',')[1] || '';
+        try {
+          localStorage.setItem(excelKey(selectedWeek, curYear), JSON.stringify({ name: file.name, b64 }));
+        } catch (err) {
+          alert('שגיאה בשמירת הקובץ (ייתכן שהוא גדול מדי לאחסון המקומי).');
+          return;
+        }
+        renderWeekButtons();
+        loadWeekFile(selectedWeek);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
     }
 
-    function loadExcel() {
-      const urlInput = document.getElementById('excelUrlInput');
-      const f = currentFile();
-      const url = (urlInput.value || '').trim() || (f && f.embedUrl) || '';
-      if (!url) { alert('בחר קובץ מהרשימה או הדבק קישור הטמעה תחילה.'); return; }
-
-      const frame = document.getElementById('excelFrame');
-      const empty = document.getElementById('excelEmpty');
-      frame.src = url;
-      frame.style.display = 'block';
-      empty.style.display = 'none';
+    function _b64ToArray(b64) {
+      const bin = atob(b64);
+      const len = bin.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+      return bytes;
     }
 
-    function openInExcel() {
-      const f = currentFile();
-      const urlInput = document.getElementById('excelUrlInput');
-      // עדיפות ל-editUrl של הקובץ שנבחר; אחרת הקישור שהודבק
-      const editUrl = (f && f.editUrl) || (urlInput.value || '').trim();
-      if (!editUrl) { alert('אין קישור עריכה זמין. בחר קובץ עם editUrl מוגדר, או הדבק קישור ישיר לקובץ.'); return; }
-      // פרוטוקול לפתיחת הקובץ בתוכנת ה-Excel המקומית (Office URI Scheme)
-      window.location.href = 'ms-excel:ofe|u|' + editUrl;
+    function loadWeekFile(week) {
+      const viewer = document.getElementById('excelViewer');
+      const tabs = document.getElementById('sheetTabs');
+      const label = document.getElementById('fileNameLabel');
+      currentWorkbook = null;
+      tabs.innerHTML = '';
+
+      const raw = localStorage.getItem(excelKey(week, curYear));
+      if (!raw) {
+        label.textContent = '';
+        viewer.innerHTML = '<div class="excel-empty"><div class="big">📊</div><div style="font-weight:800; font-size:18px; color:#64748b;">אין קובץ לשבוע ' + week + '</div><div style="margin-top:6px;">לחץ "העלה קובץ לשבוע זה" כדי לטעון גיליון אקסל מהמחשב.</div></div>';
+        return;
+      }
+
+      let stored;
+      try { stored = JSON.parse(raw); } catch (e) { return; }
+      label.textContent = '📄 ' + (stored.name || 'קובץ אקסל');
+
+      try {
+        const data = _b64ToArray(stored.b64);
+        currentWorkbook = XLSX.read(data, { type: 'array' });
+      } catch (e) {
+        viewer.innerHTML = '<div class="excel-empty">שגיאה בקריאת הקובץ.</div>';
+        return;
+      }
+
+      // לשוניות (sheets)
+      const names = currentWorkbook.SheetNames || [];
+      names.forEach((name, idx) => {
+        const tab = document.createElement('button');
+        tab.className = 'sheet-tab' + (idx === 0 ? ' active' : '');
+        tab.textContent = name;
+        tab.onclick = () => showSheet(name, tab);
+        tabs.appendChild(tab);
+      });
+
+      if (names.length) showSheet(names[0], tabs.firstChild);
     }
+
+    function showSheet(name, tabEl) {
+      if (!currentWorkbook) return;
+      document.querySelectorAll('.sheet-tab').forEach(t => t.classList.remove('active'));
+      if (tabEl) tabEl.classList.add('active');
+      const ws = currentWorkbook.Sheets[name];
+      const html = XLSX.utils.sheet_to_html(ws, { editable: false });
+      document.getElementById('excelViewer').innerHTML = html;
+    }
+
+    function downloadCurrentFile() {
+      const raw = localStorage.getItem(excelKey(selectedWeek, curYear));
+      if (!raw) { alert('אין קובץ לשבוע זה.'); return; }
+      const stored = JSON.parse(raw);
+      const a = document.createElement('a');
+      a.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + stored.b64;
+      a.download = stored.name || ('week' + selectedWeek + '.xlsx');
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    function deleteCurrentFile() {
+      if (!localStorage.getItem(excelKey(selectedWeek, curYear))) { alert('אין קובץ לשבוע זה.'); return; }
+      if (!confirm('למחוק את קובץ האקסל של שבוע ' + selectedWeek + '?')) return;
+      localStorage.removeItem(excelKey(selectedWeek, curYear));
+      renderWeekButtons();
+      loadWeekFile(selectedWeek);
+    }
+
+    // אתחול לאחר שסקריפט הליבה הגדיר את השבוע/שנה
+    window.addEventListener('load', initWeeks);
   </script>
 </body>
 </html>

@@ -733,3 +733,40 @@ td.range-selected {
   outline: 1px solid rgba(2, 132, 199, 0.55);
   outline-offset: -1px;
 }
+
+/* תצוגת לו"ז משובץ לקריאה + תגי סטטוס בקשה (אפיון 1.1) */
+.schedule-view {
+  max-width: 760px;
+  margin: 18px auto 0;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.schedule-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: center;
+}
+.schedule-empty { text-align: center; color: #94a3b8; font-weight: 600; padding: 10px; }
+.schedule-list { display: flex; flex-direction: column; gap: 6px; }
+.sch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+.sch-unit { padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 11.5px; white-space: nowrap; }
+.sch-day { font-weight: 700; color: #334155; width: 70px; }
+.sch-facility { background: #0f172a; color: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 11.5px; white-space: nowrap; }
+.sch-text { flex: 1; text-align: right; color: #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sch-time { font-weight: 800; color: #0f172a; }
+.req-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.req-badge.pending { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.req-badge.approved { background: #dcfce7; color: #166534; border: 1px solid #86efac; }

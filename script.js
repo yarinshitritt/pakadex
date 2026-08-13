@@ -2254,6 +2254,60 @@ const HADRAG_FACILITY_NAMES = {
 const HADRAG_DAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const ALL_COLOR_CLASSES = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'imported', 'conflict-overlap'];
 
+/* בדיקת חפיפת טווחי שעות (HH:MM) - עבור התראת התנגשות (אפיון 1.1) */
+function _timeRangesOverlap(s1, e1, s2, e2) {
+  return s1 < e2 && s2 < e1;
+}
+
+/**
+ * מרנדרת תצוגת לו"ז משובץ לקריאה בלבד (כל היחידות) בדף היחידה (אפיון 1.1).
+ * @param {string} type - 'hadrag' או 'shekem'
+ */
+async function renderUnitScheduleView(type) {
+  const isHadrag = type === 'hadrag';
+  const listId = isHadrag ? 'hadragRequestsList' : 'shekemRequestsList';
+  const viewId = isHadrag ? 'hadragScheduleView' : 'shekemScheduleView';
+  const listEl = document.getElementById(listId);
+  if (!listEl) return;
+
+  let view = document.getElementById(viewId);
+  if (!view) {
+    view = document.createElement('div');
+    view.id = viewId;
+    view.className = 'schedule-view';
+    listEl.parentElement.appendChild(view);
+  }
+
+  const requests = isHadrag
+    ? await loadHadragRequests(currentWeek, currentYear)
+    : await loadShekemRequests(currentWeek, currentYear);
+  const approved = requests.filter(r => r.status === 'approved');
+
+  approved.sort((a, b) => (a.day - b.day) || String(a.startTime).localeCompare(String(b.startTime)));
+
+  const title = `📅 לו"ז משובץ – כל היחידות (שבוע ${currentWeek}, ${currentYear})`;
+
+  if (approved.length === 0) {
+    view.innerHTML = `<h3 class="schedule-title">${title}</h3><div class="schedule-empty">אין שיבוצים מאושרים לשבוע זה. שעות שיאושרו יופיעו כאן.</div>`;
+    return;
+  }
+
+  const rows = approved.map(r => {
+    const c = UNIT_BG_MAP[r.unit] || UNIT_BG_MAP['bg-esuk'];
+    const facilityChip = isHadrag ? `<span class="sch-facility">${HADRAG_FACILITY_NAMES[r.facility] || 'חדר"ג'}</span>` : '';
+    return `
+      <div class="sch-row" style="border-right:4px solid ${c.border};">
+        <span class="sch-unit" style="background:${c.bg}; border:1px solid ${c.border}; color:${c.text};">${r.unitName || ''}</span>
+        <span class="sch-day">יום ${HADRAG_DAY_LABELS[r.day]}</span>
+        ${facilityChip}
+        <span class="sch-text">${r.text || ''}</span>
+        <span class="sch-time" style="direction:ltr;">${r.startTime} - ${r.endTime}</span>
+      </div>`;
+  }).join('');
+
+  view.innerHTML = `<h3 class="schedule-title">${title}</h3><div class="schedule-list">${rows}</div>`;
+}
+
 /**
  * מפיקה מפתח שמירה עבור בקשות חדר"ג.
  * @param {number} week - מספר השבוע
@@ -2355,6 +2409,15 @@ async function submitHadragRequest(unitClass, unitName) {
   if (!unitName) unitName = PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק';
 
   const requests = await loadHadragRequests(currentWeek, currentYear);
+
+  // התראת התנגשות (אפיון 1.1): בדיקה מול שיבוצים מאושרים באותו מתקן ויום
+  const clash = requests.find(r => r.status === 'approved' && r.facility === facility && r.day === day
+    && _timeRangesOverlap(startTime, endTime, r.startTime, r.endTime));
+  if (clash) {
+    alert(`⛔ המשבצת תפוסה!\n${clash.unitName} כבר משובץ ב${HADRAG_FACILITY_NAMES[facility] || 'חדר"ג'} ביום ${HADRAG_DAY_LABELS[day]} בשעות ${clash.startTime}-${clash.endTime}.\nיש לבחור שעה פנויה.`);
+    return;
+  }
+
   requests.push({ id: Date.now().toString(36), facility, text, day, startTime, endTime, unit: unitClass, unitName: unitName, status: 'pending' });
   await saveHadragRequests(requests, currentWeek, currentYear);
 
@@ -2383,6 +2446,8 @@ async function renderHadragRequestsList() {
   const container = document.getElementById('hadragRequestsList');
   if (!container) return;
 
+  await renderUnitScheduleView('hadrag');
+
   const requests = await loadHadragRequests(currentWeek, currentYear);
   const currentPage = window.location.pathname.split('/').pop();
   const targetColor = PAGE_UNIT_MAP[currentPage];
@@ -2399,12 +2464,18 @@ async function renderHadragRequestsList() {
 
   container.innerHTML = filteredRequests.map(req => {
     const styleObj = UNIT_BG_MAP[req.unit] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
+    const isApproved = req.status === 'approved';
+    const pendingStyle = isApproved ? '' : 'opacity:0.55; filter:saturate(0.7);';
+    const badge = isApproved
+      ? '<span class="req-badge approved">✓ מאושר</span>'
+      : '<span class="req-badge pending">⏳ ממתין לאישור</span>';
 
     return `
-      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); ${pendingStyle}">
         <span style="font-weight: bold; width: 90px; color: ${styleObj.text}; text-align: right;">${HADRAG_FACILITY_NAMES[req.facility] || 'חדר"ג'}</span>
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
         <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
+        ${badge}
         <span style="direction: ltr; font-weight: bold; color: #333;">${req.startTime} - ${req.endTime}</span>
         <button class="hipok-delete-btn" onclick="deleteHadragRequest('${req.id}')">✕</button>
       </div>
@@ -2698,6 +2769,15 @@ async function submitShekemRequest(unitClass, unitName) {
   if (!unitName) unitName = PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק';
 
   const requests = await loadShekemRequests(currentWeek, currentYear);
+
+  // התראת התנגשות (אפיון 1.1): בדיקה מול שיבוצים מאושרים באותו יום
+  const clash = requests.find(r => r.status === 'approved' && r.day === day
+    && _timeRangesOverlap(startTime, endTime, r.startTime, r.endTime));
+  if (clash) {
+    alert(`⛔ המשבצת תפוסה!\n${clash.unitName} כבר משובץ בשק"ם ביום ${HADRAG_DAY_LABELS[day]} בשעות ${clash.startTime}-${clash.endTime}.\nיש לבחור שעה פנויה.`);
+    return;
+  }
+
   requests.push({ id: Date.now().toString(36), text, day, startTime, endTime, unit: unitClass, unitName: unitName, status: 'pending' });
   await saveShekemRequests(requests, currentWeek, currentYear);
 
@@ -2726,6 +2806,8 @@ async function renderShekemRequestsList() {
   const container = document.getElementById('shekemRequestsList');
   if (!container) return;
 
+  await renderUnitScheduleView('shekem');
+
   const requests = await loadShekemRequests(currentWeek, currentYear);
   const currentPage = window.location.pathname.split('/').pop();
   const targetColor = PAGE_UNIT_MAP[currentPage];
@@ -2742,11 +2824,17 @@ async function renderShekemRequestsList() {
 
   container.innerHTML = filteredRequests.map(req => {
     const styleObj = UNIT_BG_MAP[req.unit] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
+    const isApproved = req.status === 'approved';
+    const pendingStyle = isApproved ? '' : 'opacity:0.55; filter:saturate(0.7);';
+    const badge = isApproved
+      ? '<span class="req-badge approved">✓ מאושר</span>'
+      : '<span class="req-badge pending">⏳ ממתין לאישור</span>';
 
     return `
-      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); ${pendingStyle}">
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
         <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
+        ${badge}
         <span style="direction: ltr; font-weight: bold; color: #333;">${req.startTime} - ${req.endTime}</span>
         <button class="hipok-delete-btn" onclick="deleteShekemRequest('${req.id}')">✕</button>
       </div>

@@ -528,3 +528,16 @@ table tbody tr:hover {
 .status-btn.updated {
   background: linear-gradient(135deg, #10b981, #059669);
 }
+
+/* עמודת "סה"כ" בטבלאות הדרישה היחידתיות (אפיון 1.7) */
+.row-total-cell {
+  text-align: center;
+  font-weight: 800;
+  background-color: #ecfeff !important;
+  color: #0e7490 !important;
+  min-width: 48px;
+}
+.unit-total-th {
+  background-color: #006d75 !important;
+  color: #ffffff !important;
+}

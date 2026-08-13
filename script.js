@@ -482,6 +482,8 @@ async function loadTableData(tableId, week, year) {
       }
     }
   }
+
+  if (isUnitReqTable(tableId)) recalcUnitReqTotals(table);
 }
 
 /* ================================
@@ -658,9 +660,45 @@ async function globalExportManager() {
 }
 
 /**
+ * בודקת שדה חובה "נושא שבוע" בטבלאות דרישת הקשר של היחידה (אפיון 1.7).
+ * אם הוזנה דרישת קשר כלשהי אך שורת "נושא שבוע" נותרה ריקה - מחזירה שגיאה.
+ * @returns {{ok: boolean, tableId?: string}}
+ */
+function validateWeekTopic() {
+  const unitKesherIds = KESHER_TABLE_LIST.filter(t => t.id !== 'keshertable').map(t => t.id);
+  for (const id of unitKesherIds) {
+    const table = document.getElementById(id);
+    if (!table) continue;
+    const topicRow = table.querySelector('tr.topic-row');
+    if (!topicRow) continue;
+
+    const topicInputs = Array.from(topicRow.querySelectorAll('.topic-textarea'));
+    const topicFilled = topicInputs.some(t => t.value.trim() !== '');
+
+    // האם הוזנו נתוני דרישה כלשהם (מחוץ לשורת הנושא)?
+    let hasRequirementData = false;
+    table.querySelectorAll('.cell-input').forEach(inp => {
+      if (inp.classList.contains('topic-textarea')) return;
+      if (inp.value.trim() !== '') hasRequirementData = true;
+    });
+
+    if (hasRequirementData && topicInputs.length && !topicFilled) {
+      return { ok: false, tableId: id };
+    }
+  }
+  return { ok: true };
+}
+
+/**
  * פונקציית ייצוא פלוגה: שומרת את הטיוטה למצב שמאפשר למנהל לייבא.
  */
 async function globalExportUnit() {
+  const topicCheck = validateWeekTopic();
+  if (!topicCheck.ok) {
+    alert('לא ניתן לשמור: שדה "נושא שבוע" בטבלת הקשר הוא שדה חובה. יש למלא אותו לפני שמירה לייבוא.');
+    return;
+  }
+
   if (!confirm('האם סיימת את השיבוץ וברצונך לשמור את הנתונים כך שיהיו מוכנים לייבוא על ידי המנהל?')) return;
 
   const currentPrefix = `week${currentWeek}_year${currentYear}`;
@@ -1071,6 +1109,7 @@ function addNewRow(tableId, autoSave = true) {
   const newRow = document.createElement('tr');
   let tds = '';
   for (let i = 0; i < inputsCount; i++) { tds += `<td><input type="text" class="cell-input"></td>`; }
+  if (isUnitReqTable(tableId)) { tds += `<td class="row-total-cell">0</td>`; }
   newRow.innerHTML = tds;
   tbody.appendChild(newRow);
   if (autoSave) saveCurrentWeek();
@@ -1254,6 +1293,70 @@ function getRowsForWeek(category, week, year) {
   return category === 'kesher' ? [...DEFAULT_KESHER_ROWS] : [...DEFAULT_OPTIC_ROWS];
 }
 
+/* ================================
+   עמודת "סה"כ" בטבלאות הדרישה היחידתיות (אפיון 1.7)
+   מסכמת את כמות האמצעים המבוקשת בכל שורה. לא חלה על טבלאות המנהל.
+================================ */
+function isUnitReqTable(tableId) {
+  const inList = KESHER_TABLE_LIST.some(t => t.id === tableId) || OPTIC_TABLE_LIST.some(t => t.id === tableId);
+  return inList && tableId !== 'keshertable' && tableId !== 'optictable';
+}
+
+// מזריקה כותרת "סה"כ" לטבלה (פעם אחת), ומרחיבה את שורת הכותרת העליונה בהתאם.
+function ensureUnitTotalHeader(table) {
+  const thead = table.tHead;
+  if (!thead || thead.rows.length === 0) return;
+  if (thead.querySelector('.unit-total-th')) return;
+
+  const labelRow = thead.rows[thead.rows.length - 1];
+  const th = document.createElement('th');
+  th.className = 'unit-total-th';
+  th.textContent = 'סה"כ';
+  labelRow.appendChild(th);
+
+  if (thead.rows.length > 1) {
+    const topRow = thead.rows[0];
+    const lastTh = topRow.cells[topRow.cells.length - 1];
+    if (lastTh && lastTh.hasAttribute('colspan')) {
+      lastTh.colSpan = lastTh.colSpan + 1;
+    } else {
+      const extra = document.createElement('th');
+      topRow.appendChild(extra);
+    }
+  }
+}
+
+// מחשבת את סכום השורה (מתעלמת משורות "נושא שבוע"/הערה ומתאי טקסט לא-מספריים).
+function recalcUnitRowTotal(row) {
+  const totalCell = row.querySelector('.row-total-cell');
+  if (!totalCell) return;
+  if (row.classList.contains('topic-row') || row.classList.contains('special-note-row')) {
+    totalCell.textContent = '';
+    return;
+  }
+  let sum = 0;
+  row.querySelectorAll('.cell-input').forEach(inp => {
+    if (inp.classList.contains('topic-textarea')) return;
+    const n = parseFloat(inp.value);
+    if (!isNaN(n)) sum += n;
+  });
+  totalCell.textContent = sum;
+}
+
+function recalcUnitReqTotals(table) {
+  Array.from(table.tBodies[0].rows).forEach(recalcUnitRowTotal);
+}
+
+// עדכון חי של עמודת "סה"כ" בעת הקלדה בטבלאות הדרישה היחידתיות.
+document.addEventListener('input', (e) => {
+  const inp = e.target;
+  if (!inp || !inp.classList || !inp.classList.contains('cell-input')) return;
+  const table = inp.closest('table');
+  if (!table || !isUnitReqTable(table.id)) return;
+  const row = inp.closest('tr');
+  if (row) recalcUnitRowTotal(row);
+});
+
 function renderDynamicTableStructure(tableId, week, year) {
   const table = document.getElementById(tableId);
   if (!table) return;
@@ -1304,10 +1407,22 @@ function renderDynamicTableStructure(tableId, week, year) {
         tds += `<td><input type="text" class="cell-input"></td>`;
       }
     }
+    if (!isMasterTable) {
+      if (isTopicRow || isSpecialNoteRow) {
+        tds += `<td class="row-total-cell"></td>`;
+      } else {
+        tds += `<td class="row-total-cell">0</td>`;
+      }
+    }
     tbodyHtml += `<tr${trClassAttr}>${tds}</tr>`;
   });
 
   tbody.innerHTML = tbodyHtml;
+
+  if (!isMasterTable) {
+    ensureUnitTotalHeader(table);
+    recalcUnitReqTotals(table);
+  }
 }
 
 function promptAddItemRow(category) {

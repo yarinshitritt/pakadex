@@ -788,3 +788,76 @@ td.range-selected {
 .sync-chip.sync-pending  { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
 .sync-chip.sync-offline  { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
 .sync-chip.sync-disabled { background: #e2e8f0; color: #475569; border-color: #cbd5e1; }
+
+/* ================================
+   הרשאות: חיווי משתמש ומצב צפייה בלבד (אפיון חלק 3)
+================================ */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  padding: 4px 6px 4px 12px;
+  margin-right: auto;
+}
+.user-chip-info { display: flex; flex-direction: column; line-height: 1.15; }
+.user-chip-name { color: #ffffff; font-weight: 800; font-size: 13px; white-space: nowrap; }
+.user-chip-role { color: #94a3b8; font-weight: 700; font-size: 11px; white-space: nowrap; }
+.user-chip-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #475569;
+  background: #334155;
+  color: #e2e8f0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.user-chip-btn:hover { background: #475569; color: #fff; }
+.user-chip-btn.logout:hover { background: #b91c1c; border-color: #ef4444; color: #fff; }
+
+.readonly-banner {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-md);
+  padding: 9px 16px;
+  font-weight: 800;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* במצב צפייה בלבד - שדות נעולים מקבלים מראה מעומעם */
+body.readonly-mode .cell-input,
+body.readonly-mode .task-input,
+body.readonly-mode .time-input,
+body.readonly-mode td.platoon-cell textarea {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  cursor: default;
+}
+body.readonly-mode td.platoon-cell { cursor: default !important; }
+@media print { .readonly-banner, .user-chip { display: none !important; } }
+
+/* מצב צפייה בלבד: הסתרת פקדי עריכה גם כאשר הוגדרו עם !important */
+body.readonly-mode .row-delete-icon,
+body.readonly-mode .row-drag-handle,
+body.readonly-mode .color-picker-toggle,
+body.readonly-mode .color-menu,
+body.readonly-mode .add-row-btn,
+body.readonly-mode .table-import-btn,
+body.readonly-mode .week-copy-btn,
+body.readonly-mode .undo-btn,
+body.readonly-mode .status-btn,
+body.readonly-mode #global-export-btn,
+body.readonly-mode .btn-approve,
+body.readonly-mode .btn-reject,
+body.readonly-mode .hipok-delete-btn,
+body.readonly-mode .hipok-choice-btn {
+  display: none !important;
+}

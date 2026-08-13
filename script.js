@@ -28,6 +28,65 @@ function persist(key, data) {
   }
 }
 
+/* =========================================================
+   אכיפת הרשאות (אפיון חלק 3)
+   נעילת עריכה למשתמשים ללא הרשאה בעמוד הנוכחי.
+========================================================= */
+
+/** האם העמוד נמצא כרגע במצב צפייה בלבד */
+function isReadOnlyMode() {
+  return document.body.classList.contains('readonly-mode');
+}
+
+function showReadOnlyBanner() {
+  if (document.getElementById('readonly-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'readonly-banner';
+  banner.className = 'readonly-banner';
+  banner.textContent = '🔒 מצב צפייה בלבד — אין לך הרשאת עריכה בעמוד זה';
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+
+/**
+ * מחילה את הרשאות המשתמש המחובר על העמוד:
+ * נועלת שדות עריכה ומסתירה כפתורי פעולה כאשר אין הרשאת עריכה.
+ * נקראת מחדש לאחר כל רינדור של טבלאות (השדות נוצרים דינמית).
+ */
+function applyPermissions() {
+  if (typeof AUTH === 'undefined') return;
+  const session = AUTH.getSession();
+  if (!session) return;
+
+  const canEdit = AUTH.canEditPage();
+  document.body.classList.toggle('readonly-mode', !canEdit);
+  if (canEdit) return;
+
+  // נעילת שדות הקלט (למעט ניווט השבועות והסרגל העליון)
+  document.querySelectorAll('input[type="text"], input[type="time"], textarea, select').forEach(el => {
+    if (el.id === 'weekInput' || el.id === 'weekInputOptic') return;
+    if (el.closest('#top-nav-placeholder')) return;
+    if (el.tagName === 'SELECT') el.disabled = true;
+    else el.readOnly = true;
+  });
+
+  // הסתרת כפתורי הפעולה
+  const actionSelectors = [
+    '#global-export-btn', '.add-row-btn', '.table-import-btn', '.week-copy-btn',
+    '.undo-btn', '.status-btn', '.row-delete-icon', '.row-drag-handle',
+    '.color-picker-toggle', '.hipok-choice-btn', '.btn-approve', '.btn-reject',
+    '.hipok-delete-btn', '#openHipokModalBtn', '.excel-upload-btn'
+  ];
+  document.querySelectorAll(actionSelectors.join(',')).forEach(el => { el.style.display = 'none'; });
+
+  // כפתורי ייבוא/הוספה המוגדרים inline בכותרות הטבלאות
+  document.querySelectorAll('thead button').forEach(btn => {
+    const action = btn.getAttribute('onclick') || '';
+    if (/import|promptAddItemRow|submit|approve|reject/i.test(action)) btn.style.display = 'none';
+  });
+
+  showReadOnlyBanner();
+}
+
 /* ================================
    יצירת תפריטי ניווט גלובליים
 ================================ */
@@ -159,6 +218,21 @@ function renderNavbars() {
       </div>
     ` : '';
 
+    // חיווי משתמש מחובר + יציאה (אפיון חלק 3)
+    const session = (typeof AUTH !== 'undefined') ? AUTH.getSession() : null;
+    const userChipBlock = session ? `
+      <div class="user-chip">
+        <div class="user-chip-info">
+          <span class="user-chip-name">${session.name || session.pn}</span>
+          <span class="user-chip-role">${AUTH.roleLabel(session)}</span>
+        </div>
+        ${AUTH.canManageUsers()
+          ? '<button class="user-chip-btn" onclick="window.location.href=\'users.html\'" title="ניהול הרשאות">👥</button>'
+          : ''}
+        <button class="user-chip-btn logout" onclick="AUTH.logout()" title="יציאה מהמערכת">⏻</button>
+      </div>
+    ` : '';
+
     const breadcrumbsBlock = !isUnitPage ? `
       <div id="breadcrumb-path" style="display:flex; align-items:center; gap:6px; background:#1e293b; padding:4px 10px; border-radius:6px; border:1px solid #334155; font-size:13px; font-weight:700; color:#38bdf8; white-space:nowrap;"></div>
     ` : '';
@@ -213,6 +287,7 @@ function renderNavbars() {
           ${topNavButtonsBlock}
           ${breadcrumbsBlock}
         </div>
+        ${userChipBlock}
         ${logoBlock}
       </div>
     `;
@@ -248,6 +323,10 @@ function renderNavbars() {
         <button class="sidebar-btn ${currentPage.includes('general') ? 'active' : ''}" onclick="window.location.href='general.html'">
           <span>📗</span> <span class="sidebar-text">אקסל (3 שבועות)</span>
         </button>
+        ${(typeof AUTH !== 'undefined' && AUTH.canManageUsers()) ? `
+        <button class="sidebar-btn ${currentPage.includes('users') ? 'active' : ''}" onclick="window.location.href='users.html'">
+          <span>👥</span> <span class="sidebar-text">ניהול הרשאות</span>
+        </button>` : ''}
 
         <button class="sidebar-btn ${isEsuk ? 'active' : ''}" onclick="toggleMenu('subMenu_esuk')">
           <span>🟡</span> <span class="sidebar-text">בא"ח איסו"ק</span>
@@ -619,6 +698,9 @@ async function updateUIForWeek() {
   if (typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
 
   await loadTableStatuses();
+
+  // הטבלאות נבנות דינמית - יש להחיל מחדש את ההרשאות לאחר כל רינדור
+  if (typeof applyPermissions === 'function') applyPermissions();
 }
 
 /* ================================
@@ -3151,7 +3233,8 @@ function stopDragging() {
 // 1. תחילת גרירה (לחיצה שמאלית)
 document.addEventListener('mousedown', function(e) {
   if (e.button !== 0) return;
-  
+  if (isReadOnlyMode()) return;
+
   const cell = e.target.closest('td.platoon-cell');
   if (!cell) return;
   
@@ -3208,11 +3291,15 @@ window.addEventListener('blur', stopDragging);
    אתחול (בעת עליית העמוד)
 ================================ */
 window.onload = function () {
+  // שומר כניסה: ללא סשן פעיל - הפניה למסך ההתחברות (אפיון חלק 3)
+  if (typeof AUTH !== 'undefined' && !AUTH.requireAuth()) return;
+
   const { week, year } = getCurrentWeekAndYear();
   currentWeek = week;
   currentYear = year;
-  
+
   renderNavbars();
+  applyPermissions();
   initTableListeners();
   initTopicExpansion();
   initDynamicRows();
@@ -3220,6 +3307,7 @@ window.onload = function () {
 
   Promise.resolve(updateUIForWeek()).then(() => {
     if (typeof resetUndoHistory === 'function') resetUndoHistory();
+    applyPermissions();
   });
 
   if (typeof DataService !== 'undefined') {
@@ -3293,6 +3381,7 @@ function _recordUndoChange() {
 }
 
 function doUndo() {
+  if (isReadOnlyMode()) return;
   clearTimeout(_undoRecordTimer);
   // אם יש שינוי שטרם נרשם (בתוך זמן ההשהיה), נרשום אותו קודם.
   const live = _captureUndoState();
@@ -3310,6 +3399,7 @@ function doUndo() {
 }
 
 function doRedo() {
+  if (isReadOnlyMode()) return;
   clearTimeout(_undoRecordTimer);
   if (!_redoStack.length) return;
   const next = _redoStack.pop();
@@ -3526,6 +3616,7 @@ document.addEventListener('copy', (e) => {
 });
 
 document.addEventListener('cut', (e) => {
+  if (isReadOnlyMode()) return;
   if (!_hasSelection()) return;
   const { block, startR, startC } = _selectionBlock();
   _blockClipboard = block;
@@ -3543,6 +3634,7 @@ document.addEventListener('cut', (e) => {
 
 // אירוע הדבקה אמיתי - מפרק TSV (גם מ-Excel) או משתמש בבלוק הפנימי
 document.addEventListener('paste', (e) => {
+  if (isReadOnlyMode()) { e.preventDefault(); return; }
   const active = document.activeElement;
   const inGrid = _isGridInput(active) && active.closest('table') && !_isMergeTable(active.closest('table'));
   if (!inGrid && !_hasSelection()) return;
@@ -4178,9 +4270,10 @@ document.addEventListener('mousedown', function(e) {
 });
 
 function startResize(e) {
+  if (isReadOnlyMode()) return;
   e.preventDefault();
   e.stopPropagation();
-  
+
   if (!activeSelectedCell) return;
   
   isResizing = true;
@@ -4320,6 +4413,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentCtxCell = null;
   
   document.addEventListener('contextmenu', function(e) {
+    if (isReadOnlyMode()) return;
     const cell = e.target.closest('td.platoon-cell');
     if (cell) {
       e.preventDefault();

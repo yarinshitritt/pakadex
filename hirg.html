@@ -13,7 +13,6 @@
 <body>
  
   <div class="container1">
-    <div id="breadcrumb-path" style="display:flex; align-items:center; gap:6px; background:#1e293b; padding:4px 10px; border-radius:6px; border:1px solid #334155; font-size:13px; font-weight:700; color:#38bdf8; white-space:nowrap;"></div>
     <div style="display:flex; align-items:center; gap:8px; margin-right:auto; cursor:pointer;" onclick="window.location.href='index.html'">
       <h1 style="font-size:24px; color:white; margin:0;">PAKADEX</h1>
       <img src="images/לוגו בהלג בלי רקע.png" alt="לוגו" class="sidebar-image" width="36" style="height:auto;">
@@ -31,6 +30,10 @@
       <div id="bakashot" class="section">
  
         <div id="kesher" class="topsub">
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px;">
+            <button type="button" onclick="copyWeekToTarget('kkeshertable')" class="week-copy-btn" title="העתק את נתוני השבוע לשבוע אחר">📋 העתק שבוע</button>
+            <button type="button" onclick="applyWeekToRestOfYear('kkeshertable')" class="week-copy-btn" title="הדבק את תוכן השבוע לכל השבועות הבאים בשנה">📅 הדבק לכל השנה</button>
+          </div>
           <div class="table-container">
             <table class="keshertable" id="kkeshertable" dir="rtl" border="1">
               <thead>
@@ -54,6 +57,10 @@
         </div>
  
         <div id="optic" class="topsub" style="display:none;">
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px;">
+            <button type="button" onclick="copyWeekToTarget('koptictable')" class="week-copy-btn" title="העתק את נתוני השבוע לשבוע אחר">📋 העתק שבוע</button>
+            <button type="button" onclick="applyWeekToRestOfYear('koptictable')" class="week-copy-btn" title="הדבק את תוכן השבוע לכל השבועות הבאים בשנה">📅 הדבק לכל השנה</button>
+          </div>
           <div class="table-container">
             <table class="optictable" id="koptictable" dir="rtl" border="1">
               <thead>
@@ -343,7 +350,7 @@
         
         <div class="form-group">
           <label for="hipokTimeInput">טווח שעות:</label>
-          <input type="text" id="hipokTimeInput" placeholder="לדוגמה: 12:00 - 12:30">
+          <input type="text" id="hipokTimeInput" placeholder="לדוגמה: 12:00 - 12:30" oninput="sanitizeHipokTimeInput(this)">
         </div>
         
         <div class="modal-footer">
@@ -359,7 +366,7 @@
 
     function showSection(id) {
       document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
-      document.getElementById(id).style.display = 'block';
+      document.getElementById(id).style.display = 'flex';
 
       const btnShekem = document.getElementById('btn-shekem');
       const btnChadrag = document.getElementById('btn-chadrag');
@@ -546,10 +553,15 @@
       hipokGoToStep(3);
     }
 
+    function sanitizeHipokTimeInput(el) {
+      el.value = el.value.replace(/[^0-9:\-\s]/g, '');
+    }
+
     async function submitHipokEntry() {
       const text = document.getElementById('hipokTextInput').value.trim();
       const time = document.getElementById('hipokTimeInput').value.trim();
       if (!time) { alert('יש להזין שעה'); return; }
+      if (!/^([01]\d|2[0-3]):[0-5]\d\s*-\s*([01]\d|2[0-3]):[0-5]\d$/.test(time)) { alert('יש להזין טווח שעות בפורמט תקין, לדוגמה: 12:00 - 12:30'); return; }
       if (hipokSelectedType === null || hipokSelectedDay === null) { alert('שגיאה - נסה שוב'); return; }
 
       if (typeof addHipokEntry === 'function') {

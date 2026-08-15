@@ -53,6 +53,17 @@
     .msg.ok  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
     .msg.err { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     .empty-row { text-align: center; color: #94a3b8; font-weight: 600; padding: 20px; }
+    .unit-checks {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      border: 1px solid var(--border-color); border-radius: 6px; background: #fff;
+      padding: 6px 10px; min-height: 40px; box-sizing: border-box; max-width: 420px;
+    }
+    .unit-check-item {
+      display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px;
+      background: #f1f5f9; border: 1px solid var(--border-color); cursor: pointer; font-size: 13px; font-weight: 700;
+    }
+    .unit-check-item input { cursor: pointer; }
+    .unit-check-item.checked { background: #dcfce7; border-color: #86efac; color: #166534; }
   </style>
 </head>
 <body>
@@ -87,14 +98,14 @@
             </select>
           </div>
           <div class="field" id="unitWrap" style="display:none;">
-            <label for="unitField">יחידה</label>
-            <select id="unitField">
-              <option value="esuk">בא"ח איסו"ק</option>
-              <option value="hirg">בא"ח חיר"ג</option>
-              <option value="pikud">גדוד הפיקוד</option>
-              <option value="tazam">ענף תצ"מ</option>
-              <option value="bahalag">מפח"ט</option>
-            </select>
+            <label>יחידות (ניתן לבחור כמה)</label>
+            <div id="unitField" class="unit-checks">
+              <label class="unit-check-item"><input type="checkbox" value="esuk" onchange="onUnitCheckChange(this)"> בא"ח איסו"ק</label>
+              <label class="unit-check-item"><input type="checkbox" value="hirg" onchange="onUnitCheckChange(this)"> בא"ח חיר"ג</label>
+              <label class="unit-check-item"><input type="checkbox" value="pikud" onchange="onUnitCheckChange(this)"> גדוד הפיקוד</label>
+              <label class="unit-check-item"><input type="checkbox" value="tazam" onchange="onUnitCheckChange(this)"> ענף תצ"מ</label>
+              <label class="unit-check-item"><input type="checkbox" value="bahalag" onchange="onUnitCheckChange(this)"> מפח"ט</label>
+            </div>
           </div>
           <button class="save-user-btn" onclick="submitUser()">💾 שמור</button>
           <button class="clear-btn" onclick="clearForm()">נקה</button>
@@ -155,10 +166,27 @@
       document.getElementById('unitWrap').style.display = (role === 'unit') ? 'flex' : 'none';
     }
 
+    function onUnitCheckChange(checkbox) {
+      checkbox.closest('.unit-check-item').classList.toggle('checked', checkbox.checked);
+    }
+
+    function getCheckedUnits() {
+      return Array.from(document.querySelectorAll('#unitField input[type="checkbox"]:checked')).map(cb => cb.value);
+    }
+
+    function setCheckedUnits(units) {
+      const list = Array.isArray(units) ? units : (units ? [units] : []);
+      document.querySelectorAll('#unitField input[type="checkbox"]').forEach(cb => {
+        cb.checked = list.includes(cb.value);
+        onUnitCheckChange(cb);
+      });
+    }
+
     function clearForm() {
       document.getElementById('pnField').value = '';
       document.getElementById('nameField').value = '';
       document.getElementById('roleField').value = 'admin';
+      setCheckedUnits([]);
       onRoleChange();
       document.getElementById('pnField').focus();
     }
@@ -168,7 +196,7 @@
         pn: document.getElementById('pnField').value,
         name: document.getElementById('nameField').value,
         role: document.getElementById('roleField').value,
-        unit: document.getElementById('unitField').value
+        unit: getCheckedUnits()
       });
 
       if (!res.ok) { showMsg(res.error, true); return; }
@@ -184,7 +212,7 @@
       document.getElementById('nameField').value = u.name || '';
       document.getElementById('roleField').value = u.role;
       onRoleChange();
-      if (u.role === 'unit' && u.unit) document.getElementById('unitField').value = u.unit;
+      setCheckedUnits(u.role === 'unit' ? u.unit : []);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -211,9 +239,7 @@
 
       tbody.innerHTML = users.map(u => {
         const isMe = me && AUTH.normalizePn(me.pn) === AUTH.normalizePn(u.pn);
-        const label = u.role === 'unit'
-          ? `${AUTH.ROLES.unit} – ${AUTH.UNITS[u.unit] || ''}`
-          : AUTH.ROLES[u.role];
+        const label = u.role === 'unit' ? AUTH.roleLabel(u) : AUTH.ROLES[u.role];
         return `
           <tr>
             <td style="font-weight:800; letter-spacing:1px;">${u.pn}${isMe ? ' <span style="color:#0284c7; font-size:11px;">(אני)</span>' : ''}</td>

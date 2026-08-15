@@ -124,65 +124,6 @@ const UNIT_TITLE_MAP = {
   'index.html': 'עמוד ראשי'
 };
 
-const CATEGORY_NAME_MAP = {
-  'kesher': 'קשר',
-  'optic': 'אופטיקה',
-  'modiein': 'מודיעין',
-  'hipok': 'חיפוקים',
-  'chadrag': 'חדר"ג',
-  'shekem': 'שעות שקם'
-};
-
-const PAGE_CATEGORY_MAP = {
-  'kesher.html': 'קשר',
-  'optic.html': 'אופטיקה',
-  'modiein.html': 'מודיעין',
-  'hipokim.html': 'חיפוקים',
-  'hadrag.html': 'חדר"ג',
-  'shekem.html': 'שעות שקם'
-};
-
-/**
- * מעדכנת את נתיב הניווט (Breadcrumbs) בסרגל העליון בהתאם לעמוד הנוכחי והתצוגה (דרישות/הקצאות).
- */
-function updateBreadcrumbPath() {
-  const container = document.getElementById('breadcrumb-path');
-  if (!container) return;
-
-  const rawPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
-  const currentPage = rawPage.split('?')[0].split('#')[0];
-  const isUnitPage = ['esuk', 'hirg', 'pikud', 'tazam', 'bahalag'].some(u => currentPage.includes(u));
-  const urlParams = new URLSearchParams(window.location.search);
-  const isHaktzaotView = urlParams.get('view') === 'haktzaot';
-
-  const matchedUnitKey = Object.keys(UNIT_TITLE_MAP).find(k => currentPage.includes(k.split('.')[0]));
-  const unitName = matchedUnitKey ? UNIT_TITLE_MAP[matchedUnitKey] : 'PAKADEX';
-
-  const matchedCatKey = Object.keys(PAGE_CATEGORY_MAP).find(k => currentPage.includes(k.split('.')[0]));
-
-  if (isUnitPage) {
-    const viewName = isHaktzaotView ? 'הקצאות' : 'דרישות';
-    const catKey = (typeof currentCategory !== 'undefined') ? currentCategory : 'kesher';
-    const catName = CATEGORY_NAME_MAP[catKey] || 'קשר';
-
-    container.innerHTML = `
-      <span>${unitName}</span>
-      <span style="color:#64748b; font-size:11px;">➔</span>
-      <span>${viewName}</span>
-      <span style="color:#64748b; font-size:11px;">➔</span>
-      <span style="color:#ffffff;">${catName}</span>
-    `;
-  } else if (matchedCatKey) {
-    container.innerHTML = `
-      <span>טבלאות מנהל</span>
-      <span style="color:#64748b; font-size:11px;">➔</span>
-      <span style="color:#ffffff;">${PAGE_CATEGORY_MAP[matchedCatKey]}</span>
-    `;
-  } else {
-    container.innerHTML = `<span style="color:#ffffff;">${unitName}</span>`;
-  }
-}
-
 /**
  * מייצרת ומזריקה את סרגלי הניווט העליון והצדדי באופן דינמי לכל עמודי המערכת.
  */
@@ -233,15 +174,9 @@ function renderNavbars() {
       </div>
     ` : '';
 
-    const breadcrumbsBlock = !isUnitPage ? `
-      <div id="breadcrumb-path" style="display:flex; align-items:center; gap:6px; background:#1e293b; padding:4px 10px; border-radius:6px; border:1px solid #334155; font-size:13px; font-weight:700; color:#38bdf8; white-space:nowrap;"></div>
-    ` : '';
-
-    // מזהה הסטטוס לפי העמוד (למנהל בלבד): קשר/אופטיקה/מודיעין/חיפוקים/חדר"ג/שק"ם
-    const statusId = isKesher ? 'kesher' : isOptic ? 'optic' : isModiein ? 'modiein'
-      : isHipok ? 'hipok' : isHadrag ? 'hadrag' : isShekem ? 'shekem' : '';
-    const statusBtnBlock = (!isUnitPage && statusId)
-      ? `<button id="status-btn-${statusId}" class="status-btn not-updated" onclick="toggleTableStatus('${statusId}')">✗ לא מעודכן</button>`
+    // סממן הפצה (למנהל בלבד): האם יש שינויים שטרם הופצו לשבוע הנוכחי
+    const publishIndicatorBlock = !isUnitPage
+      ? `<span id="publish-indicator" class="publish-indicator all-published">✓ הכל הופץ</span>`
       : '';
 
     // כפתור הדפסה (אפיון 1.6) - זמין בכל עמודי הטבלאות
@@ -259,9 +194,6 @@ function renderNavbars() {
         <div id="notif-panel" class="notif-panel" style="display:none;"></div>
       </div>`;
 
-    // חיווי מצב סנכרון (אפיון חלק 2)
-    const syncChipBlock = `<div class="sync-chip" id="sync-chip" title="מצב סנכרון נתונים"></div>`;
-
     const topNavButtonsBlock = !isMain ? `
       <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
         <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
@@ -270,11 +202,11 @@ function renderNavbars() {
         <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
         <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
         <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
-        ${syncChipBlock}
+        <button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 אקסל</button>
         ${bellBlock}
         ${undoRedoBlock}
         ${printBtnBlock}
-        ${statusBtnBlock}
+        ${publishIndicatorBlock}
         ${!isUnitPage
           ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים 🚀</button>'
           : '<button id="global-export-btn" class="global-export-btn unit-ready" onclick="globalExportUnit()">שמור ומוכן לייבוא ✅</button>'}
@@ -285,16 +217,16 @@ function renderNavbars() {
       <div class="container1">
         <div style="display:flex; align-items:center; gap:12px;">
           ${topNavButtonsBlock}
-          ${breadcrumbsBlock}
         </div>
         ${userChipBlock}
         ${logoBlock}
       </div>
     `;
 
-    updateBreadcrumbPath();
     if (typeof updateNotifBadge === 'function') updateNotifBadge();
     if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
+    if (typeof updatePublishIndicator === 'function') updatePublishIndicator();
+    if (typeof initPublishIndicatorObserver === 'function') initPublishIndicatorObserver();
   }
 
   // 2. הזרקת תפריט צדדי (Side Nav)
@@ -319,9 +251,6 @@ function renderNavbars() {
         </button>
         <button class="sidebar-btn ${isTabels ? 'active' : ''}" onclick="window.location.href='kesher.html'">
           <span>📊</span> <span class="sidebar-text">טבלאות</span>
-        </button>
-        <button class="sidebar-btn ${currentPage.includes('general') ? 'active' : ''}" onclick="window.location.href='general.html'">
-          <span>📗</span> <span class="sidebar-text">אקסל (3 שבועות)</span>
         </button>
         ${(typeof AUTH !== 'undefined' && AUTH.canManageUsers()) ? `
         <button class="sidebar-btn ${currentPage.includes('users') ? 'active' : ''}" onclick="window.location.href='users.html'">
@@ -697,60 +626,37 @@ async function updateUIForWeek() {
   if (typeof loadShekemTables === 'function') loadShekemTables(currentWeek, currentYear);
   if (typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
 
-  await loadTableStatuses();
+  if (typeof updatePublishIndicator === 'function') updatePublishIndicator();
 
   // הטבלאות נבנות דינמית - יש להחיל מחדש את ההרשאות לאחר כל רינדור
   if (typeof applyPermissions === 'function') applyPermissions();
 }
 
 /* ================================
-   סטטוס טבלה (מעודכן / לא מעודכן)
-   נשמר לפי שבוע ושנה, עקבי עם שאר המערכת.
+   סממן הפצה (ליד כפתור "הפץ שינויים")
+   מבוסס על קיום/היעדר תאים מסומנים בכתום (.conflict-overlap) - סימן לשינויים שטרם הופצו.
 ================================ */
-function getTableStatusKey(tableId, week, year) {
-  return `status_${tableId}_week${week}_year${year}`;
-}
+let _publishIndicatorObserver = null;
 
-function applyStatusToButton(btn, isUpdated) {
-  if (!btn) return;
-  btn.classList.toggle('updated', isUpdated);
-  btn.classList.toggle('not-updated', !isUpdated);
-  btn.textContent = isUpdated ? '✓ מעודכן' : '✗ לא מעודכן';
+/**
+ * מעדכנת את סממן ההפצה בסרגל העליון לפי קיום שינויים שטרם הופצו בעמוד הנוכחי.
+ */
+function updatePublishIndicator() {
+  const el = document.getElementById('publish-indicator');
+  if (!el) return;
+  const hasPending = document.querySelectorAll('.conflict-overlap').length > 0;
+  el.classList.toggle('has-pending', hasPending);
+  el.classList.toggle('all-published', !hasPending);
+  el.textContent = hasPending ? '⏳ יש שינויים שלא הופצו' : '✓ הכל הופץ';
 }
 
 /**
- * טוענת ומחילה את סטטוס הטבלאות (מעודכן/לא) עבור השבוע הנוכחי.
- * סורקת את כל כפתורי הסטטוס בעמוד (id שמתחיל ב-status-btn-).
+ * מפעילה מעקב (MutationObserver) שמעדכן את סממן ההפצה בכל שינוי בסימוני הכתום בעמוד.
  */
-async function loadTableStatuses() {
-  const buttons = document.querySelectorAll('[id^="status-btn-"]');
-  for (const btn of buttons) {
-    const tableId = btn.id.replace('status-btn-', '');
-    let status = null;
-    const key = getTableStatusKey(tableId, currentWeek, currentYear);
-    if (typeof DataService !== 'undefined') {
-      status = await DataService.getItem(key);
-    } else {
-      const val = localStorage.getItem(key);
-      status = val ? JSON.parse(val) : null;
-    }
-    applyStatusToButton(btn, status === true || status === 'updated');
-  }
-}
-
-/**
- * מחליפה את סטטוס הטבלה (מעודכן/לא מעודכן) ושומרת לשבוע הנוכחי.
- */
-async function toggleTableStatus(tableId) {
-  const btn = document.getElementById(`status-btn-${tableId}`);
-  const isUpdated = btn ? !btn.classList.contains('updated') : true;
-  applyStatusToButton(btn, isUpdated);
-  const key = getTableStatusKey(tableId, currentWeek, currentYear);
-  if (typeof DataService !== 'undefined') {
-    await DataService.setItem(key, isUpdated);
-  } else {
-    localStorage.setItem(key, JSON.stringify(isUpdated));
-  }
+function initPublishIndicatorObserver() {
+  if (_publishIndicatorObserver) return;
+  _publishIndicatorObserver = new MutationObserver(() => updatePublishIndicator());
+  _publishIndicatorObserver.observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true });
 }
 
 /**
@@ -765,7 +671,7 @@ async function globalExportManager() {
   // 1. Copy all draft keys to published
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key.includes(currentPrefix) && !key.includes('_published') && !key.startsWith('status_')) {
+    if (key.includes(currentPrefix) && !key.includes('_published')) {
       const data = localStorage.getItem(key);
       if (typeof DataService !== 'undefined') {
         await DataService.setItem(`${key}_published`, JSON.parse(data));
@@ -779,6 +685,7 @@ async function globalExportManager() {
   document.querySelectorAll('.conflict-overlap').forEach(el => {
     el.classList.remove('conflict-overlap');
   });
+  if (typeof updatePublishIndicator === 'function') updatePublishIndicator();
 
   // 3. Trigger save again so the orange class removal is saved
   if (typeof saveHadragTables === 'function') saveHadragTables();
@@ -841,7 +748,7 @@ async function globalExportUnit() {
   
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key.includes(currentPrefix) && !key.includes('_published') && !key.startsWith('status_')) {
+    if (key.includes(currentPrefix) && !key.includes('_published')) {
       const data = localStorage.getItem(key);
       if (typeof DataService !== 'undefined') {
         await DataService.setItem(`${key}_published`, JSON.parse(data));
@@ -871,11 +778,22 @@ function copyRowListToWeek(category, targetWeek, targetYear) {
 }
 
 /**
- * מעתיקה את תוכן טבלת המנהל (קשר/אופטיקה) משבוע הנוכחי לשבוע יעד שנבחר.
+ * מזהה את הקטגוריה (קשר/אופטיקה) של טבלה נתונה - טבלת מנהל או טבלת דרישה יחידתית.
+ * @param {string} tableId - מזהה הטבלה
+ * @returns {'kesher'|'optic'|null}
+ */
+function getKesherOpticCategory(tableId) {
+  if (KESHER_TABLE_LIST.some(t => t.id === tableId)) return 'kesher';
+  if (OPTIC_TABLE_LIST.some(t => t.id === tableId)) return 'optic';
+  return null;
+}
+
+/**
+ * מעתיקה את תוכן טבלת קשר/אופטיקה (מנהל או יחידה) משבוע הנוכחי לשבוע יעד שנבחר.
  */
 async function copyWeekToTarget(tableId) {
-  const catName = tableId === 'keshertable' ? 'קשר' : 'אופטיקה';
-  const category = tableId === 'keshertable' ? 'kesher' : 'optic';
+  const category = getKesherOpticCategory(tableId);
+  const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
   const targetStr = prompt(`העתקת נתוני ${catName} משבוע ${currentWeek} (${currentYear}) לשבוע יעד.\nהזן מספר שבוע יעד (1-${TOTAL_WEEKS}):`);
   if (targetStr === null) return;
   const target = parseInt(targetStr);
@@ -895,8 +813,8 @@ async function copyWeekToTarget(tableId) {
  * מדביקה את תוכן השבוע הנוכחי לכל השבועות הבאים באותה שנה (דורס נתונים קיימים).
  */
 async function applyWeekToRestOfYear(tableId) {
-  const catName = tableId === 'keshertable' ? 'קשר' : 'אופטיקה';
-  const category = tableId === 'keshertable' ? 'kesher' : 'optic';
+  const category = getKesherOpticCategory(tableId);
+  const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
   if (currentWeek >= TOTAL_WEEKS) { alert('זהו השבוע האחרון בשנה - אין שבועות הבאים להדבקה.'); return; }
   if (!confirm(`פעולה זו תעתיק את תוכן טבלת ${catName} משבוע ${currentWeek} לכל השבועות ${currentWeek + 1}-${TOTAL_WEEKS} בשנת ${currentYear}, ותדרוס את הנתונים הקיימים בהם.\n\nלהמשיך?`)) return;
 
@@ -1304,7 +1222,7 @@ function addNewRow(tableId, autoSave = true) {
   const newRow = document.createElement('tr');
   let tds = '';
   for (let i = 0; i < inputsCount; i++) { tds += `<td><input type="text" class="cell-input"></td>`; }
-  if (isUnitReqTable(tableId)) { tds += `<td class="row-total-cell">0</td>`; }
+  if (hasUnitTotalColumn(tableId)) { tds += `<td class="row-total-cell"><span class="total-badge">0</span></td>`; }
   newRow.innerHTML = tds;
   tbody.appendChild(newRow);
   if (autoSave) saveCurrentWeek();
@@ -1497,6 +1415,11 @@ function isUnitReqTable(tableId) {
   return inList && tableId !== 'keshertable' && tableId !== 'optictable';
 }
 
+// מפח"ט (bahalag) מכיל עמודת אמצעי בודדת בלבד - עמודת "סה"כ" תהיה תמיד זהה לערך היחיד ולכן מיותרת שם.
+function hasUnitTotalColumn(tableId) {
+  return isUnitReqTable(tableId) && tableId !== 'bkeshertable' && tableId !== 'boptictable';
+}
+
 // מזריקה כותרת "סה"כ" לטבלה (פעם אחת), ומרחיבה את שורת הכותרת העליונה בהתאם.
 function ensureUnitTotalHeader(table) {
   const thead = table.tHead;
@@ -1526,7 +1449,7 @@ function recalcUnitRowTotal(row) {
   const totalCell = row.querySelector('.row-total-cell');
   if (!totalCell) return;
   if (row.classList.contains('topic-row') || row.classList.contains('special-note-row')) {
-    totalCell.textContent = '';
+    totalCell.innerHTML = '';
     return;
   }
   let sum = 0;
@@ -1535,7 +1458,7 @@ function recalcUnitRowTotal(row) {
     const n = parseFloat(inp.value);
     if (!isNaN(n)) sum += n;
   });
-  totalCell.textContent = sum;
+  totalCell.innerHTML = `<span class="total-badge">${sum}</span>`;
 }
 
 function recalcUnitReqTotals(table) {
@@ -1609,11 +1532,11 @@ function renderDynamicTableStructure(tableId, week, year) {
         tds += `<td><input type="text" class="cell-input"></td>`;
       }
     }
-    if (!isMasterTable) {
+    if (hasUnitTotalColumn(tableId)) {
       if (isTopicRow || isSpecialNoteRow) {
         tds += `<td class="row-total-cell"></td>`;
       } else {
-        tds += `<td class="row-total-cell">0</td>`;
+        tds += `<td class="row-total-cell"><span class="total-badge">0</span></td>`;
       }
     }
     tbodyHtml += `<tr${trClassAttr} data-rowindex="${rowIndex}">${tds}</tr>`;
@@ -1625,7 +1548,7 @@ function renderDynamicTableStructure(tableId, week, year) {
     initRowDragForMasterTable(table, category);
   }
 
-  if (!isMasterTable) {
+  if (hasUnitTotalColumn(tableId)) {
     ensureUnitTotalHeader(table);
     recalcUnitReqTotals(table);
   }
@@ -2565,18 +2488,12 @@ async function renderHadragRequestsList() {
 
   container.innerHTML = filteredRequests.map(req => {
     const styleObj = UNIT_BG_MAP[req.unit] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
-    const isApproved = req.status === 'approved';
-    const pendingStyle = isApproved ? '' : 'opacity:0.55; filter:saturate(0.7);';
-    const badge = isApproved
-      ? '<span class="req-badge approved">✓ מאושר</span>'
-      : '<span class="req-badge pending">⏳ ממתין לאישור</span>';
 
     return `
-      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); ${pendingStyle}">
+      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; width: 90px; color: ${styleObj.text}; text-align: right;">${HADRAG_FACILITY_NAMES[req.facility] || 'חדר"ג'}</span>
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
         <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
-        ${badge}
         <span style="direction: ltr; font-weight: bold; color: #333;">${req.startTime} - ${req.endTime}</span>
         <button class="hipok-delete-btn" onclick="deleteHadragRequest('${req.id}')">✕</button>
       </div>
@@ -2927,17 +2844,11 @@ async function renderShekemRequestsList() {
 
   container.innerHTML = filteredRequests.map(req => {
     const styleObj = UNIT_BG_MAP[req.unit] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
-    const isApproved = req.status === 'approved';
-    const pendingStyle = isApproved ? '' : 'opacity:0.55; filter:saturate(0.7);';
-    const badge = isApproved
-      ? '<span class="req-badge approved">✓ מאושר</span>'
-      : '<span class="req-badge pending">⏳ ממתין לאישור</span>';
 
     return `
-      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1); ${pendingStyle}">
+      <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
         <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
-        ${badge}
         <span style="direction: ltr; font-weight: bold; color: #333;">${req.startTime} - ${req.endTime}</span>
         <button class="hipok-delete-btn" onclick="deleteShekemRequest('${req.id}')">✕</button>
       </div>
@@ -3333,24 +3244,38 @@ let _undoSuppressed = false;
 let _undoRecordTimer = null;
 const UNDO_LIMIT = 100;
 
-function _getUndoFields() {
-  return Array.from(document.querySelectorAll('.cell-input, .task-input, .time-input'));
+/**
+ * ממפה כל שדה עריכה למפתח יציב שלא תלוי במיקום הגלובלי בעמוד (table-id + אינדקס מקומי בטבלה),
+ * כך שהוספת/הסרת שורות בטבלה אחת (למשל בעת הדבקת שורה בסוף טבלה דינמית) לא "מזיזה" ומשבשת
+ * את שיוך הערכים של שדות בטבלאות אחרות, ומאפשרת לבטל/לשחזר גם כשמספר השדות הכולל בעמוד השתנה.
+ */
+function _getUndoFieldMap() {
+  const map = new Map();
+  const seenPerTable = new Map();
+  document.querySelectorAll('.cell-input, .task-input, .time-input').forEach(el => {
+    const table = el.closest('table');
+    const tableKey = (table && table.id) ? table.id : '_free';
+    const idx = seenPerTable.get(tableKey) || 0;
+    seenPerTable.set(tableKey, idx + 1);
+    map.set(`${tableKey}#${idx}`, el);
+  });
+  return map;
 }
 
 function _captureUndoState() {
-  return _getUndoFields().map(el => el.value);
+  const state = {};
+  _getUndoFieldMap().forEach((el, key) => { state[key] = el.value; });
+  return state;
 }
 
-function _applyUndoState(values) {
-  const fields = _getUndoFields();
-  if (fields.length !== values.length) {
-    // מבנה הטבלה השתנה (נוספו/הוסרו שורות) - לא ניתן לשחזר בבטחה.
-    return false;
-  }
+function _applyUndoState(state) {
+  const fieldMap = _getUndoFieldMap();
   _undoSuppressed = true;
-  fields.forEach((el, i) => {
-    if (el.value !== values[i]) {
-      el.value = values[i];
+  Object.keys(state).forEach(key => {
+    const el = fieldMap.get(key);
+    // אם השדה כבר לא קיים (השורה נמחקה בינתיים) - מדלגים עליו בלבד, לא נכשלים על כל הפעולה.
+    if (el && el.value !== state[key]) {
+      el.value = state[key];
       el.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
@@ -3510,7 +3435,9 @@ function _hasSelection() {
 document.addEventListener('mousedown', (e) => {
   if (!e.target.closest) return;
 
-  // בחירת שורה שלמה: לחיצה על תא-השם (td.test)
+  // בחירת שורה שלמה: לחיצה על תא-השם (td.test) - למעט לחיצה על ידית הגרירה עצמה,
+  // כדי לא לחסום את מנגנון גרירת השורות (dragstart) שמתחיל מאותו אלמנט (אפיון 1.6).
+  if (e.target.closest('.row-drag-handle')) return;
   const nameCell = e.target.closest('td.test');
   if (nameCell) {
     const table = nameCell.closest('table');

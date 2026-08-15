@@ -298,12 +298,14 @@ table tbody tr:hover {
 }
 
 /* ================== מספרי שבועות וניווט שבועות גלובלי ================== */
+/* margin-top:auto דוחף את הסרגל לתחתית מיכל ה-flex גם כשהטבלה קצרה מגובה המסך;
+   position:sticky+bottom:0 מהצמידה בפועל לתחתית המסך בזמן גלילה כשהתוכן ארוך (אפיון 1.6). */
 #nextbt, #nextbt-optic, #nextbt2 {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: auto;
   padding: 6px 12px;
   background: var(--card-bg);
   border: 1px solid var(--border-color);
@@ -314,6 +316,14 @@ table tbody tr:hover {
   width: 100%;
   box-sizing: border-box;
   box-shadow: var(--shadow-sm);
+}
+
+/* עמודי יחידה: הסקציות (דרישות/הקצאות) חייבות למלא את גובה המסך בעצמן כדי שהסרגל
+   התחתון שבתוכן (nextbt/nextbt2) יידבק לתחתית גם כשתוכן הטבלה קצר (אפיון 1.6). */
+#bakashot, #haktzaot {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 90px);
 }
 
 #nextbt button, #nextbt-optic button, #nextbt2 button {
@@ -504,38 +514,49 @@ table tbody tr:hover {
   font-size: 18px;
 }
 /* ================================
-   כפתור סטטוס טבלה (מעודכן / לא מעודכן)
+   סממן הפצה (ליד כפתור "הפץ שינויים")
 ================================ */
-.status-btn {
-  padding: 8px 16px;
-  border: none;
+.publish-indicator {
+  padding: 6px 14px;
   border-radius: 8px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
-  cursor: pointer;
-  color: white;
+  white-space: nowrap;
   transition: all 0.2s;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
-.status-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+.publish-indicator.all-published {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
 }
-.status-btn.not-updated {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-}
-.status-btn.updated {
-  background: linear-gradient(135deg, #10b981, #059669);
+.publish-indicator.has-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 /* עמודת "סה"כ" בטבלאות הדרישה היחידתיות (אפיון 1.7) */
 .row-total-cell {
   text-align: center;
+  vertical-align: middle;
+  background-color: #f0fdfa !important;
+  min-width: 52px;
+  padding: 4px 3px !important;
+}
+.total-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0e7490, #0891b2);
+  color: #ffffff;
   font-weight: 800;
-  background-color: #ecfeff !important;
-  color: #0e7490 !important;
-  min-width: 48px;
+  font-size: 13.5px;
+  box-shadow: 0 1px 3px rgba(14, 116, 144, 0.35);
 }
 .unit-total-th {
   background-color: #006d75 !important;
@@ -566,12 +587,12 @@ table tbody tr:hover {
   #side-nav-placeholder,
   .container1,
   .container2,
-  #nextbt,
+  #nextbt, #nextbt-optic, #nextbt2,
   #pageNumbers, #pageNumbers-optic, #pageNumbers2,
   .add-row-btn,
   .table-import-btn,
   .print-btn,
-  .status-btn,
+  .publish-indicator,
   .global-export-btn,
   .row-delete-icon,
   .color-picker-toggle,
@@ -581,7 +602,9 @@ table tbody tr:hover {
 
   body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
 
-  .table-container { overflow: visible !important; box-shadow: none !important; }
+  /* לא כופים overflow:visible - כך שההדפסה תואמת בדיוק את החלק שגלול/מוצג כרגע על המסך.
+     כדי להדפיס טבלה רחבה/ארוכה על פני כמה עמודים: גוללים לחלק הבא ומדפיסים שוב (אפיון 1.6). */
+  .table-container { box-shadow: none !important; }
 
   table { width: 100% !important; page-break-inside: auto; }
   tr { page-break-inside: avoid; }
@@ -767,27 +790,6 @@ td.range-selected {
 .sch-facility { background: #0f172a; color: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 11.5px; white-space: nowrap; }
 .sch-text { flex: 1; text-align: right; color: #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sch-time { font-weight: 800; color: #0f172a; }
-.req-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 800; white-space: nowrap; }
-.req-badge.pending { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
-.req-badge.approved { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
-
-/* חיווי מצב סנכרון (אפיון חלק 2) */
-.sync-chip {
-  display: inline-flex;
-  align-items: center;
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 15px;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-.sync-chip.sync-local    { background: #334155; color: #cbd5e1; border-color: #475569; }
-.sync-chip.sync-ok       { background: #dcfce7; color: #166534; border-color: #86efac; }
-.sync-chip.sync-pending  { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-.sync-chip.sync-offline  { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
-.sync-chip.sync-disabled { background: #e2e8f0; color: #475569; border-color: #cbd5e1; }
 
 /* ================================
    הרשאות: חיווי משתמש ומצב צפייה בלבד (אפיון חלק 3)
@@ -853,7 +855,6 @@ body.readonly-mode .add-row-btn,
 body.readonly-mode .table-import-btn,
 body.readonly-mode .week-copy-btn,
 body.readonly-mode .undo-btn,
-body.readonly-mode .status-btn,
 body.readonly-mode #global-export-btn,
 body.readonly-mode .btn-approve,
 body.readonly-mode .btn-reject,

@@ -95,15 +95,19 @@ const AUTH = {
     const pn = this.normalizePn(user.pn);
     if (!pn) return { ok: false, error: 'מספר אישי חייב להכיל ספרות.' };
     if (!this.ROLES[user.role]) return { ok: false, error: 'תפקיד לא חוקי.' };
-    if (user.role === 'unit' && !this.UNITS[user.unit]) {
-      return { ok: false, error: 'למשתמש פלוגתי יש לבחור יחידה.' };
+
+    // תמיכה בהרשאה לכמה יחידות בו-זמנית (למשל גם מפח"ט וגם גדוד הפיקוד).
+    const units = Array.isArray(user.unit) ? user.unit : (user.unit ? [user.unit] : []);
+    const validUnits = units.filter(u => this.UNITS[u]);
+    if (user.role === 'unit' && validUnits.length === 0) {
+      return { ok: false, error: 'למשתמש פלוגתי יש לבחור לפחות יחידה אחת.' };
     }
 
     const record = {
       pn,
       name: (user.name || '').trim(),
       role: user.role,
-      unit: user.role === 'unit' ? user.unit : ''
+      unit: user.role === 'unit' ? validUnits : []
     };
 
     const list = this.loadUsers();
@@ -215,17 +219,22 @@ const AUTH = {
     if (s.role === 'readonly') return false;
 
     if (s.role === 'unit') {
-      // פלוגה עורכת אך ורק את עמוד היחידה שלה
-      return this.PAGE_UNIT[p] === s.unit;
+      // פלוגה עורכת אך ורק את עמודי היחידות שהוקצו לה (ייתכן יותר מיחידה אחת)
+      const units = Array.isArray(s.unit) ? s.unit : (s.unit ? [s.unit] : []);
+      return units.includes(this.PAGE_UNIT[p]);
     }
     return false;
   },
 
-  /** תיאור התפקיד לתצוגה (כולל שם היחידה לפלוגתי) */
+  /** תיאור התפקיד לתצוגה (כולל שמות היחידות לפלוגתי) */
   roleLabel(user) {
     const u = user || this.getSession();
     if (!u) return '';
-    if (u.role === 'unit') return `${this.ROLES.unit} – ${this.UNITS[u.unit] || ''}`;
+    if (u.role === 'unit') {
+      const units = Array.isArray(u.unit) ? u.unit : (u.unit ? [u.unit] : []);
+      const names = units.map(x => this.UNITS[x]).filter(Boolean).join(', ');
+      return `${this.ROLES.unit} – ${names}`;
+    }
     return this.ROLES[u.role] || '';
   },
 

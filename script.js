@@ -6,6 +6,14 @@ const tableConfigs = {
   optictable:  { startCol: 1, endCol: 29, totalUnitCol: 30, failCol: 31, totalRegulatedCol: 32, availableCol: 33, excessCol: 34 }
 };
 
+// טבלאות (מנהל + יחידה) שעליהן חל מעקב שינויים (הדגשה כתומה עד שמירה/הפצה) - אפיון 1.2 ו-1.9
+const MANAGER_TRACKED_TABLES = [
+  'keshertable', 'optictable', 'esukTable', 'hirgTable', 'pikudTable', 'tazamTable', 'bahalagTable',
+  'reqesukTable', 'reqhirgTable', 'reqpikudTable', 'reqtazamTable', 'reqbahalagTable',
+  'esukkeshertable', 'kkeshertable', 'pkeshertable', 'tkeshertable', 'bkeshertable',
+  'esukoptictable', 'koptictable', 'poptictable', 'toptictable', 'boptictable'
+];
+
 /* ================================
    מצב גלובלי (שבועות)
 ================================ */
@@ -153,7 +161,7 @@ function renderNavbars() {
     const isShekem = currentPage.includes('shekem');
 
     const logoBlock = !isUnitPage ? `
-      <div style="display:flex; align-items:center; gap:8px; margin-right:auto; cursor:pointer;" onclick="window.location.href='index.html'">
+      <div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="window.location.href='index.html'">
         <h1 style="font-size:20px; color:white; margin:0;">PAKADEX</h1>
         <img src="images/לוגו בהלג בלי רקע.png" alt="לוגו" class="sidebar-image" width="36" style="height:auto;">
       </div>
@@ -179,6 +187,11 @@ function renderNavbars() {
       ? `<span id="publish-indicator" class="publish-indicator all-published">✓ הכל הופץ</span>`
       : '';
 
+    // סממן שינויים (לעמוד יחידה בלבד): האם הקבוצה ביצעה שינוי שטרם נשמר לייבוא
+    const unitChangesIndicatorBlock = isUnitPage
+      ? `<span id="unit-changes-indicator" class="publish-indicator all-published">✓ הכל נשמר</span>`
+      : '';
+
     // כפתור הדפסה (אפיון 1.6) - זמין בכל עמודי הטבלאות
     const printBtnBlock = '<button class="print-btn" onclick="window.print()" title="הדפס טבלה">🖨️</button>';
 
@@ -197,8 +210,8 @@ function renderNavbars() {
     // סרגל הזהות (לוגו + חיווי משתמש) - תמיד בשורה עצמאית לעמודי מנהל; בעמודי יחידה הלוגו כבר קבוע ב-HTML.
     const identityRowBlock = !isUnitPage ? `
       <div class="container1">
-        ${logoBlock}
         ${userChipBlock}
+        ${logoBlock}
       </div>
     ` : '';
 
@@ -219,7 +232,7 @@ function renderNavbars() {
           <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
           <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
           <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
-          <button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 אקסל</button>
+          ${!isUnitPage ? `<button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 אקסל</button>` : ''}
         </div>
         <div class="toolbar-actions">
           <div class="tool-group">
@@ -228,6 +241,7 @@ function renderNavbars() {
             ${printBtnBlock}
           </div>
           ${publishIndicatorBlock}
+          ${unitChangesIndicatorBlock}
           ${toolbarUserChip}
           <div class="toolbar-divider"></div>
           ${exportBtnBlock}
@@ -513,7 +527,7 @@ async function loadTableData(tableId, week, year) {
     
     // Check for manager published data to highlight changes in orange
     let managerPublishedData = {};
-    if (tableId === 'keshertable' || tableId === 'optictable') {
+    if (MANAGER_TRACKED_TABLES.includes(tableId)) {
       const managerPublishedKey = getStorageKey(tableId, week, year) + '_published';
       if (typeof fetchTableData === 'function') {
         managerPublishedData = await fetchTableData(managerPublishedKey) || {};
@@ -526,9 +540,9 @@ async function loadTableData(tableId, week, year) {
       const idx = parseInt(indexStr);
       if (inputs[idx]) {
         inputs[idx].value = data[indexStr];
-        
+
         // Add conflict-overlap if this is a manager table and value differs from published
-        if (tableId === 'keshertable' || tableId === 'optictable') {
+        if (MANAGER_TRACKED_TABLES.includes(tableId)) {
           const publishedVal = managerPublishedData[indexStr] || '';
           if (data[indexStr] !== publishedVal) {
             const td = inputs[idx].closest('td');
@@ -632,12 +646,13 @@ async function updateUIForWeek() {
 
   if (typeof renderHipokEntriesList === 'function') await renderHipokEntriesList();
   
-  // פונקציות החדר"ג והשק"ם:
+  // פונקציות החדר"ג והשק"ם: הטבלאות (עם סימוני הכתום) חייבות להיטען לפני תצוגת הלו"ז המשובץ ליחידה,
+  // כדי שהסינון לפי מצב הפצה בפועל (isRequestPublished) יפעל על נתונים עדכניים.
+  if (typeof loadHadragTables === 'function') await loadHadragTables(currentWeek, currentYear);
   if (typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
-  if (typeof loadHadragTables === 'function') loadHadragTables(currentWeek, currentYear);
   if (typeof renderHadragPendingRequests === 'function') await renderHadragPendingRequests();
+  if (typeof loadShekemTables === 'function') await loadShekemTables(currentWeek, currentYear);
   if (typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
-  if (typeof loadShekemTables === 'function') loadShekemTables(currentWeek, currentYear);
   if (typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
 
   if (typeof updatePublishIndicator === 'function') updatePublishIndicator();
@@ -656,12 +671,21 @@ let _publishIndicatorObserver = null;
  * מעדכנת את סממן ההפצה בסרגל העליון לפי קיום שינויים שטרם הופצו בעמוד הנוכחי.
  */
 function updatePublishIndicator() {
-  const el = document.getElementById('publish-indicator');
-  if (!el) return;
   const hasPending = document.querySelectorAll('.conflict-overlap').length > 0;
-  el.classList.toggle('has-pending', hasPending);
-  el.classList.toggle('all-published', !hasPending);
-  el.textContent = hasPending ? '⏳ יש שינויים שלא הופצו' : '✓ הכל הופץ';
+
+  const el = document.getElementById('publish-indicator');
+  if (el) {
+    el.classList.toggle('has-pending', hasPending);
+    el.classList.toggle('all-published', !hasPending);
+    el.textContent = hasPending ? '⏳ יש שינויים שלא הופצו' : '✓ הכל הופץ';
+  }
+
+  const unitEl = document.getElementById('unit-changes-indicator');
+  if (unitEl) {
+    unitEl.classList.toggle('has-pending', hasPending);
+    unitEl.classList.toggle('all-published', !hasPending);
+    unitEl.textContent = hasPending ? '⏳ נוספו שינויים שטרם נשמרו' : '✓ הכל נשמר';
+  }
 }
 
 /**
@@ -771,7 +795,10 @@ async function globalExportUnit() {
       }
     }
   }
-  
+
+  document.querySelectorAll('.conflict-overlap').forEach(el => el.classList.remove('conflict-overlap'));
+  if (typeof updatePublishIndicator === 'function') updatePublishIndicator();
+
   if (typeof addNotification === 'function') {
     const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
     const unitName = (typeof UNIT_TITLE_MAP !== 'undefined' && UNIT_TITLE_MAP[page]) || 'יחידה';
@@ -1236,7 +1263,7 @@ function addNewRow(tableId, autoSave = true) {
   const newRow = document.createElement('tr');
   let tds = '';
   for (let i = 0; i < inputsCount; i++) { tds += `<td><input type="text" class="cell-input"></td>`; }
-  if (hasUnitTotalColumn(tableId)) { tds += `<td class="row-total-cell"><span class="total-badge">0</span></td>`; }
+  if (hasUnitTotalColumn(tableId)) { tds += `<td class="row-total-cell">0</td>`; }
   newRow.innerHTML = tds;
   tbody.appendChild(newRow);
   if (autoSave) saveCurrentWeek();
@@ -1472,7 +1499,7 @@ function recalcUnitRowTotal(row) {
     const n = parseFloat(inp.value);
     if (!isNaN(n)) sum += n;
   });
-  totalCell.innerHTML = `<span class="total-badge">${sum}</span>`;
+  totalCell.textContent = sum;
 }
 
 function recalcUnitReqTotals(table) {
@@ -1538,7 +1565,7 @@ function renderDynamicTableStructure(tableId, week, year) {
       ? `<span class="row-drag-handle" draggable="true" title="גרור לשינוי סדר האמצעי">⠿</span>`
       : '';
 
-    let tds = `<td class="test">${dragHandleHtml}<span class="row-name-text">${rowName}</span> ${deleteBtnHtml}</td>`;
+    let tds = `<td class="test"><span class="row-name-text">${rowName}</span> ${dragHandleHtml}${deleteBtnHtml}</td>`;
     for (let i = 1; i < totalCols; i++) {
       if (isTopicRow || isSpecialNoteRow) {
         tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
@@ -1550,7 +1577,7 @@ function renderDynamicTableStructure(tableId, week, year) {
       if (isTopicRow || isSpecialNoteRow) {
         tds += `<td class="row-total-cell"></td>`;
       } else {
-        tds += `<td class="row-total-cell"><span class="total-badge">0</span></td>`;
+        tds += `<td class="row-total-cell">0</td>`;
       }
     }
     tbodyHtml += `<tr${trClassAttr} data-rowindex="${rowIndex}">${tds}</tr>`;
@@ -2298,6 +2325,33 @@ function _timeRangesOverlap(s1, e1, s2, e2) {
 }
 
 /**
+ * בודקת האם בקשת חדר"ג/שק"ם אושרה ע"י המנהל *וגם* כבר הופצה בפועל.
+ * קוראת ישירות מהאחסון (לא מה-DOM) כדי לעבוד גם בעמודי היחידה, שבהם טבלת הגריד של המנהל לא קיימת.
+ * @param {Object} r - אובייקט הבקשה
+ * @param {boolean} isHadrag - true עבור חדר"ג, false עבור שק"ם
+ * @returns {Promise<boolean>}
+ */
+async function isRequestPublished(r, isHadrag) {
+  if (r.status !== 'approved') return false;
+  const tableId = isHadrag ? ('body-' + r.facility) : 'body-shekem';
+  const keyPrefix = isHadrag ? 'hadragData' : 'shekemData';
+  const baseKey = `${keyPrefix}_${tableId}_week${currentWeek}_year${currentYear}`;
+  let draft, pub;
+  if (typeof DataService !== 'undefined') {
+    draft = await DataService.getItem(baseKey);
+    pub = await DataService.getItem(baseKey + '_published');
+  } else {
+    draft = JSON.parse(localStorage.getItem(baseKey) || 'null');
+    pub = JSON.parse(localStorage.getItem(baseKey + '_published') || 'null');
+  }
+  const startRow = timeToRowIndex(r.startTime);
+  const cellKey = `${startRow}_${r.day}`;
+  const draftVal = (draft && draft[cellKey]) ? (draft[cellKey].val || '') : '';
+  const pubVal = (pub && pub[cellKey]) ? (pub[cellKey].val || '') : '';
+  return draftVal !== '' && draftVal === pubVal;
+}
+
+/**
  * מרנדרת תצוגת לו"ז משובץ לקריאה בלבד (כל היחידות) בדף היחידה (אפיון 1.1).
  * @param {string} type - 'hadrag' או 'shekem'
  */
@@ -2319,7 +2373,9 @@ async function renderUnitScheduleView(type) {
   const requests = isHadrag
     ? await loadHadragRequests(currentWeek, currentYear)
     : await loadShekemRequests(currentWeek, currentYear);
-  const approved = requests.filter(r => r.status === 'approved');
+  // מוצג ליחידה רק לאחר שהמנהל בפועל הפיץ שינויים (אין יותר סימון כתום על התא המשובץ) - אפיון 1.1+1.2
+  const publishFlags = await Promise.all(requests.map(r => isRequestPublished(r, isHadrag)));
+  const approved = requests.filter((r, i) => publishFlags[i]);
 
   approved.sort((a, b) => (a.day - b.day) || String(a.startTime).localeCompare(String(b.startTime)));
 
@@ -2500,8 +2556,10 @@ async function renderHadragRequestsList() {
     return;
   }
 
-  container.innerHTML = filteredRequests.map(req => {
+  const hadragPublishFlags = await Promise.all(filteredRequests.map(r => isRequestPublished(r, true)));
+  container.innerHTML = filteredRequests.map((req, i) => {
     const styleObj = UNIT_BG_MAP[req.unit] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
+    const pendingTag = hadragPublishFlags[i] ? '' : '<span class="req-pending-tag">pending</span>';
 
     return `
       <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -2509,6 +2567,7 @@ async function renderHadragRequestsList() {
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
         <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
         <span style="direction: ltr; font-weight: bold; color: #333;">${req.startTime} - ${req.endTime}</span>
+        ${pendingTag}
         <button class="hipok-delete-btn" onclick="deleteHadragRequest('${req.id}')">✕</button>
       </div>
     `;
@@ -2666,6 +2725,38 @@ async function rejectHadragRequest(reqId) {
 /**
  * שומרת את מצב תאי הטבלאות ומיזוגי השורות בכל מתקני החדר"ג לשבוע הנוכחי.
  */
+/**
+ * משווה תאי גריד חדר"ג/שק"ם (drag-to-merge) מול הגרסה שהופצה לאחרונה,
+ * ומסמנת בכתום (.conflict-overlap) תאים ששונו מאז - עד להפצת המנהל (אפיון 1.2).
+ * @param {string[]} tableIds - מזהי ה-tbody של הטבלאות
+ * @param {string} keyPrefix - קידומת מפתח השמירה (hadragData / shekemData)
+ */
+async function updatePlatoonGridConflictHighlight(tableIds, keyPrefix) {
+  for (const tableId of tableIds) {
+    const tbody = document.getElementById(tableId);
+    if (!tbody) continue;
+    const pubKey = `${keyPrefix}_${tableId}_week${currentWeek}_year${currentYear}_published`;
+    let published;
+    if (typeof DataService !== 'undefined') {
+      published = await DataService.getItem(pubKey);
+    } else {
+      published = JSON.parse(localStorage.getItem(pubKey) || 'null');
+    }
+    const pub = published || {};
+    for (let r = 0; r < 36; r++) {
+      for (let c = 0; c < 7; c++) {
+        const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
+        if (!cell) continue;
+        const textarea = cell.querySelector('textarea');
+        const curVal = textarea ? textarea.value : '';
+        const pubEntry = pub[`${r}_${c}`];
+        const pubVal = pubEntry ? (pubEntry.val || '') : '';
+        cell.classList.toggle('conflict-overlap', curVal !== pubVal);
+      }
+    }
+  }
+}
+
 function saveHadragTables() {
   const TABLE_IDS = ['body-chadrag', 'body-anafit8', 'body-anafit-bah', 'body-tavor'];
   TABLE_IDS.forEach(tableId => {
@@ -2688,6 +2779,7 @@ function saveHadragTables() {
     }
     persist(`hadragData_${tableId}_week${currentWeek}_year${currentYear}`, tableData);
   });
+  updatePlatoonGridConflictHighlight(TABLE_IDS, 'hadragData');
 }
 
 /**
@@ -2754,6 +2846,7 @@ async function loadHadragTables(week, year) {
       }
     }
   }
+  await updatePlatoonGridConflictHighlight(TABLE_IDS, 'hadragData');
 }
 
 /* =========================================================
@@ -2856,14 +2949,17 @@ async function renderShekemRequestsList() {
     return;
   }
 
-  container.innerHTML = filteredRequests.map(req => {
+  const shekemPublishFlags = await Promise.all(filteredRequests.map(r => isRequestPublished(r, false)));
+  container.innerHTML = filteredRequests.map((req, i) => {
     const styleObj = UNIT_BG_MAP[req.unit] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
+    const pendingTag = shekemPublishFlags[i] ? '' : '<span class="req-pending-tag">pending</span>';
 
     return `
       <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
         <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
         <span style="direction: ltr; font-weight: bold; color: #333;">${req.startTime} - ${req.endTime}</span>
+        ${pendingTag}
         <button class="hipok-delete-btn" onclick="deleteShekemRequest('${req.id}')">✕</button>
       </div>
     `;
@@ -3019,6 +3115,7 @@ function saveShekemTables() {
     }
   }
   persist(`shekemData_body-shekem_week${currentWeek}_year${currentYear}`, tableData);
+  updatePlatoonGridConflictHighlight(['body-shekem'], 'shekemData');
 }
 
 /**
@@ -3039,7 +3136,7 @@ async function loadShekemTables(week, year) {
   const tableData = (typeof DataService !== 'undefined')
     ? await DataService.getItem(sKey)
     : JSON.parse(localStorage.getItem(sKey) || 'null');
-  if (!tableData) return;
+  if (!tableData) { await updatePlatoonGridConflictHighlight(['body-shekem'], 'shekemData'); return; }
 
   for (let r = 0; r < 36; r++) {
     for (let c = 0; c < 7; c++) {
@@ -3059,6 +3156,7 @@ async function loadShekemTables(week, year) {
       }
     }
   }
+  await updatePlatoonGridConflictHighlight(['body-shekem'], 'shekemData');
 }
 
 /* =========================================================
@@ -4442,7 +4540,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const table = e.target.closest('table');
       if (!table) return;
       const tableId = table.id;
-      if (tableId === 'keshertable' || tableId === 'optictable') {
+      if (MANAGER_TRACKED_TABLES.includes(tableId)) {
         const td = e.target.closest('td');
         if (!td) return;
         const tr = td.closest('tr');

@@ -48,6 +48,7 @@ h1 {
 }
 
 /* ================== סרגל עליון (Top Nav Header Bar) ================== */
+/* שורה 1: זהות - לוגו + חיווי משתמש בלבד, נקייה וקלילה */
 .container1 {
   direction: rtl;
   padding: 0 16px;
@@ -63,11 +64,53 @@ h1 {
   margin-bottom: 8px;
 }
 
-.top-nav-buttons {
+/* שורה 2: שורת כלים - כרטיסיות ניווט מימין, כלי-עבודה ופעולת ההפצה משמאל, כל אשכול בתוך "כרטיס" עצמאי */
+.toolbar-row {
+  direction: rtl;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background-color: #1e293b;
+  padding: 4px;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background-color: #1e293b;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 26px;
+  background-color: #334155;
 }
 
 /* ================== כפתורי סטטוס עדכון (Updated Status) ================== */
@@ -203,16 +246,17 @@ button, .sidebar, .sidebar-btn {
   box-shadow: var(--shadow-sm);
 }
 
-/* כפתורי הניווט העליון (Top Nav) */
+/* כפתורי הניווט העליון (Top Nav) - כרטיסיות בתוך אשכול .nav-tabs, ללא מסגרת עצמאית */
 .topnav-btn {
-  height: 36px;
+  height: 32px;
   padding: 0 14px;
-  background-color: #1e293b;
+  background-color: transparent;
   color: #94a3b8;
-  border: 1px solid #334155;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
+  border: none;
+  border-radius: 7px;
+  font-size: 13.5px;
   font-weight: 600;
+  transition: all 0.15s ease;
 }
 
 .topnav-btn:hover {
@@ -224,8 +268,7 @@ button, .sidebar, .sidebar-btn {
   background-color: var(--primary);
   color: #ffffff;
   font-weight: 700;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 1px #0284c7;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 /* ================== תפריט נפתח בסרגל הצד (Submenu) ================== */
@@ -563,21 +606,20 @@ table tbody tr:hover {
   color: #ffffff !important;
 }
 
-/* כפתור הדפסה (אפיון 1.6) */
+/* כפתור הדפסה (אפיון 1.6) - כפתור אייקון בתוך אשכול .tool-group */
 .print-btn {
-  padding: 8px 14px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border: none;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: bold;
+  border-radius: 7px;
+  font-size: 16px;
   cursor: pointer;
-  color: #ffffff;
-  background: linear-gradient(135deg, #64748b, #475569);
-  box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-  transition: all 0.2s;
+  color: #cbd5e1;
+  background: transparent;
+  transition: all 0.15s ease;
 }
-.print-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+.print-btn:hover { background-color: #334155; }
 
 /* ================================
    סגנון הדפסה (אפיון 1.6) - מדפיס רק את הטבלה, בלי סרגלים וכפתורים
@@ -586,6 +628,7 @@ table tbody tr:hover {
   #top-nav-placeholder,
   #side-nav-placeholder,
   .container1,
+  .toolbar-row,
   .container2,
   #nextbt, #nextbt-optic, #nextbt2,
   #pageNumbers, #pageNumbers-optic, #pageNumbers2,
@@ -638,14 +681,14 @@ table tbody tr:hover {
 }
 .week-copy-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(8, 145, 178, 0.4); }
 
-/* כפתורי בטל / בצע-שוב (אפיון 1.4) */
+/* כפתורי בטל / בצע-שוב (אפיון 1.4) - כפתורי אייקון בתוך אשכול .tool-group */
 .undo-btn {
   width: 34px;
   height: 34px;
   padding: 0;
-  border: 1px solid #334155;
-  border-radius: var(--radius-sm);
-  background-color: #1e293b;
+  border: none;
+  border-radius: 7px;
+  background-color: transparent;
   color: #cbd5e1;
   font-size: 18px;
   font-weight: bold;
@@ -661,13 +704,14 @@ table tbody tr:hover {
 ================================ */
 .notif-wrap { position: relative; display: inline-flex; }
 .notif-bell {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   padding: 0;
-  border: 1px solid #334155;
-  border-radius: var(--radius-sm);
-  background-color: #1e293b;
-  font-size: 18px;
+  border: none;
+  border-radius: 7px;
+  background-color: transparent;
+  color: #cbd5e1;
+  font-size: 17px;
   line-height: 1;
   cursor: pointer;
   position: relative;
@@ -802,7 +846,6 @@ td.range-selected {
   border: 1px solid #334155;
   border-radius: 20px;
   padding: 4px 6px 4px 12px;
-  margin-right: auto;
 }
 .user-chip-info { display: flex; flex-direction: column; line-height: 1.15; }
 .user-chip-name { color: #ffffff; font-weight: 800; font-size: 13px; white-space: nowrap; }

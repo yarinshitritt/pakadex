@@ -180,7 +180,7 @@ function renderNavbars() {
       : '';
 
     // כפתור הדפסה (אפיון 1.6) - זמין בכל עמודי הטבלאות
-    const printBtnBlock = '<button class="print-btn" onclick="window.print()" title="הדפס טבלה">🖨️ הדפס</button>';
+    const printBtnBlock = '<button class="print-btn" onclick="window.print()" title="הדפס טבלה">🖨️</button>';
 
     // כפתורי בטל/בצע-שוב (אפיון 1.4)
     const undoRedoBlock = `
@@ -194,34 +194,48 @@ function renderNavbars() {
         <div id="notif-panel" class="notif-panel" style="display:none;"></div>
       </div>`;
 
-    const topNavButtonsBlock = !isMain ? `
-      <div class="top-nav-buttons" style="display:flex; align-items:center; gap:8px;">
-        <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
-        <button class="topnav-btn ${isOptic ? 'active' : ''}" id="btn-optic" onclick="${isUnitPage ? "showTopSection('optic')" : "window.location.href='optic.html'"}">אופטיקה</button>
-        <button class="topnav-btn ${isModiein ? 'active' : ''}" id="btn-modiein" onclick="${isUnitPage ? "showTopSection('modiein')" : "window.location.href='modiein.html'"}">מודיעין</button>
-        <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
-        <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
-        <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
-        <button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 אקסל</button>
-        ${bellBlock}
-        ${undoRedoBlock}
-        ${printBtnBlock}
-        ${publishIndicatorBlock}
-        ${!isUnitPage
-          ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים 🚀</button>'
-          : '<button id="global-export-btn" class="global-export-btn unit-ready" onclick="globalExportUnit()">שמור ומוכן לייבוא ✅</button>'}
+    // סרגל הזהות (לוגו + חיווי משתמש) - תמיד בשורה עצמאית לעמודי מנהל; בעמודי יחידה הלוגו כבר קבוע ב-HTML.
+    const identityRowBlock = !isUnitPage ? `
+      <div class="container1">
+        ${logoBlock}
+        ${userChipBlock}
       </div>
     ` : '';
 
-    topNav.innerHTML = `
-      <div class="container1">
-        <div style="display:flex; align-items:center; gap:12px;">
-          ${topNavButtonsBlock}
+    // בעמודי יחידה אין שורת זהות נפרדת - חיווי המשתמש עובר לתוך שורת הכלים.
+    const toolbarUserChip = isUnitPage ? userChipBlock : '';
+
+    const exportBtnBlock = !isUnitPage
+      ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים 🚀</button>'
+      : '<button id="global-export-btn" class="global-export-btn unit-ready" onclick="globalExportUnit()">שמור ומוכן לייבוא ✅</button>';
+
+    // שורת כלים: כרטיסיות ניווט בין הקטגוריות מימין, וכלי עבודה + פעולת ההפצה משמאל - מקובצים בבירור כדי לצמצם עומס חזותי.
+    const toolbarRowBlock = !isMain ? `
+      <div class="toolbar-row">
+        <div class="nav-tabs">
+          <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
+          <button class="topnav-btn ${isOptic ? 'active' : ''}" id="btn-optic" onclick="${isUnitPage ? "showTopSection('optic')" : "window.location.href='optic.html'"}">אופטיקה</button>
+          <button class="topnav-btn ${isModiein ? 'active' : ''}" id="btn-modiein" onclick="${isUnitPage ? "showTopSection('modiein')" : "window.location.href='modiein.html'"}">מודיעין</button>
+          <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
+          <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
+          <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
+          <button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 אקסל</button>
         </div>
-        ${userChipBlock}
-        ${logoBlock}
+        <div class="toolbar-actions">
+          <div class="tool-group">
+            ${bellBlock}
+            ${undoRedoBlock}
+            ${printBtnBlock}
+          </div>
+          ${publishIndicatorBlock}
+          ${toolbarUserChip}
+          <div class="toolbar-divider"></div>
+          ${exportBtnBlock}
+        </div>
       </div>
-    `;
+    ` : '';
+
+    topNav.innerHTML = `${identityRowBlock}${toolbarRowBlock}`;
 
     if (typeof updateNotifBadge === 'function') updateNotifBadge();
     if (typeof updateSyncIndicator === 'function') updateSyncIndicator();

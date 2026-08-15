@@ -170,26 +170,33 @@
   font-weight: 800 !important;
 }
 
-/* הפרדות אנכיות מודגשות בין יחידות בטבלת קשר */
-.keshertable th:nth-child(8), .keshertable td:nth-child(8),
-.keshertable th:nth-child(11), .keshertable td:nth-child(11),
-.keshertable th:nth-child(17), .keshertable td:nth-child(17),
-.keshertable th:nth-child(20), .keshertable td:nth-child(20),
-.keshertable th:nth-child(27), .keshertable td:nth-child(27),
-.keshertable th:nth-child(30), .keshertable td:nth-child(30),
-.keshertable th:nth-child(38), .keshertable td:nth-child(38),
-.keshertable th:nth-child(41), .keshertable td:nth-child(41),
-.keshertable th:nth-child(42), .keshertable td:nth-child(42),
-.keshertable th:nth-child(45), .keshertable td:nth-child(45) {
+/* הפרדות אנכיות מודגשות בין יחידות בטבלת קשר - #keshertable בלבד (לא לדלוף לפי מיקום עמודה לטבלאות היחידה) */
+#keshertable th:nth-child(8), #keshertable td:nth-child(8),
+#keshertable th:nth-child(11), #keshertable td:nth-child(11),
+#keshertable th:nth-child(17), #keshertable td:nth-child(17),
+#keshertable th:nth-child(20), #keshertable td:nth-child(20),
+#keshertable th:nth-child(27), #keshertable td:nth-child(27),
+#keshertable th:nth-child(30), #keshertable td:nth-child(30),
+#keshertable th:nth-child(38), #keshertable td:nth-child(38),
+#keshertable th:nth-child(41), #keshertable td:nth-child(41),
+#keshertable th:nth-child(42), #keshertable td:nth-child(42),
+#keshertable th:nth-child(45), #keshertable td:nth-child(45) {
   border-left: 2px solid #475569 !important;
 }
 
-/* הפרדות אנכיות מודגשות בין יחידות בטבלת אופטיקה */
-.optictable th:nth-child(8), .optictable td:nth-child(8),
-.optictable th:nth-child(14), .optictable td:nth-child(14),
-.optictable th:nth-child(21), .optictable td:nth-child(21),
-.optictable th:nth-child(29), .optictable td:nth-child(29),
-.optictable th:nth-child(30), .optictable td:nth-child(30) {
+/* הפרדות אנכיות מודגשות בין יחידות בטבלת אופטיקה - #optictable בלבד */
+#optictable th:nth-child(8), #optictable td:nth-child(8),
+#optictable th:nth-child(14), #optictable td:nth-child(14),
+#optictable th:nth-child(21), #optictable td:nth-child(21),
+#optictable th:nth-child(29), #optictable td:nth-child(29),
+#optictable th:nth-child(30), #optictable td:nth-child(30) {
+  border-left: 2px solid #475569 !important;
+}
+
+/* קו הפרדה אחיד לפני עמודת ה"סה"כ" בכל טבלאות הדרישה היחידתיות (קשר ואופטיקה), ללא תלות במספר העמודות.
+   ספציפיות (class+class+type) כדי לנצח את כלל הגבול הכללי .keshertable td / .optictable td שלמעלה. */
+.keshertable th.unit-total-th, .optictable th.unit-total-th,
+.keshertable td.row-total-cell, .optictable td.row-total-cell {
   border-left: 2px solid #475569 !important;
 }
 
@@ -289,8 +296,8 @@
 #keshertable tbody tr td:nth-child(n+42):nth-child(-n+45) { background-color: #fff3e0 !important; }
 
 /* 1. בא"ח איסו"ק (צהוב) */
-#esukkeshertable thead tr th:not(.unit-total-th),
-#esukoptictable thead tr th:not(.unit-total-th),
+#esukkeshertable thead tr th,
+#esukoptictable thead tr th,
 #reqesukTable thead tr th,
 #haktzaot-esuk-kesher-table thead tr th,
 #haktzaot-esuk-optic-table thead tr th,
@@ -309,8 +316,8 @@
 #haktzaot-esuk-shekem-table tbody tr td { background-color: #fffde7 !important; }
 
 /* 2. בא"ח חיר"ג (ירוק) */
-#kkeshertable thead tr th:not(.unit-total-th),
-#koptictable thead tr th:not(.unit-total-th),
+#kkeshertable thead tr th,
+#koptictable thead tr th,
 #reqhirgTable thead tr th,
 #haktzaot-hirg-kesher-table thead tr th,
 #haktzaot-hirg-optic-table thead tr th,
@@ -329,8 +336,8 @@
 #haktzaot-hirg-shekem-table tbody tr td { background-color: #e8f5e9 !important; }
 
 /* 3. גדוד הפיקוד (כחול) */
-#pkeshertable thead tr th:not(.unit-total-th),
-#poptictable thead tr th:not(.unit-total-th),
+#pkeshertable thead tr th,
+#poptictable thead tr th,
 #reqpikudTable thead tr th,
 #haktzaot-pikud-kesher-table thead tr th,
 #haktzaot-pikud-optic-table thead tr th,
@@ -349,8 +356,8 @@
 #haktzaot-pikud-shekem-table tbody tr td { background-color: #e3f2fd !important; }
 
 /* 4. ענף תצ"מ (סגול) */
-#tkeshertable thead tr th:not(.unit-total-th),
-#toptictable thead tr th:not(.unit-total-th),
+#tkeshertable thead tr th,
+#toptictable thead tr th,
 #reqtazamTable thead tr th,
 #haktzaot-tazam-kesher-table thead tr th,
 #haktzaot-tazam-optic-table thead tr th,

@@ -46,15 +46,6 @@ function isReadOnlyMode() {
   return document.body.classList.contains('readonly-mode');
 }
 
-function showReadOnlyBanner() {
-  if (document.getElementById('readonly-banner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'readonly-banner';
-  banner.className = 'readonly-banner';
-  banner.textContent = '🔒 מצב צפייה בלבד — אין לך הרשאת עריכה בעמוד זה';
-  document.body.insertBefore(banner, document.body.firstChild);
-}
-
 /**
  * מחילה את הרשאות המשתמש המחובר על העמוד:
  * נועלת שדות עריכה ומסתירה כפתורי פעולה כאשר אין הרשאת עריכה.
@@ -67,6 +58,8 @@ function applyPermissions() {
 
   const canEdit = AUTH.canEditPage();
   document.body.classList.toggle('readonly-mode', !canEdit);
+  // סימוני "שינויים שטרם הופצו" (כתום) מוצגים למנהל בלבד
+  document.body.classList.toggle('hide-conflict-overlap', session.role !== 'admin');
   if (canEdit) return;
 
   // נעילת שדות הקלט (למעט ניווט השבועות והסרגל העליון)
@@ -91,8 +84,6 @@ function applyPermissions() {
     const action = btn.getAttribute('onclick') || '';
     if (/import|promptAddItemRow|submit|approve|reject/i.test(action)) btn.style.display = 'none';
   });
-
-  showReadOnlyBanner();
 }
 
 /* ================================
@@ -267,6 +258,28 @@ function renderNavbars() {
     const isTazam = currentPage.includes('tazam');
     const isBahalag = currentPage.includes('bahalag');
 
+    // משתמש מסוג 'unit' רואה בסרגל הצד רק את הפלוגות שהוא מורשה להן (ייתכן כמה); שאר התפקידים רואים הכל.
+    const canSeeUnit = (unitKey) => {
+      if (typeof AUTH === 'undefined') return true;
+      const session = AUTH.getSession();
+      if (!session || session.role !== 'unit') return true;
+      const units = Array.isArray(session.unit) ? session.unit : (session.unit ? [session.unit] : []);
+      return units.includes(unitKey);
+    };
+
+    const unitBlock = (key, isActive, label, emoji) => `
+        <button class="sidebar-btn ${isActive ? 'active' : ''}" onclick="toggleMenu('subMenu_${key}')">
+          <span>${emoji}</span> <span class="sidebar-text">${label}</span>
+        </button>
+        <div id="subMenu_${key}" class="submenu ${isActive ? 'show' : ''}">
+          <button class="sidebar-btn ${isActive && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='${key}.html?view=bakashot'">
+            <span class="sidebar-text">דרישות</span>
+          </button>
+          <button class="sidebar-btn ${isActive && isHaktzaotView ? 'active' : ''}" onclick="window.location.href='${key}.html?view=haktzaot'">
+            <span class="sidebar-text">הקצאות</span>
+          </button>
+        </div>`;
+
     sideNav.innerHTML = `
       <div class="container2 ${isCollapsedStored ? 'collapsed' : ''}" style="margin-top: 0;">
         <button id="sidebar-toggle" class="sidebar-toggle-btn" onclick="toggleSidebar()">
@@ -285,65 +298,11 @@ function renderNavbars() {
           <span>👥</span> <span class="sidebar-text">ניהול הרשאות</span>
         </button>` : ''}
 
-        <button class="sidebar-btn ${isEsuk ? 'active' : ''}" onclick="toggleMenu('subMenu_esuk')">
-          <span>🟡</span> <span class="sidebar-text">בא"ח איסו"ק</span>
-        </button>
-        <div id="subMenu_esuk" class="submenu ${isEsuk ? 'show' : ''}">
-          <button class="sidebar-btn ${isEsuk && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='esuk.html?view=bakashot'">
-            <span class="sidebar-text">דרישות</span>
-          </button>
-          <button class="sidebar-btn ${isEsuk && isHaktzaotView ? 'active' : ''}" onclick="window.location.href='esuk.html?view=haktzaot'">
-            <span class="sidebar-text">הקצאות</span>
-          </button>
-        </div>
-
-        <button class="sidebar-btn ${isHirg ? 'active' : ''}" onclick="toggleMenu('subMenu_hirg')">
-          <span>🟢</span> <span class="sidebar-text">בא"ח חיר"ג</span>
-        </button>
-        <div id="subMenu_hirg" class="submenu ${isHirg ? 'show' : ''}">
-          <button class="sidebar-btn ${isHirg && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='hirg.html?view=bakashot'">
-            <span class="sidebar-text">דרישות</span>
-          </button>
-          <button class="sidebar-btn ${isHirg && isHaktzaotView ? 'active' : ''}" onclick="window.location.href='hirg.html?view=haktzaot'">
-            <span class="sidebar-text">הקצאות</span>
-          </button>
-        </div>
-
-        <button class="sidebar-btn ${isPikud ? 'active' : ''}" onclick="toggleMenu('subMenu_pikud')">
-          <span>🔵</span> <span class="sidebar-text">גדוד הפיקוד</span>
-        </button>
-        <div id="subMenu_pikud" class="submenu ${isPikud ? 'show' : ''}">
-          <button class="sidebar-btn ${isPikud && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='pikud.html?view=bakashot'">
-            <span class="sidebar-text">דרישות</span>
-          </button>
-          <button class="sidebar-btn ${isPikud && isHaktzaotView ? 'active' : ''}" onclick="window.location.href='pikud.html?view=haktzaot'">
-            <span class="sidebar-text">הקצאות</span>
-          </button>
-        </div>
-
-        <button class="sidebar-btn ${isTazam ? 'active' : ''}" onclick="toggleMenu('subMenu_tazam')">
-          <span>🟣</span> <span class="sidebar-text">ענף תצ"מ</span>
-        </button>
-        <div id="subMenu_tazam" class="submenu ${isTazam ? 'show' : ''}">
-          <button class="sidebar-btn ${isTazam && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='tazam.html?view=bakashot'">
-            <span class="sidebar-text">דרישות</span>
-          </button>
-          <button class="sidebar-btn ${isTazam && isHaktzaotView ? 'active' : ''}" onclick="window.location.href='tazam.html?view=haktzaot'">
-            <span class="sidebar-text">הקצאות</span>
-          </button>
-        </div>
-
-        <button class="sidebar-btn ${isBahalag ? 'active' : ''}" onclick="toggleMenu('subMenu_bahalag')">
-          <span>🟠</span> <span class="sidebar-text">מפח"ט</span>
-        </button>
-        <div id="subMenu_bahalag" class="submenu ${isBahalag ? 'show' : ''}">
-          <button class="sidebar-btn ${isBahalag && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='bahalag.html?view=bakashot'">
-            <span class="sidebar-text">דרישות</span>
-          </button>
-          <button class="sidebar-btn ${isBahalag && isHaktzaotView ? 'active' : ''}" onclick="window.location.href='bahalag.html?view=haktzaot'">
-            <span class="sidebar-text">הקצאות</span>
-          </button>
-        </div>
+        ${canSeeUnit('esuk') ? unitBlock('esuk', isEsuk, 'בא"ח איסו"ק', '🟡') : ''}
+        ${canSeeUnit('hirg') ? unitBlock('hirg', isHirg, 'בא"ח חיר"ג', '🟢') : ''}
+        ${canSeeUnit('pikud') ? unitBlock('pikud', isPikud, 'גדוד הפיקוד', '🔵') : ''}
+        ${canSeeUnit('tazam') ? unitBlock('tazam', isTazam, 'ענף תצ"מ', '🟣') : ''}
+        ${canSeeUnit('bahalag') ? unitBlock('bahalag', isBahalag, 'מפח"ט', '🟠') : ''}
       </div>
     `;
   }
@@ -2556,18 +2515,15 @@ async function renderHadragRequestsList() {
     return;
   }
 
-  const hadragPublishFlags = await Promise.all(filteredRequests.map(r => isRequestPublished(r, true)));
-  container.innerHTML = filteredRequests.map((req, i) => {
+  container.innerHTML = filteredRequests.map((req) => {
     const styleObj = UNIT_BG_MAP[req.unit] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
-    const pendingTag = hadragPublishFlags[i] ? '' : '<span class="req-pending-tag">pending</span>';
 
     return `
       <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; width: 90px; color: ${styleObj.text}; text-align: right;">${HADRAG_FACILITY_NAMES[req.facility] || 'חדר"ג'}</span>
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
         <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
-        <span style="direction: ltr; font-weight: bold; color: #333;">${req.startTime} - ${req.endTime}</span>
-        ${pendingTag}
+        <span style="direction: ltr; font-weight: bold; color: #333; margin-left: 14px;">${req.startTime} - ${req.endTime}</span>
         <button class="hipok-delete-btn" onclick="deleteHadragRequest('${req.id}')">✕</button>
       </div>
     `;
@@ -2949,17 +2905,14 @@ async function renderShekemRequestsList() {
     return;
   }
 
-  const shekemPublishFlags = await Promise.all(filteredRequests.map(r => isRequestPublished(r, false)));
-  container.innerHTML = filteredRequests.map((req, i) => {
+  container.innerHTML = filteredRequests.map((req) => {
     const styleObj = UNIT_BG_MAP[req.unit] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
-    const pendingTag = shekemPublishFlags[i] ? '' : '<span class="req-pending-tag">pending</span>';
 
     return `
       <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
         <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
-        <span style="direction: ltr; font-weight: bold; color: #333;">${req.startTime} - ${req.endTime}</span>
-        ${pendingTag}
+        <span style="direction: ltr; font-weight: bold; color: #333; margin-left: 14px;">${req.startTime} - ${req.endTime}</span>
         <button class="hipok-delete-btn" onclick="deleteShekemRequest('${req.id}')">✕</button>
       </div>
     `;

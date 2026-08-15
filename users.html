@@ -53,17 +53,28 @@
     .msg.ok  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
     .msg.err { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     .empty-row { text-align: center; color: #94a3b8; font-weight: 600; padding: 20px; }
-    .unit-checks {
-      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-      border: 1px solid var(--border-color); border-radius: 6px; background: #fff;
-      padding: 6px 10px; min-height: 40px; box-sizing: border-box; max-width: 420px;
+    .unit-dropdown { position: relative; width: 200px; }
+    .unit-dropdown-btn {
+      width: 100%; height: 40px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between;
+      font-family: inherit; font-size: 13.5px; font-weight: 700; color: #0f172a;
+      border: 1px solid var(--border-color); border-radius: 6px; background: #fff; cursor: pointer;
     }
+    .unit-dropdown-btn:hover { border-color: var(--primary); }
+    .unit-dropdown-arrow { color: #94a3b8; font-size: 11px; transition: transform 0.15s; }
+    .unit-dropdown.open .unit-dropdown-arrow { transform: rotate(180deg); }
+    .unit-dropdown-panel {
+      display: none; position: absolute; top: calc(100% + 4px); right: 0; min-width: 200px; z-index: 50;
+      background: #fff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-md, 0 4px 10px rgba(0,0,0,0.12));
+      padding: 6px; flex-direction: column; gap: 2px;
+    }
+    .unit-dropdown.open .unit-dropdown-panel { display: flex; }
     .unit-check-item {
-      display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px;
-      background: #f1f5f9; border: 1px solid var(--border-color); cursor: pointer; font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px;
+      cursor: pointer; font-size: 13px; font-weight: 700; white-space: nowrap;
     }
+    .unit-check-item:hover { background: #f1f5f9; }
     .unit-check-item input { cursor: pointer; }
-    .unit-check-item.checked { background: #dcfce7; border-color: #86efac; color: #166534; }
+    .unit-check-item.checked { background: #dcfce7; color: #166534; }
     .users-card-header {
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
     }
@@ -113,12 +124,17 @@
           </div>
           <div class="field" id="unitWrap" style="display:none;">
             <label>יחידות (ניתן לבחור כמה)</label>
-            <div id="unitField" class="unit-checks">
-              <label class="unit-check-item"><input type="checkbox" value="esuk" onchange="onUnitCheckChange(this)"> בא"ח איסו"ק</label>
-              <label class="unit-check-item"><input type="checkbox" value="hirg" onchange="onUnitCheckChange(this)"> בא"ח חיר"ג</label>
-              <label class="unit-check-item"><input type="checkbox" value="pikud" onchange="onUnitCheckChange(this)"> גדוד הפיקוד</label>
-              <label class="unit-check-item"><input type="checkbox" value="tazam" onchange="onUnitCheckChange(this)"> ענף תצ"מ</label>
-              <label class="unit-check-item"><input type="checkbox" value="bahalag" onchange="onUnitCheckChange(this)"> מפח"ט</label>
+            <div class="unit-dropdown" id="unitDropdown">
+              <button type="button" class="unit-dropdown-btn" onclick="toggleUnitDropdown(event)">
+                <span id="unitDropdownLabel">בחר יחידות...</span> <span class="unit-dropdown-arrow">▾</span>
+              </button>
+              <div id="unitField" class="unit-dropdown-panel">
+                <label class="unit-check-item"><input type="checkbox" value="esuk" onchange="onUnitCheckChange(this)"> בא"ח איסו"ק</label>
+                <label class="unit-check-item"><input type="checkbox" value="hirg" onchange="onUnitCheckChange(this)"> בא"ח חיר"ג</label>
+                <label class="unit-check-item"><input type="checkbox" value="pikud" onchange="onUnitCheckChange(this)"> גדוד הפיקוד</label>
+                <label class="unit-check-item"><input type="checkbox" value="tazam" onchange="onUnitCheckChange(this)"> ענף תצ"מ</label>
+                <label class="unit-check-item"><input type="checkbox" value="bahalag" onchange="onUnitCheckChange(this)"> מפח"ט</label>
+              </div>
             </div>
           </div>
           <button class="save-user-btn" onclick="submitUser()">💾 שמור</button>
@@ -186,8 +202,28 @@
       document.getElementById('unitWrap').style.display = (role === 'unit') ? 'flex' : 'none';
     }
 
+    const UNIT_SHORT_NAMES = { esuk: 'איסו"ק', hirg: 'חיר"ג', pikud: 'פיקוד', tazam: 'תצ"מ', bahalag: 'מפח"ט' };
+
+    function toggleUnitDropdown(e) {
+      e.stopPropagation();
+      document.getElementById('unitDropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', (e) => {
+      const dd = document.getElementById('unitDropdown');
+      if (dd && dd.classList.contains('open') && !dd.contains(e.target)) dd.classList.remove('open');
+    });
+
+    function updateUnitDropdownLabel() {
+      const checked = getCheckedUnits();
+      const label = document.getElementById('unitDropdownLabel');
+      label.textContent = checked.length
+        ? checked.map(u => UNIT_SHORT_NAMES[u] || u).join(', ')
+        : 'בחר יחידות...';
+    }
+
     function onUnitCheckChange(checkbox) {
       checkbox.closest('.unit-check-item').classList.toggle('checked', checkbox.checked);
+      updateUnitDropdownLabel();
     }
 
     function getCheckedUnits() {
@@ -198,8 +234,9 @@
       const list = Array.isArray(units) ? units : (units ? [units] : []);
       document.querySelectorAll('#unitField input[type="checkbox"]').forEach(cb => {
         cb.checked = list.includes(cb.value);
-        onUnitCheckChange(cb);
+        cb.closest('.unit-check-item').classList.toggle('checked', cb.checked);
       });
+      updateUnitDropdownLabel();
     }
 
     function clearForm() {

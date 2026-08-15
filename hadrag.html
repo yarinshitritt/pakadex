@@ -25,7 +25,7 @@
           </div>
           <div style="display:flex; align-items:center; gap:4px; margin-right:8px; background:#f1f5f9; padding:2px 8px; border-radius:6px; border:1px solid #cbd5e1;">
             <span style="font-size:16px;">🔍</span>
-            <input type="range" id="zoomSlider" min="40" max="120" value="70" style="width: 80px; cursor:pointer;" 
+            <input type="range" id="zoomSlider" min="40" max="120" value="40" style="width: 80px; cursor:pointer;"
                    oninput="document.querySelector('.table-container').style.zoom = this.value + '%'">
           </div>
         </div>
@@ -170,7 +170,12 @@
       });
     }
 
-
+    // הזכוכית המגדילה מתחילה בברירת מחדל בזום הכי קטן (אפיון בקשת משתמש)
+    window.addEventListener('load', () => {
+      const slider = document.getElementById('zoomSlider');
+      const container = document.querySelector('.table-container');
+      if (slider && container) container.style.zoom = slider.value + '%';
+    });
 
   </script>
   

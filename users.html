@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="style.css?v=1">
   <title>PAKADEX - ניהול הרשאות</title>
   <style>
-    .users-wrap { max-width: 1000px; }
+    .users-wrap { width: 100%; }
     .users-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -64,6 +64,20 @@
     }
     .unit-check-item input { cursor: pointer; }
     .unit-check-item.checked { background: #dcfce7; border-color: #86efac; color: #166534; }
+    .users-card-header {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+    }
+    .users-card-header h2 { margin: 0; }
+    .search-box { position: relative; }
+    .search-box input {
+      height: 38px; padding: 0 34px 0 12px; font-family: inherit; font-size: 14px;
+      border: 1px solid var(--border-color); border-radius: 8px; outline: none; background: #fff; color: #0f172a;
+      width: 240px;
+    }
+    .search-box input:focus { border-color: var(--primary); }
+    .search-box .search-icon {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -113,7 +127,13 @@
       </div>
 
       <div class="users-card">
-        <h2>👥 משתמשי המערכת</h2>
+        <div class="users-card-header">
+          <h2>👥 משתמשי המערכת</h2>
+          <div class="search-box">
+            <input type="text" id="searchPnField" inputmode="numeric" placeholder="חיפוש לפי מספר אישי..." autocomplete="off" oninput="renderUsers()">
+            <span class="search-icon">🔍</span>
+          </div>
+        </div>
         <table class="users-table">
           <thead>
             <tr>
@@ -229,11 +249,22 @@
     function renderUsers() {
       const tbody = document.getElementById('usersBody');
       if (!tbody) return; // המסך נחסם (אין הרשאת ניהול)
-      const users = AUTH.loadUsers();
+      let users = AUTH.loadUsers();
       const me = AUTH.getSession();
 
       if (!users.length) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-row">אין משתמשים רשומים במערכת.</td></tr>';
+        return;
+      }
+
+      const searchField = document.getElementById('searchPnField');
+      const query = searchField ? AUTH.normalizePn(searchField.value) : '';
+      if (query) {
+        users = users.filter(u => AUTH.normalizePn(u.pn).includes(query));
+      }
+
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-row">לא נמצאו משתמשים עם מספר אישי התואם לחיפוש.</td></tr>';
         return;
       }
 

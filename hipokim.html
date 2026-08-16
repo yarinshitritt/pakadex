@@ -2,8 +2,8 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=1">
-  <link rel="stylesheet" href="hipokim.css?v=1">
+  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="hipokim.css?v=17">
   <title>PAKADEX - חיפוקים</title>
 </head>
 <body>
@@ -86,10 +86,10 @@
 
   </div>
 
-  <script src="config.js?v=1"></script>
-  <script src="sharepointService.js?v=1"></script>
-  <script src="auth.js?v=1"></script>
-  <script src="script.js?v=1"></script>
+  <script src="config.js?v=17"></script>
+  <script src="sharepointService.js?v=17"></script>
+  <script src="auth.js?v=17"></script>
+  <script src="script.js?v=17"></script>
 
   <script>
     const ALL_HIPOK_COLORS = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat'];
@@ -110,6 +110,10 @@
       }
       btn.closest('.color-menu').classList.remove('show');
       if (typeof saveHipokData === 'function') saveHipokData();
+      if (typeof _recordUndoChange === 'function') _recordUndoChange();
+      if (typeof currentWeek !== 'undefined' && typeof currentYear !== 'undefined') {
+        updateHipokConflictHighlight(currentWeek, currentYear);
+      }
     }
 
     document.addEventListener('click', (e) => {
@@ -202,6 +206,39 @@
              wrapper.classList.add(data['color_' + i]);
          }
       });
+
+      await updateHipokConflictHighlight(week, year);
+    }
+
+    /* סימון כתום (.conflict-overlap) למשבצות חיפוקים ששונו מאז ההפצה האחרונה של המנהל -
+       חיפוקים לא היה מחובר למנגנון הסימון הכללי (MANAGER_TRACKED_TABLES מיועד לטבלאות מבוססות
+       cell-input פשוטות), ולכן סממן "יש שינויים שלא הופצו" מעולם לא הופיע כאן. */
+    async function updateHipokConflictHighlight(week, year) {
+      const wrappers = document.querySelectorAll('#hipoktable .cell-wrapper');
+      if (!wrappers.length) return;
+
+      const pubKey = getStorageKey('hipoktable', week, year) + '_published';
+      let published = null;
+      if (typeof fetchTableData === 'function') {
+        published = await fetchTableData(pubKey);
+      } else {
+        const saved = localStorage.getItem(pubKey);
+        if (saved) published = JSON.parse(saved);
+      }
+      published = published || {};
+
+      wrappers.forEach((wrapper, i) => {
+        const taskVal = wrapper.querySelector('.task-input')?.value || '';
+        const timeVal = wrapper.querySelector('.time-input')?.value || '';
+        const colorVal = ALL_HIPOK_COLORS.find(c => wrapper.classList.contains(c)) || '';
+
+        const pubTask = published['task_' + i] || '';
+        const pubTime = published['time_' + i] || '';
+        const pubColor = published['color_' + i] || '';
+
+        const changed = taskVal !== pubTask || timeVal !== pubTime || colorVal !== pubColor;
+        wrapper.classList.toggle('conflict-overlap', changed);
+      });
     }
 
     /* חוקי עסק לטבלת החיפוקים (אפיון 1.7) */
@@ -225,14 +262,38 @@
       if (cleaned !== el.value) el.value = cleaned;
     }
 
+    // תבנית "HH:MM - HH:MM" תקינה (זהה לוולידציה במודאל "הוספת חיפוק" ביחידות) -
+    // ה-pattern שהיה על ה-input לא נאכף בפועל כי השדה אינו בתוך <form>, ולכן עד כה
+    // ניתן היה להזין ערך שאינו בפורמט שעה תקין ישירות לתוך הטבלה.
+    const HIPOK_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d\s*-\s*([01]\d|2[0-3]):[0-5]\d$/;
+
+    function validateTimeInputFormat(el) {
+      if (!el) return;
+      const val = (el.value || '').trim();
+      const isInvalid = val !== '' && !HIPOK_TIME_PATTERN.test(val);
+      el.classList.toggle('time-input-invalid', isInvalid);
+      el.title = isInvalid ? 'פורמט שעה לא תקין - יש להזין לדוגמה: 12:00 - 12:30' : '';
+    }
+
     document.addEventListener('input', (e) => {
       if (!e.target) return;
       if (e.target.classList.contains('task-input')) {
         applyRomaniotRule(e.target);
       } else if (e.target.classList.contains('time-input')) {
         sanitizeTimeInput(e.target);
+      } else {
+        return;
+      }
+      if (typeof currentWeek !== 'undefined' && typeof currentYear !== 'undefined') {
+        updateHipokConflictHighlight(currentWeek, currentYear);
       }
     });
+
+    document.addEventListener('blur', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('time-input')) {
+        validateTimeInputFormat(e.target);
+      }
+    }, true);
   </script>
 </body>
 </html>

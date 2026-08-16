@@ -48,7 +48,7 @@ h1 {
 }
 
 /* ================== סרגל עליון (Top Nav Header Bar) ================== */
-/* שורה 1: זהות - לוגו + חיווי משתמש בלבד, נקייה וקלילה */
+/* שורה 1: זהות - לוגו (בצד שמאל) + חיווי משתמש/יציאה (בצד ימין) */
 .container1 {
   direction: rtl;
   padding: 0 16px;
@@ -58,7 +58,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 12px;
-  justify-content: flex-end;
+  justify-content: space-between;
   border: 1px solid #1e293b;
   box-shadow: var(--shadow-sm);
   margin-bottom: 8px;
@@ -113,7 +113,13 @@ h1 {
   background-color: #334155;
 }
 
-/* ================== כפתורי סטטוס עדכון (Updated Status) ================== */
+/* ================== כפתורי ייצוא ("הפץ שינויים" / "שמור ומוכן לייבוא") - צובעים את עצמם
+   לפי מצב הפרסום (אפיון QA), במקום סממן טקסט נפרד:
+   אדום (has-pending, וגם ברירת המחדל לפני שהבדיקה הראשונה רצה - הנחת "יש שינויים" בטוחה יותר
+   מהנחת "הכל מעודכן") = יש שינויים שטרם נשמרו/הופצו.
+   ירוק (all-published) = לפי updateGlobalExportButtonStatus הכל מעודכן לשבוע הנוכחי.
+   "הפץ שינויים" (עמודי מנהל) נבדק גלובלית לכל המערכת; "שמור ומוכן לייבוא" (עמוד יחידה,
+   unit-ready) נבדק לכל טבלאות הדרישה של אותה קבוצה - קשר+אופטיקה+מודיעין יחד. */
 .global-export-btn {
   margin-right: 16px;
   padding: 8px 16px;
@@ -123,9 +129,9 @@ h1 {
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: white;
-  box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -133,13 +139,27 @@ h1 {
 }
 .global-export-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 6px 12px rgba(220, 38, 38, 0.4);
 }
-.global-export-btn.unit-ready {
+.global-export-btn.has-pending {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
+}
+.global-export-btn.has-pending:hover {
+  box-shadow: 0 6px 12px rgba(220, 38, 38, 0.4);
+}
+.global-export-btn.all-published {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  box-shadow: 0 4px 6px rgba(22, 163, 74, 0.3);
+}
+.global-export-btn.all-published:hover {
+  box-shadow: 0 6px 12px rgba(22, 163, 74, 0.4);
+}
+.global-export-btn.unit-ready.all-published {
   background: linear-gradient(135deg, #10b981, #059669);
   box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
 }
-.global-export-btn.unit-ready:hover {
+.global-export-btn.unit-ready.all-published:hover {
   box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4);
 }
 
@@ -589,6 +609,17 @@ body.hide-conflict-overlap .conflict-overlap {
   box-shadow: none !important;
 }
 
+/* מסמנת תא בטבלת קשר/אופטיקה שהוזן בו ערך לא-מספרי - הערך מוחרג בשקט מחישוב ה"סה"כ"
+   (recalcKesherRow/recalcRow), ובלי הסימון הזה המשתמש לא היה יודע שהתא שלו לא נספר.
+   משתמשת ב-box-shadow (לא outline/background) ובסלקטור עם specificity גבוה מ-kesher.css'
+   input.cell-input, כדי לנצח את ה-outline:none/background:transparent !important שלו. */
+.invalid-number-input,
+.keshertable input.cell-input.invalid-number-input,
+.optictable input.cell-input.invalid-number-input {
+  box-shadow: inset 0 0 0 2px #dc2626 !important;
+  background-color: #fef2f2 !important;
+}
+
 /* עמודת "סה"כ" בטבלאות הדרישה היחידתיות (אפיון 1.7) - המספר באותו פונט/גודל כמו שאר תאי הטבלה,
    וכותרת "סה"כ" נשארת בצבע הפלוגה (לא נדרסת) - ראו #<table> thead tr th בקשר.css */
 .row-total-cell {
@@ -664,16 +695,19 @@ body.hide-conflict-overlap .conflict-overlap {
 
 /* כפתורי העתק שבוע / הדבק לכל השנה (אפיון 1.3) */
 .week-copy-btn {
-  padding: 8px 14px;
+  padding: 8px 16px;
   border: none;
   border-radius: 8px;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: bold;
   cursor: pointer;
   color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: linear-gradient(135deg, #0891b2, #0e7490);
-  box-shadow: 0 3px 5px rgba(8, 145, 178, 0.3);
+  box-shadow: 0 4px 6px rgba(8, 145, 178, 0.3);
   transition: all 0.2s;
 }
 .week-copy-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(8, 145, 178, 0.4); }
@@ -882,6 +916,15 @@ body.readonly-mode td.platoon-cell textarea {
   cursor: default;
 }
 body.readonly-mode td.platoon-cell { cursor: default !important; }
+
+/* גריד השיבוץ בחדר"ג/שק"ם נעול למנהל (role=admin) בלבד - חוסם גרירה, שינוי גודל, צביעה,
+   הדבקה ותפריט קליק-ימני עבור כל תפקיד אחר (כולל עורך), ראו applyPermissions (אפיון QA).
+   pointer-events:none חוסם את כל אירועי העכבר (mousedown/dragstart/contextmenu/click) על
+   התא בבת אחת, כך שאין צורך לתקן כל אחד מהמאזינים הרבים בנפרד. */
+body.hadrag-grid-readonly td.platoon-cell {
+  pointer-events: none !important;
+  cursor: default !important;
+}
 @media print { .user-chip { display: none !important; } }
 
 /* מצב צפייה בלבד: הסתרת פקדי עריכה גם כאשר הוגדרו עם !important */

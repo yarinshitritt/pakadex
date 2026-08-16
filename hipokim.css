@@ -166,6 +166,13 @@ table.hipoktable {
   border-radius: 0 0 4px 4px;
 }
 
+/* פורמט שעה לא תקין (לא תואם HH:MM - HH:MM) - ראו validateTimeInputFormat */
+.time-input.time-input-invalid {
+  background: #fee2e2 !important;
+  border-top: 1px solid #ef4444 !important;
+  box-shadow: inset 0 0 0 1px #ef4444;
+}
+
 /* ================== צבעי הפלוגות ================== */
 .bg-esuk   { background-color: #fffde7 !important; border: 1.5px solid #fde047 !important; }
 .bg-hirg   { background-color: #e8f5e9 !important; border: 1.5px solid #86efac !important; }

@@ -53,6 +53,12 @@ const DataService = {
       localStorage.setItem(key, JSON.stringify(data));
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
+      // מציגה אזהרה גלויה למשתמש (במקום לבלוע את הכשל בשקט) - ראו _handleStorageWriteFailure
+      // ב-script.js. script.js נטען אחרי הקובץ הזה, אבל setItem תמיד נקראת בזמן ריצה
+      // (בתגובה לפעולת משתמש), אז הפונקציה כבר מוגדרת גלובלית עד אז.
+      if (typeof window !== 'undefined' && typeof window._handleStorageWriteFailure === 'function') {
+        window._handleStorageWriteFailure(e);
+      }
     }
 
     if (!this._isRemote()) return true;

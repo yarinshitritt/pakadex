@@ -1,3 +1,20 @@
+/**
+ * הופכת מחרוזת חופשית (טקסט שהוזן ע"י משתמש - שם אמצעי, טקסט בקשה וכו') לבטוחה להכנסה
+ * ל-innerHTML, כדי למנוע הזרקת HTML/סקריפט (XSS) דרך שדות טקסט חופשיים במערכת.
+ * יש להשתמש בה בכל מקום שמכניסים ערך שמקורו בקלט משתמש לתוך תבנית HTML (לא ל-.value של שדה קלט).
+ * @param {*} str
+ * @returns {string}
+ */
+function escapeHtml(str) {
+  if (str === undefined || str === null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /* ================================
    הגדרות טבלאות (לחישובים כלליים)
 ================================ */
@@ -14,13 +31,61 @@ const MANAGER_TRACKED_TABLES = [
   'esukoptictable', 'koptictable', 'poptictable', 'toptictable', 'boptictable'
 ];
 
+/* כללי הדגשה כתומה בטבלאות המשולבות (הגדולות) קשר/אופטיקה - אפיון QA:
+   הסימון הכתום שם אינו נגזר יותר מהשוואת draft מול published (זה ערבב בין עריכה ישירה
+   של המנהל לבין ייבוא מהיחידות, וגם סימן בטעות עמודות סה"כ מחושבות). במקום זאת מנוהלת
+   רשימת "אינדקסים ממתינים" מפורשת שמתעדכנת אך ורק ע"י importFromSubTable (מוסיפה אינדקס
+   כשהערך המיובא שונה מהמפורסם, ומסירה כשהוא זהה), ומתאפסת רק ע"י הפצה. כך:
+   - ייבוא ראשון אי-פעם כן מסמן כתום (אין יותר תלות בקיום published קודם).
+   - הקלדה ישירה של המנהל בטבלה הגדולה (בכל עמודה, כולל אחרי ריענון הדף) לעולם לא מוסיפה/
+     מסירה סימון - ראו גם החסימה המוקדמת ל-MASTER_COMBINED_TABLES בהאזנת ה-input הגלובלית.
+   - עמודות מחושבות/מסוכמות (דרישה, וויסות גדודי, עודף, סה"כ כללי) לעולם לא מגיעות לרשימה,
+     כי importFromSubTable מלכתחילה כותבת רק לעמודות החברה/יחידה שבאמת מיובאות. */
+const MASTER_COMBINED_TABLES = ['keshertable', 'optictable'];
+
+function getPendingImportKey(tableId, week, year) {
+  return `pendingImport_${tableId}_week${week}_year${year}`;
+}
+
+async function loadPendingImportIndexes(tableId, week, year) {
+  const key = getPendingImportKey(tableId, week, year);
+  const list = (typeof fetchTableData === 'function')
+    ? await fetchTableData(key)
+    : JSON.parse(localStorage.getItem(key) || 'null');
+  return Array.isArray(list) ? list : [];
+}
+
+function savePendingImportIndexes(tableId, week, year, indexes) {
+  persist(getPendingImportKey(tableId, week, year), indexes);
+}
+
 /* ================================
    מצב גלובלי (שבועות)
 ================================ */
 let currentWeek = 1;
 let currentYear = new Date().getFullYear();
-const TOTAL_WEEKS = 52;
 const tableWeeks = {};
+
+let _storageErrorNotified = false;
+/**
+ * מטפלת בכשל כתיבה ל-localStorage (בד"כ המכסה מלאה - QuotaExceededError) בצורה גלויה
+ * למשתמש, במקום לבלוע אותו בשקט. בעבר כשל כזה לא הציג שום שגיאה, כך שהמשתמש היה חושב
+ * שהעריכה נשמרה כשבפועל היא אבדה. מוצגת פעם אחת בלבד לטעינת עמוד (לא על כל הקשה חוזרת).
+ * @param {*} err
+ */
+function _handleStorageWriteFailure(err) {
+  console.warn('LocalStorage save failed:', err);
+  if (_storageErrorNotified) return;
+  _storageErrorNotified = true;
+  // ה-alert קודם, ובלתי-תלוי בשמירה - אם האחסון באמת מלא, גם ניסיון להוסיף התראה (שגם
+  // הוא כותב ל-localStorage) עלול להיכשל בעצמו, ואסור שזה ימנע מהמשתמש לראות את האזהרה.
+  alert('שמירת הנתונים נכשלה! ייתכן שנפח האחסון המקומי (localStorage) של הדפדפן מלא. העריכה האחרונה שלך עלולה לא להישמר בפועל - מומלץ לגבות/לייצא נתונים ולפנות למנהל המערכת.');
+  try {
+    if (typeof addNotification === 'function') {
+      addNotification('⚠️ שמירת נתונים נכשלה - ייתכן שנפח האחסון המקומי בדפדפן מלא. העריכה האחרונה עלולה לא להישמר.', 'error');
+    }
+  } catch (e2) { /* האחסון מלא לגמרי - האזהרה כבר הוצגה, אין מה לעשות נוסף */ }
+}
 
 /**
  * שמירת נתון דרך שכבת הסנכרון ההיברידית (אפיון חלק 2):
@@ -32,7 +97,7 @@ function persist(key, data) {
   if (typeof DataService !== 'undefined') {
     DataService.setItem(key, data);
   } else {
-    try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {}
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) { _handleStorageWriteFailure(e); }
   }
 }
 
@@ -60,6 +125,9 @@ function applyPermissions() {
   document.body.classList.toggle('readonly-mode', !canEdit);
   // סימוני "שינויים שטרם הופצו" (כתום) מוצגים למנהל בלבד
   document.body.classList.toggle('hide-conflict-overlap', session.role !== 'admin');
+  // גריד השיבוץ בחדר"ג/שק"ם (גרירה, שינוי גודל, צביעה, הדבקה) נעול למנהל בלבד - גם עורך
+  // (שיכול לערוך כל טבלה אחרת) אינו אמור להזיז/לערוך שיבוצים בגריד הזה (אפיון QA).
+  document.body.classList.toggle('hadrag-grid-readonly', session.role !== 'admin');
   if (canEdit) return;
 
   // נעילת שדות הקלט (למעט ניווט השבועות והסרגל העליון)
@@ -163,7 +231,7 @@ function renderNavbars() {
     const userChipBlock = session ? `
       <div class="user-chip">
         <div class="user-chip-info">
-          <span class="user-chip-name">${session.name || session.pn}</span>
+          <span class="user-chip-name">${escapeHtml(session.name) || escapeHtml(session.pn)}</span>
           <span class="user-chip-role">${AUTH.roleLabel(session)}</span>
         </div>
         ${AUTH.canManageUsers()
@@ -173,15 +241,14 @@ function renderNavbars() {
       </div>
     ` : '';
 
-    // סממן הפצה (למנהל בלבד): האם יש שינויים שטרם הופצו לשבוע הנוכחי
-    const publishIndicatorBlock = !isUnitPage
-      ? `<span id="publish-indicator" class="publish-indicator all-published">✓ הכל הופץ</span>`
-      : '';
+    // הוסר סממן טקסט נפרד למנהל ("✓ הכל הופץ" / "⏳ יש שינויים שלא הופצו") - במקומו כפתור
+    // "הפץ שינויים" עצמו משנה צבע (אדום/ירוק) לפי updateGlobalExportButtonStatus, בהתבסס על
+    // בדיקה גלובלית לכל המערכת (קשר/אופטיקה/מודיעין/חיפוקים/חדר"ג/שק"ם) לשבוע הנוכחי - לא רק העמוד הנוכחי.
 
-    // סממן שינויים (לעמוד יחידה בלבד): האם הקבוצה ביצעה שינוי שטרם נשמר לייבוא
-    const unitChangesIndicatorBlock = isUnitPage
-      ? `<span id="unit-changes-indicator" class="publish-indicator all-published">✓ הכל נשמר</span>`
-      : '';
+    // הוסר גם סממן הטקסט הנפרד לעמוד יחידה ("✓ הכל נשמר" / "⏳ נוספו שינויים שטרם נשמרו") -
+    // אותו קונספט של כפתור אדום/ירוק חל גם כאן: כפתור "שמור ומוכן לייבוא" עצמו (אותו כפתור
+    // כללי לכל טבלאות הדרישה של הקבוצה - קשר, אופטיקה ומודיעין) משנה צבע לפי
+    // updateGlobalExportButtonStatus, ולא רק לפי הטבלה/הכרטיסייה שפתוחה כרגע.
 
     // כפתור הדפסה (אפיון 1.6) - זמין בכל עמודי הטבלאות
     const printBtnBlock = '<button class="print-btn" onclick="window.print()" title="הדפס טבלה">🖨️</button>';
@@ -198,7 +265,8 @@ function renderNavbars() {
         <div id="notif-panel" class="notif-panel" style="display:none;"></div>
       </div>`;
 
-    // סרגל הזהות (לוגו + חיווי משתמש) - תמיד בשורה עצמאית לעמודי מנהל; בעמודי יחידה הלוגו כבר קבוע ב-HTML.
+    // סרגל הזהות (לוגו + חיווי משתמש) - תמיד בשורה עצמאית לעמודי מנהל; בעמודי יחידה הלוגו כבר קבוע ב-HTML
+    // (בתוך container1 סטטי עם placeholder לחיווי המשתמש) - ראו הזרקה ל-#user-chip-placeholder בהמשך.
     const identityRowBlock = !isUnitPage ? `
       <div class="container1">
         ${userChipBlock}
@@ -206,12 +274,9 @@ function renderNavbars() {
       </div>
     ` : '';
 
-    // בעמודי יחידה אין שורת זהות נפרדת - חיווי המשתמש עובר לתוך שורת הכלים.
-    const toolbarUserChip = isUnitPage ? userChipBlock : '';
-
     const exportBtnBlock = !isUnitPage
-      ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים 🚀</button>'
-      : '<button id="global-export-btn" class="global-export-btn unit-ready" onclick="globalExportUnit()">שמור ומוכן לייבוא ✅</button>';
+      ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים</button>'
+      : '<button id="global-export-btn" class="global-export-btn unit-ready" onclick="globalExportUnit()">שמור ומוכן לייבוא</button>';
 
     // שורת כלים: כרטיסיות ניווט בין הקטגוריות מימין, וכלי עבודה + פעולת ההפצה משמאל - מקובצים בבירור כדי לצמצם עומס חזותי.
     const toolbarRowBlock = !isMain ? `
@@ -231,9 +296,6 @@ function renderNavbars() {
             ${undoRedoBlock}
             ${printBtnBlock}
           </div>
-          ${publishIndicatorBlock}
-          ${unitChangesIndicatorBlock}
-          ${toolbarUserChip}
           <div class="toolbar-divider"></div>
           ${exportBtnBlock}
         </div>
@@ -241,6 +303,13 @@ function renderNavbars() {
     ` : '';
 
     topNav.innerHTML = `${identityRowBlock}${toolbarRowBlock}`;
+
+    // בעמודי יחידה חיווי המשתמש מוזרק לתוך ה-container1 הסטטי (הקבוע ב-HTML של העמוד עצמו),
+    // כדי שיישב תמיד בצד ימין הכותרת יחד עם הלוגו - זהה למראה בעמודי המנהל.
+    if (isUnitPage) {
+      const chipPlaceholder = document.getElementById('user-chip-placeholder');
+      if (chipPlaceholder) chipPlaceholder.innerHTML = userChipBlock;
+    }
 
     if (typeof updateNotifBadge === 'function') updateNotifBadge();
     if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
@@ -335,17 +404,38 @@ function toggleMenu(menuId) {
 ================================ */
 
 /**
- * מחשבת את מספר השבוע והשנה הנוכחיים לפי תקן ISO-8601 הבינלאומי.
- * @returns {{week: number, year: number}} אובייקט המכיל את השבוע והשנה
+ * מחשבת את מספר השבוע (ISO-8601) והשנה של תאריך נתון.
+ * @param {Date} date
+ * @returns {{week: number, year: number}}
  */
-function getCurrentWeekAndYear() {
-  const now = new Date();
-  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+function getISOWeekInfo(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  return { week: Math.min(Math.max(weekNo, 1), 52), year: d.getUTCFullYear() };
+  return { week: weekNo, year: d.getUTCFullYear() };
+}
+
+/**
+ * מספר שבועות ה-ISO בשנה נתונה (52 או 53) - לפי תקן ISO-8601 (28 בדצמבר תמיד נמצא
+ * בשבוע ה-ISO האחרון של השנה). חשוב להשתמש בזה במקום קבוע קשיח - שנה עם 53 שבועות
+ * שמטופלת כאילו יש בה רק 52 גורמת לשבוע ה-53 האמיתי להתמזג בטעות עם נתוני שבוע 52.
+ * @param {number} year
+ * @returns {number} 52 או 53
+ */
+function getWeeksInYear(year) {
+  return getISOWeekInfo(new Date(year, 11, 28)).week;
+}
+
+/**
+ * מחשבת את מספר השבוע והשנה הנוכחיים לפי תקן ISO-8601 הבינלאומי.
+ * @returns {{week: number, year: number}} אובייקט המכיל את השבוע והשנה
+ */
+function getCurrentWeekAndYear() {
+  const info = getISOWeekInfo(new Date());
+  const maxWeek = getWeeksInYear(info.year);
+  return { week: Math.min(Math.max(info.week, 1), maxWeek), year: info.year };
 }
 
 /**
@@ -461,7 +551,13 @@ async function loadTableData(tableId, week, year) {
   });
 
   const key = getStorageKey(tableId, week, year);
-  const data = await fetchTableData(key);
+  // בטבלאות המשולבות (קשר/אופטיקה) משתמש שאינו מורשה לערוך את העמוד הזה (יחידתי/צפייה בלבד)
+  // חייב לראות את הגרסה המופצת בפועל, לא את הטיוטה החיה של המנהל - אחרת הוא רואה שינויים
+  // שהמנהל עדיין לא הפיץ (אפיון QA: "מעדכן בטבלאות הגדולות לפני שהמנהל עשה הפצה").
+  const isMasterCombined = MASTER_COMBINED_TABLES.includes(tableId);
+  const canViewDraft = !isMasterCombined || typeof AUTH === 'undefined' || AUTH.canEditPage();
+  const effectiveKey = canViewDraft ? key : (key + '_published');
+  const data = await fetchTableData(effectiveKey);
 
   if (data) {
     if (isDynamic) {
@@ -500,8 +596,10 @@ async function loadTableData(tableId, week, year) {
       if (inputs[idx]) {
         inputs[idx].value = data[indexStr];
 
-        // Add conflict-overlap if this is a manager table and value differs from published
-        if (MANAGER_TRACKED_TABLES.includes(tableId)) {
+        // Add conflict-overlap if this is a manager table and value differs from published.
+        // בטבלאות המשולבות (קשר/אופטיקה) הסימון לא נקבע כאן (draft מול published) אלא לפי
+        // רשימת האינדקסים הממתינים (ראו למטה) - כדי לא לתלות אותו בעריכה ישירה של המנהל.
+        if (MANAGER_TRACKED_TABLES.includes(tableId) && !isMasterCombined) {
           const publishedVal = managerPublishedData[indexStr] || '';
           if (data[indexStr] !== publishedVal) {
             const td = inputs[idx].closest('td');
@@ -510,6 +608,18 @@ async function loadTableData(tableId, week, year) {
         }
       }
     });
+
+    // סימוני "ממתין לייבוא" רלוונטיים רק למי שבכלל רואה את הטיוטה (מנהל/עורך) - צופה
+    // שמוגבל לגרסה המופצת רואה ערכים שכבר זהים לפרסום מטבעם, ואין טעם/משמעות לסמן אותם.
+    if (isMasterCombined && canViewDraft) {
+      const pendingIndexes = await loadPendingImportIndexes(tableId, week, year);
+      pendingIndexes.forEach(idx => {
+        if (inputs[idx]) {
+          const td = inputs[idx].closest('td');
+          if (td) td.classList.add('conflict-overlap');
+        }
+      });
+    }
 
     inputs.forEach(input => {
       if (input.classList.contains('topic-textarea')) {
@@ -534,6 +644,24 @@ async function loadTableData(tableId, week, year) {
    ניווט שבועות
 ================================ */
 
+// השבוע שהמשתמש צופה בו כרגע, לפי חלון/כרטיסייה (sessionStorage) - כדי שמעבר בין טבלאות
+// (קשר, אופטיקה, מודיעין וכו') לא יאפס בחזרה לשבוע הקלנדרי האמיתי (אפיון QA).
+const VIEWED_WEEK_KEY = 'pakadex_viewed_week';
+
+function saveViewedWeek(week, year) {
+  try { sessionStorage.setItem(VIEWED_WEEK_KEY, JSON.stringify({ week, year })); } catch (e) {}
+}
+
+function loadViewedWeek() {
+  try {
+    const raw = sessionStorage.getItem(VIEWED_WEEK_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && Number.isInteger(parsed.week) && Number.isInteger(parsed.year)) return parsed;
+  } catch (e) {}
+  return null;
+}
+
 /**
  * שומרת את השבוע הנוכחי ומעבירה את תצוגת המערכת לשבוע ושנה חדשים.
  * @param {number} year - השנה
@@ -543,6 +671,7 @@ async function loadWeek(year, week) {
   await saveCurrentWeek();
   currentWeek = week;
   currentYear = year;
+  saveViewedWeek(week, year);
   await updateUIForWeek();
   if (typeof resetUndoHistory === 'function') resetUndoHistory();
 }
@@ -550,18 +679,18 @@ async function loadWeek(year, week) {
 /**
  * מעבירה את התצוגה לשבוע הקודם (כולל מעבר שנה במידת הצורך).
  */
-function prevWeek() { 
+function prevWeek() {
   let week = currentWeek - 1, year = currentYear;
-  if (week < 1) { week = TOTAL_WEEKS; year--; }
+  if (week < 1) { year--; week = getWeeksInYear(year); }
   loadWeek(year, week);
 }
 
 /**
  * מעבירה את התצוגה לשבוע הבא (כולל מעבר שנה במידת הצורך).
  */
-function nextWeek() { 
+function nextWeek() {
   let week = currentWeek + 1, year = currentYear;
-  if (week > TOTAL_WEEKS) { week = 1; year++; }
+  if (week > getWeeksInYear(currentYear)) { week = 1; year++; }
   loadWeek(year, week);
 }
 
@@ -606,7 +735,7 @@ async function updateUIForWeek() {
   if (typeof renderHipokEntriesList === 'function') await renderHipokEntriesList();
   
   // פונקציות החדר"ג והשק"ם: הטבלאות (עם סימוני הכתום) חייבות להיטען לפני תצוגת הלו"ז המשובץ ליחידה,
-  // כדי שהסינון לפי מצב הפצה בפועל (isRequestPublished) יפעל על נתונים עדכניים.
+  // כדי שהסריקה הישירה של הגריד המפורסם (getAllGridAllocations) תפעל על נתונים עדכניים.
   if (typeof loadHadragTables === 'function') await loadHadragTables(currentWeek, currentYear);
   if (typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
   if (typeof renderHadragPendingRequests === 'function') await renderHadragPendingRequests();
@@ -614,7 +743,7 @@ async function updateUIForWeek() {
   if (typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
   if (typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
 
-  if (typeof updatePublishIndicator === 'function') updatePublishIndicator();
+  if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
 
   // הטבלאות נבנות דינמית - יש להחיל מחדש את ההרשאות לאחר כל רינדור
   if (typeof applyPermissions === 'function') applyPermissions();
@@ -627,24 +756,11 @@ async function updateUIForWeek() {
 let _publishIndicatorObserver = null;
 
 /**
- * מעדכנת את סממן ההפצה בסרגל העליון לפי קיום שינויים שטרם הופצו בעמוד הנוכחי.
+ * מפעילה בדיקה שצובעת את כפתור "הפץ שינויים"/"שמור ומוכן לייבוא" (אדום/ירוק) -
+ * ראו updateGlobalExportButtonStatus.
  */
-function updatePublishIndicator() {
-  const hasPending = document.querySelectorAll('.conflict-overlap').length > 0;
-
-  const el = document.getElementById('publish-indicator');
-  if (el) {
-    el.classList.toggle('has-pending', hasPending);
-    el.classList.toggle('all-published', !hasPending);
-    el.textContent = hasPending ? '⏳ יש שינויים שלא הופצו' : '✓ הכל הופץ';
-  }
-
-  const unitEl = document.getElementById('unit-changes-indicator');
-  if (unitEl) {
-    unitEl.classList.toggle('has-pending', hasPending);
-    unitEl.classList.toggle('all-published', !hasPending);
-    unitEl.textContent = hasPending ? '⏳ נוספו שינויים שטרם נשמרו' : '✓ הכל נשמר';
-  }
+async function updatePublishIndicator() {
+  await updateGlobalExportButtonStatus();
 }
 
 /**
@@ -656,25 +772,204 @@ function initPublishIndicatorObserver() {
   _publishIndicatorObserver.observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true });
 }
 
+/* ================================
+   בדיקה גלובלית: האם קיימים בכלל המערכת (לא רק בעמוד הנוכחי) שינויים שטרם הופצו
+   לשבוע הנוכחי - קשר/אופטיקה (לפי רשימת הממתינים), טבלאות מודיעין/דרישת יחידה,
+   חדר"ג, שק"ם וחיפוקים (השוואת draft מול published ישירות מהאחסון).
+================================ */
+
+/** מסננת ערכי תא "ריקים למעשה" (מחרוזת ריקה, או תא חדר"ג/שק"ם ללא טקסט וללא צבע) כדי שהשוואת draft מול published לא תיתקל בפער מלאכותי. */
+function _isEffectivelyEmptyCell(v) {
+  if (v === undefined || v === null) return true;
+  if (typeof v === 'string') return v.trim() === '';
+  if (typeof v === 'object') {
+    const valEmpty = !v.val || String(v.val).trim() === '';
+    const noColor = !v.classes || v.classes.length === 0 || (v.classes.length === 1 && !v.classes[0]);
+    return valEmpty && noColor;
+  }
+  return false;
+}
+
+function _normalizeCellDataForCompare(obj) {
+  const out = {};
+  if (!obj) return out;
+  Object.keys(obj).forEach(k => {
+    if (!_isEffectivelyEmptyCell(obj[k])) out[k] = obj[k];
+  });
+  return out;
+}
+
+async function _hasUnpublishedDraft(key) {
+  const draft = await fetchTableData(key);
+  const normalizedDraft = _normalizeCellDataForCompare(draft);
+  if (Object.keys(normalizedDraft).length === 0) return false;
+  const published = await fetchTableData(key + '_published');
+  const normalizedPublished = _normalizeCellDataForCompare(published);
+  return JSON.stringify(normalizedDraft) !== JSON.stringify(normalizedPublished);
+}
+
+async function hasAnySystemPendingChanges(week, year) {
+  // קשר/אופטיקה - כפתור "הפץ שינויים" הוא סממן גלובלי ("האם יש בכלל משהו שלא הופץ"), ולכן
+  // בודק את הטיוטה מול הפרסום של הטבלה כולה - כולל עריכה ישירה של המנהל בטבלה הגדולה, לא רק
+  // ייבוא (בשונה מהסימון הכתום על תא ספציפי, שנשאר מוגבל לייבוא בלבד כדי לא "ללכלך" תאים
+  // שהמנהל פשוט מילא/תיקן בעצמו - ראו MASTER_COMBINED_TABLES והסימון ב-loadTableData).
+  for (const tableId of MASTER_COMBINED_TABLES) {
+    if (await _hasUnpublishedDraft(getStorageKey(tableId, week, year))) return true;
+  }
+
+  // מודיעין, דרישות יחידה, ותת-טבלאות קשר/אופטיקה
+  const otherTrackedTables = MANAGER_TRACKED_TABLES.filter(id => !MASTER_COMBINED_TABLES.includes(id));
+  for (const tableId of otherTrackedTables) {
+    if (await _hasUnpublishedDraft(getStorageKey(tableId, week, year))) return true;
+  }
+
+  // חדר"ג
+  for (const tableId of Object.keys(HADRAG_TABLES_MAP)) {
+    if (await _hasUnpublishedDraft(`hadragData_${tableId}_week${week}_year${year}`)) return true;
+  }
+
+  // שק"ם
+  if (await _hasUnpublishedDraft(`shekemData_body-shekem_week${week}_year${year}`)) return true;
+
+  // חיפוקים - טבלת המנהל עצמה
+  if (await _hasUnpublishedDraft(getStorageKey('hipoktable', week, year))) return true;
+
+  // בקשות חיפוקים שיחידה פרסמה וטרם יובאו לטבלת המנהל
+  const publishedHipokEntries = (await fetchTableData(getHipokEntriesKey(week, year) + '_published')) || [];
+  if (publishedHipokEntries.length > 0) {
+    const importedIds = new Set(await loadHipokImportedIds(week, year));
+    if (publishedHipokEntries.some(e => !importedIds.has(e.id))) return true;
+  }
+
+  // בקשות חדר"ג/שק"ם שיחידה פרסמה וטרם אושרו על ידי המנהל
+  const publishedHadragRequests = (await fetchTableData(getHadragRequestsKey(week, year) + '_published')) || [];
+  if (publishedHadragRequests.some(r => r.status !== 'approved')) return true;
+
+  const publishedShekemRequests = (await fetchTableData(getShekemRequestsKey(week, year) + '_published')) || [];
+  if (publishedShekemRequests.some(r => r.status !== 'approved')) return true;
+
+  return false;
+}
+
+// טבלאות הדרישה של כל יחידה (קשר, אופטיקה, מודיעין) - "שמור ומוכן לייבוא" הוא כפתור כללי
+// אחד לכולן יחד, ולכן גם צביעת הכפתור (אדום/ירוק) בודקת את כל השלוש, לא רק את הכרטיסייה הפתוחה כרגע.
+const UNIT_OWN_TABLES = {
+  'esuk.html': ['esukkeshertable', 'esukoptictable', 'reqesukTable'],
+  'hirg.html': ['kkeshertable', 'koptictable', 'reqhirgTable'],
+  'pikud.html': ['pkeshertable', 'poptictable', 'reqpikudTable'],
+  'tazam.html': ['tkeshertable', 'toptictable', 'reqtazamTable'],
+  'bahalag.html': ['bkeshertable', 'boptictable', 'reqbahalagTable']
+};
+
+// משווה תת-קבוצה (מסוננת ליחידה הנוכחית) מתוך רשימה משותפת (חיפוקים/חדר"ג/שק"ם) בין draft
+// ל-published, כדי לגלות אם ליחידה יש רשומות משלה שעדיין לא נשמרו/פורסמו - ללא תלות
+// בשינויים שביצעו יחידות אחרות באותה רשימה משותפת.
+function _normalizeEntryListForCompare(list, filterFn) {
+  return (list || [])
+    .filter(filterFn)
+    .map(item => ({ ...item }))
+    .sort((a, b) => (a.id > b.id ? 1 : a.id < b.id ? -1 : 0));
+}
+
+async function _hasUnitOwnEntryListPending(key, filterFn) {
+  const draft = await fetchTableData(key);
+  const published = await fetchTableData(key + '_published');
+  const normDraft = _normalizeEntryListForCompare(draft, filterFn);
+  const normPublished = _normalizeEntryListForCompare(published, filterFn);
+  return JSON.stringify(normDraft) !== JSON.stringify(normPublished);
+}
+
+async function hasUnitPendingChanges(currentPage, week, year) {
+  const tables = UNIT_OWN_TABLES[currentPage] || [];
+  for (const tableId of tables) {
+    if (await _hasUnpublishedDraft(getStorageKey(tableId, week, year))) return true;
+  }
+
+  // "שמור ומוכן לייבוא" הוא כפתור כללי - חל גם על בקשות חיפוקים/חדר"ג/שק"ם שהיחידה הגישה
+  // (רשימות משותפות לכל היחידות, מסוננות כאן לפי הצבע של היחידה הנוכחית בלבד).
+  const unitColor = PAGE_UNIT_MAP[currentPage];
+  if (unitColor) {
+    if (await _hasUnitOwnEntryListPending(getHipokEntriesKey(week, year), e => e.color === unitColor)) return true;
+    if (await _hasUnitOwnEntryListPending(getHadragRequestsKey(week, year), r => r.unit === unitColor)) return true;
+    if (await _hasUnitOwnEntryListPending(getShekemRequestsKey(week, year), r => r.unit === unitColor)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * צובעת את כפתור הייצוא (אדום = יש שינויים חדשים, ירוק = הכל מעודכן לשבוע הנוכחי):
+ * - "הפץ שינויים" (עמודי מנהל) - בדיקה גלובלית לכל המערכת (קשר/אופטיקה/מודיעין/חיפוקים/
+ *   חדר"ג/שק"ם), לא רק לעמוד הנוכחי.
+ * - "שמור ומוכן לייבוא" (עמוד יחידה, מזוהה לפי מחלקת unit-ready) - כפתור כללי לכל טבלאות
+ *   הדרישה של אותה קבוצה (קשר+אופטיקה+מודיעין), לא רק לכרטיסייה הפתוחה כרגע.
+ */
+async function updateGlobalExportButtonStatus() {
+  const btn = document.getElementById('global-export-btn');
+  if (!btn) return;
+  if (typeof currentWeek === 'undefined' || typeof currentYear === 'undefined') return;
+
+  const isUnitBtn = btn.classList.contains('unit-ready');
+  const hasPending = isUnitBtn
+    ? await hasUnitPendingChanges(AUTH.currentPage(), currentWeek, currentYear)
+    : await hasAnySystemPendingChanges(currentWeek, currentYear);
+
+  btn.classList.toggle('has-pending', hasPending);
+  btn.classList.toggle('all-published', !hasPending);
+}
+
 /**
  * פונקציית ייצוא מנהל: שומרת את הנתונים הנוכחיים למצב 'published'.
  * מנקה צבעים כתומים שסימנו שינויים.
  */
+/**
+ * בודקת אם הגרסה המפורסמת של אחד ממפתחות הטיוטה שעומדים להיכתב כבר השתנתה "מרחוק" (משתמש/
+ * מכשיר אחר שהפיץ שינויים במקביל, במצב שרת מרכזי) מאז שהעותק המקומי האחרון נטען - כדי להזהיר
+ * לפני הפצה שעלולה לדרוס בשקט את השינוי המקביל ההוא. פעילה רק כשמוגדר שרת מרכזי
+ * (SharePoint/רשת צבאית); במצב מקומי (localStorage בלבד, ברירת המחדל) תמיד מחזירה false -
+ * אין מכשיר אחר שיכול להתנגש איתו כשהאחסון הוא אותו localStorage בדיוק.
+ * @param {string[]} draftKeys - מפתחות הטיוטה שעומדים להיות מועתקים ל-published
+ * @returns {Promise<boolean>}
+ */
+async function _detectConcurrentPublish(draftKeys) {
+  if (typeof DataService === 'undefined' || typeof DataService._isRemote !== 'function' || !DataService._isRemote()) {
+    return false;
+  }
+  for (const draftKey of draftKeys) {
+    const pubKey = draftKey + '_published';
+    const localCached = localStorage.getItem(pubKey);
+    let remote;
+    try { remote = await DataService.getItem(pubKey); } catch (e) { continue; }
+    const remoteStr = (remote !== null && remote !== undefined) ? JSON.stringify(remote) : null;
+    if (remoteStr !== null && remoteStr !== localCached) return true;
+  }
+  return false;
+}
+
 async function globalExportManager() {
   if (!confirm('האם אתה בטוח שברצונך להפיץ את כלל השינויים לשבוע זה? (פעולה זו תאשר את המצב הנוכחי ותנקה סימונים כתומים)')) return;
 
   const currentPrefix = `week${currentWeek}_year${currentYear}`;
-  
+
   // 1. Copy all draft keys to published
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key.includes(currentPrefix) && !key.includes('_published')) {
-      const data = localStorage.getItem(key);
-      if (typeof DataService !== 'undefined') {
-        await DataService.setItem(`${key}_published`, JSON.parse(data));
-      } else {
-        localStorage.setItem(`${key}_published`, data);
-      }
+  // חשוב: קודם ממצים את כל מפתחות ה-localStorage לרשימה קבועה (snapshot), ורק אז כותבים.
+  // כתיבה תוך כדי איטרציה לפי localStorage.key(i)/localStorage.length משבשת את סדר
+  // האינדקסים הפנימי (המפתחות החדשים לא בהכרח נוספים בסוף), מה שגרם לדילוג אקראי
+  // על טבלאות מסוימות - הסימן שהמשתמש דיווח עליו כ"לפעמים מתבלבל בטבלאות גדולות".
+  const draftKeysSnapshot = Object.keys(localStorage).filter(
+    key => key.includes(currentPrefix) && !key.includes('_published')
+  );
+
+  if (await _detectConcurrentPublish(draftKeysSnapshot)) {
+    if (!confirm('שים לב: נראה שמשתמש/מכשיר אחר כבר הפיץ שינויים לשבוע זה מאז שהעמוד הזה נטען לאחרונה. המשך ההפצה עלול לדרוס את השינוי הזה. לרענן ולבדוק קודם מומלץ.\n\nלהמשיך בכל זאת ולהפיץ?')) return;
+  }
+
+  for (const key of draftKeysSnapshot) {
+    const data = localStorage.getItem(key);
+    if (typeof DataService !== 'undefined') {
+      await DataService.setItem(`${key}_published`, JSON.parse(data));
+    } else {
+      localStorage.setItem(`${key}_published`, data);
     }
   }
 
@@ -682,7 +977,13 @@ async function globalExportManager() {
   document.querySelectorAll('.conflict-overlap').forEach(el => {
     el.classList.remove('conflict-overlap');
   });
-  if (typeof updatePublishIndicator === 'function') updatePublishIndicator();
+
+  // 2.5 מרוקנים את רשימות האינדקסים הממתינים בטבלאות המשולבות (קשר/אופטיקה) - ראו
+  // MASTER_COMBINED_TABLES - כדי שהסימון הכתום שם יתאפס גם הוא עם ההפצה. חשוב לעשות זאת
+  // *לפני* updatePublishIndicator, אחרת הבדיקה הגלובלית עדיין תמצא את הרשימה הישנה.
+  MASTER_COMBINED_TABLES.forEach(tableId => savePendingImportIndexes(tableId, currentWeek, currentYear, []));
+
+  if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
 
   // 3. Trigger save again so the orange class removal is saved
   if (typeof saveHadragTables === 'function') saveHadragTables();
@@ -700,63 +1001,34 @@ async function globalExportManager() {
 }
 
 /**
- * בודקת שדה חובה "נושא שבוע" בטבלאות דרישת הקשר של היחידה (אפיון 1.7).
- * אם הוזנה דרישת קשר כלשהי אך שורת "נושא שבוע" נותרה ריקה - מחזירה שגיאה.
- * @returns {{ok: boolean, tableId?: string}}
- */
-function validateWeekTopic() {
-  const unitKesherIds = KESHER_TABLE_LIST.filter(t => t.id !== 'keshertable').map(t => t.id);
-  for (const id of unitKesherIds) {
-    const table = document.getElementById(id);
-    if (!table) continue;
-    const topicRow = table.querySelector('tr.topic-row');
-    if (!topicRow) continue;
-
-    const topicInputs = Array.from(topicRow.querySelectorAll('.topic-textarea'));
-    const topicFilled = topicInputs.some(t => t.value.trim() !== '');
-
-    // האם הוזנו נתוני דרישה כלשהם (מחוץ לשורת הנושא)?
-    let hasRequirementData = false;
-    table.querySelectorAll('.cell-input').forEach(inp => {
-      if (inp.classList.contains('topic-textarea')) return;
-      if (inp.value.trim() !== '') hasRequirementData = true;
-    });
-
-    if (hasRequirementData && topicInputs.length && !topicFilled) {
-      return { ok: false, tableId: id };
-    }
-  }
-  return { ok: true };
-}
-
-/**
  * פונקציית ייצוא פלוגה: שומרת את הטיוטה למצב שמאפשר למנהל לייבא.
  */
 async function globalExportUnit() {
-  const topicCheck = validateWeekTopic();
-  if (!topicCheck.ok) {
-    alert('לא ניתן לשמור: שדה "נושא שבוע" בטבלת הקשר הוא שדה חובה. יש למלא אותו לפני שמירה לייבוא.');
-    return;
-  }
-
   if (!confirm('האם סיימת את השיבוץ וברצונך לשמור את הנתונים כך שיהיו מוכנים לייבוא על ידי המנהל?')) return;
 
   const currentPrefix = `week${currentWeek}_year${currentYear}`;
-  
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key.includes(currentPrefix) && !key.includes('_published')) {
-      const data = localStorage.getItem(key);
-      if (typeof DataService !== 'undefined') {
-        await DataService.setItem(`${key}_published`, JSON.parse(data));
-      } else {
-        localStorage.setItem(`${key}_published`, data);
-      }
+
+  // ראו הערה במימוש globalExportManager: יש למצות snapshot של המפתחות לפני כתיבה,
+  // אחרת כתיבה תוך כדי איטרציה עלולה לדלג על מפתחות באופן לא צפוי.
+  const draftKeysSnapshot = Object.keys(localStorage).filter(
+    key => key.includes(currentPrefix) && !key.includes('_published')
+  );
+
+  if (await _detectConcurrentPublish(draftKeysSnapshot)) {
+    if (!confirm('שים לב: נראה שהנתונים האלה כבר עודכנו במקביל ממכשיר/משתמש אחר מאז שהעמוד הזה נטען. שמירה עכשיו עלולה לדרוס את העדכון הזה. לרענן ולבדוק קודם מומלץ.\n\nלהמשיך בכל זאת ולשמור?')) return;
+  }
+
+  for (const key of draftKeysSnapshot) {
+    const data = localStorage.getItem(key);
+    if (typeof DataService !== 'undefined') {
+      await DataService.setItem(`${key}_published`, JSON.parse(data));
+    } else {
+      localStorage.setItem(`${key}_published`, data);
     }
   }
 
   document.querySelectorAll('.conflict-overlap').forEach(el => el.classList.remove('conflict-overlap'));
-  if (typeof updatePublishIndicator === 'function') updatePublishIndicator();
+  if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
 
   if (typeof addNotification === 'function') {
     const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
@@ -794,10 +1066,11 @@ function getKesherOpticCategory(tableId) {
 async function copyWeekToTarget(tableId) {
   const category = getKesherOpticCategory(tableId);
   const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
-  const targetStr = prompt(`העתקת נתוני ${catName} משבוע ${currentWeek} (${currentYear}) לשבוע יעד.\nהזן מספר שבוע יעד (1-${TOTAL_WEEKS}):`);
+  const weeksInYear = getWeeksInYear(currentYear);
+  const targetStr = prompt(`העתקת נתוני ${catName} משבוע ${currentWeek} (${currentYear}) לשבוע יעד.\nהזן מספר שבוע יעד (1-${weeksInYear}):`);
   if (targetStr === null) return;
   const target = parseInt(targetStr);
-  if (isNaN(target) || target < 1 || target > TOTAL_WEEKS) { alert('מספר שבוע לא תקין.'); return; }
+  if (isNaN(target) || target < 1 || target > weeksInYear) { alert('מספר שבוע לא תקין.'); return; }
   if (target === currentWeek) { alert('שבוע היעד זהה לשבוע הנוכחי.'); return; }
 
   await saveCurrentWeek();
@@ -815,20 +1088,21 @@ async function copyWeekToTarget(tableId) {
 async function applyWeekToRestOfYear(tableId) {
   const category = getKesherOpticCategory(tableId);
   const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
-  if (currentWeek >= TOTAL_WEEKS) { alert('זהו השבוע האחרון בשנה - אין שבועות הבאים להדבקה.'); return; }
-  if (!confirm(`פעולה זו תעתיק את תוכן טבלת ${catName} משבוע ${currentWeek} לכל השבועות ${currentWeek + 1}-${TOTAL_WEEKS} בשנת ${currentYear}, ותדרוס את הנתונים הקיימים בהם.\n\nלהמשיך?`)) return;
+  const weeksInYear = getWeeksInYear(currentYear);
+  if (currentWeek >= weeksInYear) { alert('זהו השבוע האחרון בשנה - אין שבועות הבאים להדבקה.'); return; }
+  if (!confirm(`פעולה זו תעתיק את תוכן טבלת ${catName} משבוע ${currentWeek} לכל השבועות ${currentWeek + 1}-${weeksInYear} בשנת ${currentYear}, ותדרוס את הנתונים הקיימים בהם.\n\nלהמשיך?`)) return;
 
   await saveCurrentWeek();
   const data = await fetchTableData(getStorageKey(tableId, currentWeek, currentYear));
   if (!data) { alert('אין נתונים להעתקה בשבוע הנוכחי.'); return; }
 
   let count = 0;
-  for (let w = currentWeek + 1; w <= TOTAL_WEEKS; w++) {
+  for (let w = currentWeek + 1; w <= weeksInYear; w++) {
     await DataService.setItem(getStorageKey(tableId, w, currentYear), data);
     copyRowListToWeek(category, w, currentYear);
     count++;
   }
-  alert(`הנתונים הועתקו ל-${count} שבועות (${currentWeek + 1}-${TOTAL_WEEKS}).`);
+  alert(`הנתונים הועתקו ל-${count} שבועות (${currentWeek + 1}-${weeksInYear}).`);
 }
 
 /**
@@ -842,8 +1116,8 @@ function renderPageNumbers() {
       container.innerHTML = '';
       for (let offset = -2; offset <= 2; offset++) {
         let week = currentWeek + offset, year = currentYear;
-        if (week < 1) { week += TOTAL_WEEKS; year--; }
-        if (week > TOTAL_WEEKS) { week -= TOTAL_WEEKS; year++; }
+        if (week < 1) { const prevYearWeeks = getWeeksInYear(year - 1); week += prevYearWeeks; year--; }
+        if (week > getWeeksInYear(year)) { week -= getWeeksInYear(year); year++; }
         const btn = document.createElement('button');
         btn.textContent = `${week} (${year})`;
         btn.onclick = () => loadWeek(year, week);
@@ -862,8 +1136,9 @@ function initWeekInput() {
     const weekInput = document.getElementById(inputId);
     if (weekInput) weekInput.addEventListener('change', () => {
       let val = parseInt(weekInput.value);
+      const maxWeek = (typeof getWeeksInYear === 'function') ? getWeeksInYear(currentYear) : 52;
       if (isNaN(val) || val < 1) val = 1;
-      if (val > 52) val = 52;
+      if (val > maxWeek) val = maxWeek;
       weekInput.value = val;
       loadWeek(currentYear, val);
     });
@@ -1072,8 +1347,8 @@ async function renderHipokEntriesList() {
         <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <span style="font-weight: bold; width: 100px; color: ${styleObj.text}; text-align: right;">${typeText}</span>
           <span style="font-weight: bold; width: 80px; color: #333;">${dayText}</span>
-          <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${entry.text || '-'}</span>
-          <span style="direction: ltr; font-weight: bold; color: #333; margin-left: 15px;">${entry.time}</span>
+          <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${escapeHtml(entry.text) || '-'}</span>
+          <span style="direction: ltr; font-weight: bold; color: #333; margin-left: 15px;">${escapeHtml(entry.time)}</span>
           <button class="hipok-delete-btn" onclick="removeHipokEntry('${entry.id}')">✕</button>
         </div>
       `;
@@ -1113,20 +1388,57 @@ function getHipokTableCell(type, day, slotIndex) {
 }
 
 /**
+ * מפתח השמירה של רשימת מזהי בקשות החיפוק שכבר יובאו לטבלת המנהל לשבוע נתון -
+ * מונע ייבוא כפול (אפיון QA: לחיצה חוזרת על "ייבוא" יצרה עותק נוסף לבקשות שכבר יובאו).
+ */
+function getHipokImportedIdsKey(week, year) { return `hipokImportedIds_week${week}_year${year}`; }
+
+async function loadHipokImportedIds(week, year) {
+  const key = getHipokImportedIdsKey(week, year);
+  if (typeof DataService !== 'undefined') {
+    return (await DataService.getItem(key)) || [];
+  }
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : [];
+}
+
+async function saveHipokImportedIds(ids, week, year) {
+  const key = getHipokImportedIdsKey(week, year);
+  if (typeof DataService !== 'undefined') {
+    await DataService.setItem(key, ids);
+  } else {
+    localStorage.setItem(key, JSON.stringify(ids));
+  }
+}
+
+/**
  * מייבאת את בקשות החיפוקים של היחידות לתוך טבלת החיפוקים של המנהל מול מגבלת המשבצות.
  */
 async function importHipukim() {
   const table = document.getElementById('hipoktable');
   if (!table) { alert('טבלת החיפוקים לא נמצאה'); return; }
 
-  const entries = await loadHipokEntries(currentWeek, currentYear);
+  // מייבאים רק חיפוקים שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") - לא בקשה שהוקלדה
+  // ועדיין לא נשמרה על ידי היחידה (אפיון QA).
+  const publishedKey = getHipokEntriesKey(currentWeek, currentYear) + '_published';
+  const allEntries = (await fetchTableData(publishedKey)) || [];
+  if (allEntries.length === 0) {
+    alert('אין חיפוקים מאושרים (לא בוצע שמירה לייבוא) לשבוע זה.');
+    return;
+  }
+
+  const importedIds = await loadHipokImportedIds(currentWeek, currentYear);
+  const importedIdSet = new Set(importedIds);
+  const entries = allEntries.filter(entry => !importedIdSet.has(entry.id));
+
   if (entries.length === 0) {
-    alert('אין חיפוקים שהוזנו לשבוע זה.');
+    alert('כל החיפוקים שהוזנו כבר יובאו לטבלה.');
     return;
   }
 
   const slotCounters = {};
   const overflow = [];
+  const newlyImportedIds = [];
 
   entries.forEach(entry => {
     const key = `${entry.type}_${entry.day}`;
@@ -1175,18 +1487,21 @@ async function importHipukim() {
 
     if (targetTimeInput && entry.time) targetTimeInput.value = entry.time;
     if (targetTaskInput && entry.text) targetTaskInput.value = entry.text;
-    
+
     if (targetWrapper) {
       targetWrapper.classList.add('imported');
       if (typeof ALL_COLOR_CLASSES !== 'undefined') {
         const colorClassesOnly = ALL_COLOR_CLASSES.filter(c => c !== 'imported' && c !== 'conflict-overlap');
         targetWrapper.classList.remove(...colorClassesOnly);
       }
-      if (entry.color) targetWrapper.classList.add(entry.color); 
+      if (entry.color) targetWrapper.classList.add(entry.color);
     }
+    newlyImportedIds.push(entry.id);
   });
 
+  await saveHipokImportedIds([...importedIds, ...newlyImportedIds], currentWeek, currentYear);
   saveHipokData();
+  if (typeof updateHipokConflictHighlight === 'function') updateHipokConflictHighlight(currentWeek, currentYear);
   if (overflow.length > 0) {
     alert(`יובאו ${entries.length - overflow.length} חיפוקים.\n${overflow.length} לא נכנסו (חריגה מ-6 משבצות).`);
   } else {
@@ -1276,6 +1591,14 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
   const managerPublishedKey = getStorageKey(targetTableId, currentWeek, currentYear) + '_published';
   const managerPublishedData = await fetchTableData(managerPublishedKey) || {};
 
+  // רשימת האינדקסים הממתינים להפצה בטבלה המשולבת (ראו MASTER_COMBINED_TABLES) - הייבוא הוא
+  // המקום היחיד שמוסיף/מסיר מהרשימה הזו, כדי שהסימון הכתום ישקף אך ורק דרישות מיובאות
+  // שטרם הופצו, ולא ישתנה כתוצאה מעריכה ישירה של המנהל.
+  const isMasterCombined = MASTER_COMBINED_TABLES.includes(targetTableId);
+  const pendingSet = isMasterCombined
+    ? new Set(await loadPendingImportIndexes(targetTableId, currentWeek, currentYear))
+    : null;
+
   const targetRows = target.tBodies[0].rows;
   Object.entries(data).forEach(([indexStr, value]) => {
     if (value === undefined || value === null || value.trim() === '') return;
@@ -1294,10 +1617,15 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
         const publishedVal = managerPublishedData[globalIndex] || '';
         if (value !== publishedVal) {
           targetCell.classList.add('conflict-overlap');
+          if (pendingSet) pendingSet.add(globalIndex);
+        } else {
+          targetCell.classList.remove('conflict-overlap');
+          if (pendingSet) pendingSet.delete(globalIndex);
         }
       }
     }
   });
+  if (pendingSet) savePendingImportIndexes(targetTableId, currentWeek, currentYear, [...pendingSet]);
   saveCurrentWeek();
   const ackKey = getAckStorageKey(targetTableId, currentWeek, currentYear);
   const ackSavedRaw = localStorage.getItem(ackKey);
@@ -1312,6 +1640,7 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
   if (targetTableId === 'keshertable') recalcAll(targetTableId);
   else recalcAll(targetTableId, tableConfigs[targetTableId]);
   checkRequirementChanges(targetTableId);
+  if (typeof updateGlobalExportButtonStatus === 'function') await updateGlobalExportButtonStatus();
   alert(`יובאו נתונים בהצלחה`);
 }
 
@@ -1323,9 +1652,11 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
 async function importDirectToTable(sourceTableId, targetTableId) {
   const target = document.getElementById(targetTableId);
   if (!target) return;
-  const key = getStorageKey(sourceTableId, currentWeek, currentYear);
+  // מייבאים רק נתונים שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") - לא טיוטה חיה שעדיין
+  // לא אושרה על ידי היחידה (אפיון QA).
+  const key = getStorageKey(sourceTableId, currentWeek, currentYear) + '_published';
   const data = await fetchTableData(key);
-  if (!data) { alert(`אין נתונים לשבוע ${currentWeek}`); return; }
+  if (!data) { alert(`אין נתונים מאושרים (לא בוצע שמירה לייבוא) לשבוע ${currentWeek}`); return; }
   
   const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
   if (keysWithData.length > 0) {
@@ -1398,7 +1729,7 @@ function getRowsForWeek(category, week, year) {
   if (week > 1) {
     return getRowsForWeek(category, week - 1, year);
   } else if (year > new Date().getFullYear() - 2) {
-    const prevYearKey = getRowsStorageKey(category, TOTAL_WEEKS, year - 1);
+    const prevYearKey = getRowsStorageKey(category, getWeeksInYear(year - 1), year - 1);
     const prevYearSaved = localStorage.getItem(prevYearKey);
     if (prevYearSaved) return JSON.parse(prevYearSaved);
   }
@@ -1505,14 +1836,16 @@ function renderDynamicTableStructure(tableId, week, year) {
   const isMasterTable = (tableId === 'keshertable' || tableId === 'optictable');
 
   rowsList.forEach((rowName, rowIndex) => {
-    let deleteBtnHtml = '';
-    if (rowIndex > 0 && isMasterTable) {
-      deleteBtnHtml = `<button type="button" class="row-delete-icon" onclick="deleteRowItem('${category}', ${rowIndex})" title="מחק אמצעי משבוע זה והלאה">✕</button>`;
-    }
-
     const isTopicRow = (rowIndex === 0);
+    // שורת "משיכה\זיכוי" בקשר היא שורה קבועה (תמיד אחרונה) - אסור שתהיה ניתנת למחיקה או לגרירה
+    // (ראו גם ההגנה הזהה ב-deleteRowItem ואי-הוספת מחלקת reorderable-row).
     const isSpecialNoteRow = (category === 'kesher' && rowIndex === rowsList.length - 1 && rowName === "משיכה\\זיכוי");
     const isReorderable = isMasterTable && !isTopicRow && !isSpecialNoteRow;
+
+    let deleteBtnHtml = '';
+    if (rowIndex > 0 && isMasterTable && !isSpecialNoteRow) {
+      deleteBtnHtml = `<button type="button" class="row-delete-icon" onclick="deleteRowItem('${category}', ${rowIndex})" title="מחק אמצעי משבוע זה והלאה">✕</button>`;
+    }
     const rowClasses = [];
     if (isTopicRow) rowClasses.push('topic-row');
     if (isSpecialNoteRow) rowClasses.push('special-note-row');
@@ -1524,7 +1857,7 @@ function renderDynamicTableStructure(tableId, week, year) {
       ? `<span class="row-drag-handle" draggable="true" title="גרור לשינוי סדר האמצעי">⠿</span>`
       : '';
 
-    let tds = `<td class="test"><span class="row-name-text">${rowName}</span> ${dragHandleHtml}${deleteBtnHtml}</td>`;
+    let tds = `<td class="test"><span class="row-name-text">${escapeHtml(rowName)}</span> ${dragHandleHtml}${deleteBtnHtml}</td>`;
     for (let i = 1; i < totalCols; i++) {
       if (isTopicRow || isSpecialNoteRow) {
         tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
@@ -1662,7 +1995,7 @@ function addItemRow(category, itemName) {
   const hasExplicitSave = {};
   for (let y = currentYear; y <= currentYear + 1; y++) {
     const startW = (y === currentYear) ? currentWeek : 1;
-    for (let w = startW; w <= TOTAL_WEEKS; w++) {
+    for (let w = startW; w <= getWeeksInYear(y); w++) {
       const key = getRowsStorageKey(category, w, y);
       snapshots[`${w}_${y}`] = [...getRowsForWeek(category, w, y)];
       hasExplicitSave[`${w}_${y}`] = (localStorage.getItem(key) !== null);
@@ -1671,7 +2004,7 @@ function addItemRow(category, itemName) {
 
   for (let y = currentYear; y <= currentYear + 1; y++) {
     const startW = (y === currentYear) ? currentWeek : 1;
-    for (let w = startW; w <= TOTAL_WEEKS; w++) {
+    for (let w = startW; w <= getWeeksInYear(y); w++) {
       const currentList = snapshots[`${w}_${y}`];
       
       let insertIdx = currentList.length;
@@ -1725,6 +2058,11 @@ function deleteRowItem(category, rowIndex) {
     return;
   }
 
+  if (category === 'kesher' && rowIndex === currentList.length - 1 && itemName === "משיכה\\זיכוי") {
+    alert("לא ניתן למחוק את שורת \"משיכה\\זיכוי\".");
+    return;
+  }
+
   const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
   if (!confirm(`האם למחוק את האמצעי "${itemName}" מטבלאות ${catName} משבוע ${currentWeek} והלאה?`)) {
     return;
@@ -1736,7 +2074,7 @@ function deleteRowItem(category, rowIndex) {
   const hasExplicitSave = {};
   for (let y = currentYear; y <= currentYear + 1; y++) {
     const startW = (y === currentYear) ? currentWeek : 1;
-    for (let w = startW; w <= TOTAL_WEEKS; w++) {
+    for (let w = startW; w <= getWeeksInYear(y); w++) {
       const key = getRowsStorageKey(category, w, y);
       snapshots[`${w}_${y}`] = [...getRowsForWeek(category, w, y)];
       hasExplicitSave[`${w}_${y}`] = (localStorage.getItem(key) !== null);
@@ -1745,7 +2083,7 @@ function deleteRowItem(category, rowIndex) {
 
   for (let y = currentYear; y <= currentYear + 1; y++) {
     const startW = (y === currentYear) ? currentWeek : 1;
-    for (let w = startW; w <= TOTAL_WEEKS; w++) {
+    for (let w = startW; w <= getWeeksInYear(y); w++) {
       const listW = snapshots[`${w}_${y}`];
       const targetIdx = listW.indexOf(itemName);
       if (targetIdx === -1) continue;
@@ -1831,9 +2169,9 @@ async function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbody
     hasAny = true;
 
     const isSpecialRow = rowIndex === 0 || (name === "משיכה\\זיכוי");
-    let tds = `<td class="test">${name}</td>`;
+    let tds = `<td class="test">${escapeHtml(name)}</td>`;
     values.forEach(val => {
-      tds += `<td style="text-align:center; font-weight:bold;">${val}</td>`;
+      tds += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;
     });
     tbody.innerHTML += `<tr class="${isSpecialRow ? 'special-row' : ''}">${tds}</tr>`;
   });
@@ -1850,18 +2188,21 @@ async function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbody
  * @param {string} tbodyId - מזהה tbody ביעד
  * @param {number} [companyCount=6] - מספר הפלוגות ביחידה
  */
-function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 6) {
-  const key = getStorageKey(sourceTableId, currentWeek, currentYear);
-  const saved = localStorage.getItem(key);
+async function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 6) {
+  // הקצאות מוצגות ליחידה רק לאחר שהמנהל הפיץ בפועל - קוראים מה-published, לא מה-draft (אפיון QA)
+  // חשוב: fetchTableData (לא localStorage.getItem ישיר) - כדי שגם במצב שרת מרוחק (SharePoint/
+  // רשת צבאית) הנתונים ייטענו דרך DataService.getItem בפועל, ולא רק מתוך מטמון מקומי שעלול
+  // להיות ריק/מיושן במכשיר שלא ביצע בעצמו את הפעולה האחרונה שכתבה למפתח הזה.
+  const key = getStorageKey(sourceTableId, currentWeek, currentYear) + '_published';
+  const data = await fetchTableData(key);
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
 
-  if (!saved) {
+  if (!data) {
     tbody.innerHTML = `<tr><td colspan="${companyCount + 1}" style="text-align:center;">אין נתונים מאושרים לשבוע זה</td></tr>`;
     return;
   }
 
-  const data = JSON.parse(saved);
   tbody.innerHTML = '';
   const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
   if (keysWithData.length === 0) {
@@ -1881,7 +2222,7 @@ function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 6) {
       for (let c = 0; c < companyCount; c++) {
         const val = data[c] || '';
         if (val) rowHasData = true;
-        tr.innerHTML += `<td style="text-align:center; font-weight:bold;">${val}</td>`;
+        tr.innerHTML += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;
       }
       if (rowHasData) {
         tr.classList.add('special-row'); 
@@ -1895,7 +2236,7 @@ function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 6) {
         const idx = companyCount + (r - 1) * (companyCount + 1) + c;
         const val = data[idx] || '';
         if (val !== '') isEmpty = false;
-        rowHtml += `<td style="text-align:center; font-weight:bold;">${val}</td>`;
+        rowHtml += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;
       }
       if (!isEmpty) {
         tr.innerHTML = rowHtml;
@@ -1910,28 +2251,28 @@ function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 6) {
 }
 
 /** מרנדרת הקצאות מודיעין עבור בא"ח איסו"ק */
-function renderHaktzaotEsuk() {
-  renderHaktzaotModieinUnit('esukTable', 'haktzaot-esuk-body', 6);
+async function renderHaktzaotEsuk() {
+  await renderHaktzaotModieinUnit('esukTable', 'haktzaot-esuk-body', 6);
 }
 
 /** מרנדרת הקצאות מודיעין עבור בא"ח חיר"ג */
-function renderHaktzaotHirg() {
-  renderHaktzaotModieinUnit('hirgTable', 'haktzaot-hirg-body', 6);
+async function renderHaktzaotHirg() {
+  await renderHaktzaotModieinUnit('hirgTable', 'haktzaot-hirg-body', 6);
 }
 
 /** מרנדרת הקצאות מודיעין עבור גדוד הפיקוד */
-function renderHaktzaotPikud() {
-  renderHaktzaotModieinUnit('pikudTable', 'haktzaot-pikud-body', 7);
+async function renderHaktzaotPikud() {
+  await renderHaktzaotModieinUnit('pikudTable', 'haktzaot-pikud-body', 7);
 }
 
 /** מרנדרת הקצאות מודיעין עבור ענף תצ"מ */
-function renderHaktzaotTazam() {
-  renderHaktzaotModieinUnit('tazamTable', 'haktzaot-tazam-body', 8);
+async function renderHaktzaotTazam() {
+  await renderHaktzaotModieinUnit('tazamTable', 'haktzaot-tazam-body', 8);
 }
 
 /** מרנדרת הקצאות מודיעין עבור מפח"ט */
-function renderHaktzaotBahalag() {
-  renderHaktzaotModieinUnit('bahalagTable', 'haktzaot-bahalag-body', 1);
+async function renderHaktzaotBahalag() {
+  await renderHaktzaotModieinUnit('bahalagTable', 'haktzaot-bahalag-body', 1);
 }
 
 /* ================================
@@ -1966,7 +2307,15 @@ function recalcKesherRow(row) {
           groupDemand += val;
           hasGroupCompanyInput = true;
           hasAnyCompanyInputOverall = true;
+          input.classList.remove('invalid-number-input');
+        } else {
+          // ערך לא-מספרי מוחרג בשקט מהסיכום - מסמנים ויזואלית (מחלקת CSS בלבד; לא נוגעים
+          // ב-title, כי checkRequirementChanges כבר "בעלים" של אותו attribute על אותם תאים
+          // ומאפס אותו בכל הקלדה) כדי שהמשתמש ידע שהתא הזה לא נכלל בחישוב.
+          input.classList.add('invalid-number-input');
         }
+      } else if (input) {
+        input.classList.remove('invalid-number-input');
       }
     });
 
@@ -2050,7 +2399,14 @@ function recalcRow(row, config) {
       if (!isNaN(val)) {
         sum += val;
         hasAnyValue = true;
+        input.classList.remove('invalid-number-input');
+      } else {
+        // ראו הערה מקבילה ב-recalcKesherRow - ערך לא-מספרי מוחרג בשקט מהסכום, ולכן מסומן
+        // ויזואלית (מחלקת CSS בלבד, לא title) כדי שהמשתמש ידע שהוא לא נכלל.
+        input.classList.add('invalid-number-input');
       }
+    } else if (input) {
+      input.classList.remove('invalid-number-input');
     }
   }
 
@@ -2277,6 +2633,10 @@ const HADRAG_FACILITY_NAMES = {
 };
 const HADRAG_DAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const ALL_COLOR_CLASSES = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'imported', 'conflict-overlap'];
+// 'conflict-overlap' הוא סימון ויזואלי-בלבד המחושב חי (updatePlatoonGridConflictHighlight) מהשוואת draft מול
+// published, ואסור לו להישמר/להיגרר כחלק ממצב התא עצמו - אחרת השמירה מיד לאחר ניקוי הסימון הכתום בהפצה
+// (globalExportManager, שלב 3) כותבת draft שונה מה-published שכבר הועתק, וכפתור "הפץ שינויים" נשאר אדום.
+const PERSISTABLE_CELL_CLASSES = ALL_COLOR_CLASSES.filter(c => c !== 'conflict-overlap');
 
 /* בדיקת חפיפת טווחי שעות (HH:MM) - עבור התראת התנגשות (אפיון 1.1) */
 function _timeRangesOverlap(s1, e1, s2, e2) {
@@ -2284,36 +2644,54 @@ function _timeRangesOverlap(s1, e1, s2, e2) {
 }
 
 /**
- * בודקת האם בקשת חדר"ג/שק"ם אושרה ע"י המנהל *וגם* כבר הופצה בפועל.
- * קוראת ישירות מהאחסון (לא מה-DOM) כדי לעבוד גם בעמודי היחידה, שבהם טבלת הגריד של המנהל לא קיימת.
- * @param {Object} r - אובייקט הבקשה
- * @param {boolean} isHadrag - true עבור חדר"ג, false עבור שק"ם
- * @returns {Promise<boolean>}
- */
-async function isRequestPublished(r, isHadrag) {
-  if (r.status !== 'approved') return false;
-  const tableId = isHadrag ? ('body-' + r.facility) : 'body-shekem';
-  const keyPrefix = isHadrag ? 'hadragData' : 'shekemData';
-  const baseKey = `${keyPrefix}_${tableId}_week${currentWeek}_year${currentYear}`;
-  let draft, pub;
-  if (typeof DataService !== 'undefined') {
-    draft = await DataService.getItem(baseKey);
-    pub = await DataService.getItem(baseKey + '_published');
-  } else {
-    draft = JSON.parse(localStorage.getItem(baseKey) || 'null');
-    pub = JSON.parse(localStorage.getItem(baseKey + '_published') || 'null');
-  }
-  const startRow = timeToRowIndex(r.startTime);
-  const cellKey = `${startRow}_${r.day}`;
-  const draftVal = (draft && draft[cellKey]) ? (draft[cellKey].val || '') : '';
-  const pubVal = (pub && pub[cellKey]) ? (pub[cellKey].val || '') : '';
-  return draftVal !== '' && draftVal === pubVal;
-}
-
-/**
  * מרנדרת תצוגת לו"ז משובץ לקריאה בלבד (כל היחידות) בדף היחידה (אפיון 1.1).
  * @param {string} type - 'hadrag' או 'shekem'
  */
+const COLOR_UNIT_NAMES = {
+  'bg-esuk': 'בא"ח איסו"ק',
+  'bg-hirg': 'בא"ח חיר"ג',
+  'bg-pikud': 'גדוד הפיקוד',
+  'bg-tazam': 'ענף תצ"מ',
+  'bg-maphat': 'מפח"ט'
+};
+
+/**
+ * סורקת ישירות את הגריד המפורסם (חדר"ג/שק"ם) של כל היחידות יחד - ולא את רשימת הבקשות -
+ * כדי שה"לו"ז משובץ" ישקף תמיד את המיקום האמיתי בגריד, גם אחרי שהמנהל הזיז/שינה גודל
+ * שיבוץ ידנית לאחר האישור (רשימת הבקשות אינה מתעדכנת בגרירה, ולכן אינה מקור אמת אמין למיקום).
+ */
+async function getAllGridAllocations(isHadrag, week, year) {
+  const allocations = [];
+  const tableIds = isHadrag ? Object.keys(HADRAG_TABLES_MAP) : ['body-shekem'];
+
+  for (const tableId of tableIds) {
+    const key = `${isHadrag ? 'hadragData' : 'shekemData'}_${tableId}_week${week}_year${year}_published`;
+    const data = await fetchTableData(key);
+    if (!data) continue;
+
+    for (let c = 0; c < 7; c++) {
+      for (let r = 0; r < 36; r++) {
+        const cellData = data[`${r}_${c}`];
+        if (cellData && cellData.val && String(cellData.val).trim() !== '') {
+          const span = cellData.span || 1;
+          const unitColor = (cellData.classes || []).find(cls => COLOR_UNIT_NAMES[cls]) || 'bg-esuk';
+          allocations.push({
+            day: c,
+            facility: isHadrag ? (HADRAG_TABLES_MAP[tableId] || 'חדר"ג') : null,
+            startTime: rowToTimeStr(r),
+            endTime: rowToTimeStr(r + span),
+            text: cellData.val,
+            unit: unitColor,
+            unitName: COLOR_UNIT_NAMES[unitColor]
+          });
+          r += (span - 1);
+        }
+      }
+    }
+  }
+  return allocations;
+}
+
 async function renderUnitScheduleView(type) {
   const isHadrag = type === 'hadrag';
   const listId = isHadrag ? 'hadragRequestsList' : 'shekemRequestsList';
@@ -2329,12 +2707,8 @@ async function renderUnitScheduleView(type) {
     listEl.parentElement.appendChild(view);
   }
 
-  const requests = isHadrag
-    ? await loadHadragRequests(currentWeek, currentYear)
-    : await loadShekemRequests(currentWeek, currentYear);
-  // מוצג ליחידה רק לאחר שהמנהל בפועל הפיץ שינויים (אין יותר סימון כתום על התא המשובץ) - אפיון 1.1+1.2
-  const publishFlags = await Promise.all(requests.map(r => isRequestPublished(r, isHadrag)));
-  const approved = requests.filter((r, i) => publishFlags[i]);
+  // מוצג ליחידה רק לאחר שהמנהל בפועל הפיץ שינויים - נסרק ישירות מהגריד המפורסם (ראו הערה ב-getAllGridAllocations)
+  const approved = await getAllGridAllocations(isHadrag, currentWeek, currentYear);
 
   approved.sort((a, b) => (a.day - b.day) || String(a.startTime).localeCompare(String(b.startTime)));
 
@@ -2347,13 +2721,13 @@ async function renderUnitScheduleView(type) {
 
   const rows = approved.map(r => {
     const c = UNIT_BG_MAP[r.unit] || UNIT_BG_MAP['bg-esuk'];
-    const facilityChip = isHadrag ? `<span class="sch-facility">${HADRAG_FACILITY_NAMES[r.facility] || 'חדר"ג'}</span>` : '';
+    const facilityChip = isHadrag ? `<span class="sch-facility">${r.facility || 'חדר"ג'}</span>` : '';
     return `
       <div class="sch-row" style="border-right:4px solid ${c.border};">
-        <span class="sch-unit" style="background:${c.bg}; border:1px solid ${c.border}; color:${c.text};">${r.unitName || ''}</span>
+        <span class="sch-unit" style="background:${c.bg}; border:1px solid ${c.border}; color:${c.text};">${escapeHtml(r.unitName)}</span>
         <span class="sch-day">יום ${HADRAG_DAY_LABELS[r.day]}</span>
         ${facilityChip}
-        <span class="sch-text">${r.text || ''}</span>
+        <span class="sch-text">${escapeHtml(r.text)}</span>
         <span class="sch-time" style="direction:ltr;">${r.startTime} - ${r.endTime}</span>
       </div>`;
   }).join('');
@@ -2522,7 +2896,7 @@ async function renderHadragRequestsList() {
       <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; width: 90px; color: ${styleObj.text}; text-align: right;">${HADRAG_FACILITY_NAMES[req.facility] || 'חדר"ג'}</span>
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
-        <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
+        <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${escapeHtml(req.text)}</span>
         <span style="direction: ltr; font-weight: bold; color: #333; margin-left: 14px;">${req.startTime} - ${req.endTime}</span>
         <button class="hipok-delete-btn" onclick="deleteHadragRequest('${req.id}')">✕</button>
       </div>
@@ -2541,6 +2915,49 @@ function timeToRowIndex(timeStr) {
   return (hours - 6) * 2 + (minutes >= 30 ? 1 : 0);
 }
 
+/**
+ * הופכת אינדקס שורה (0-35) בטבלאות חדר"ג/שק"ם למחרוזת שעה (HH:MM).
+ * פונקציה הפוכה ל-timeToRowIndex.
+ * @param {number} rowIndex
+ * @returns {string}
+ */
+function rowIndexToTime(rowIndex) {
+  const hour = Math.floor(6 + rowIndex / 2);
+  const minutes = rowIndex % 2 === 0 ? '00' : '30';
+  return `${String(hour).padStart(2, '0')}:${minutes}`;
+}
+
+/**
+ * מוחקת בקשת חדר"ג/שק"ם שהשיבוץ שלה בגריד נמחק או נדרס (לא מוחקת מהגריד עצמו).
+ * מזהה אם התא שייך לטבלת חדר"ג או שק"ם ומנתבת למחיקה המתאימה.
+ * @param {string} reqId
+ * @param {HTMLElement} tbody
+ */
+async function removeGridRequestLink(reqId, tbody) {
+  if (!reqId || !tbody) return;
+  if (tbody.id === 'body-shekem') {
+    if (typeof deleteShekemRequest === 'function') await deleteShekemRequest(reqId);
+  } else {
+    if (typeof deleteHadragRequest === 'function') await deleteHadragRequest(reqId);
+  }
+}
+
+/**
+ * מתייגת מחדש את התא (לאחר הזזה/שינוי גודל בגריד) ב-reqId, כדי שמחיקה עתידית
+ * של השיבוץ עדיין תדע לנקות את הבקשה המקושרת.
+ * חשוב: אינה נוגעת בשדות הבקשה המקורית (day/startTime/endTime/facility) בכוונה -
+ * הבקשה היא תיעוד של מה שהיחידה ביקשה, והזיהוי/תצוגה של המיקום בפועל תמיד
+ * נעשית לפי סריקת הגריד (צבע), ראו getAllGridAllocations. שינוי שדות הבקשה
+ * כאן גרם לבאג: כתיבה ל-localStorage תוך כדי הזזה יכולה להתנגש עם מחזור ה"הפצה"
+ * שרץ מיד אחרי (globalExportManager), ולגרום להקצאות לא להופיע בכלל.
+ * @param {string} reqId
+ * @param {HTMLElement} cell - התא החדש שאליו הועבר/הורחב השיבוץ
+ */
+function relinkGridRequestToCell(reqId, cell) {
+  if (!reqId || !cell) return;
+  cell.dataset.reqId = reqId;
+}
+
 const UNIT_BG_MAP = {
   'bg-esuk':   { bg: '#fff9c4', border: '#ffe082', text: '#856404' },
   'bg-hirg':   { bg: '#c8e6c9', border: '#81c784', text: '#1b5e20' },
@@ -2554,10 +2971,15 @@ const UNIT_BG_MAP = {
  */
 async function renderHadragPendingRequests() {
   const container = document.getElementById('hadragPendingList');
-  if (!container) return; 
+  if (!container) return;
 
   const allRequests = await loadHadragRequests(currentWeek, currentYear);
-  const pendingRequests = allRequests.filter(req => req.status !== 'approved');
+  // רק בקשות שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") מוצגות למנהל - לא בקשה שהוקלדה
+  // ועדיין לא נשמרה על ידי היחידה (אפיון QA).
+  const publishedKey = getHadragRequestsKey(currentWeek, currentYear) + '_published';
+  const publishedRequests = (await fetchTableData(publishedKey)) || [];
+  const publishedIds = new Set(publishedRequests.map(r => r.id));
+  const pendingRequests = allRequests.filter(req => req.status !== 'approved' && publishedIds.has(req.id));
 
   if (pendingRequests.length === 0) {
     container.innerHTML = '<p style="text-align:center; color:#64748b; font-size:13px; font-weight:700; margin:6px 0;">אין בקשות ממתינות לאישור.</p>';
@@ -2574,11 +2996,11 @@ async function renderHadragPendingRequests() {
     return `
       <div class="request-card" style="background:#ffffff; border:1px solid #cbd5e1; border-right:4px solid ${info.border}; padding:6px 12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:4px;">
         <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-          <span style="background:${info.bg}; border:1px solid ${info.border}; color:${info.text}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:11.5px;">${unitName}</span>
+          <span style="background:${info.bg}; border:1px solid ${info.border}; color:${info.text}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:11.5px;">${escapeHtml(unitName)}</span>
           <span style="background:#0f172a; color:#ffffff; padding:2px 8px; border-radius:6px; font-weight:700; font-size:11.5px;">${facilityName} • ${dayName}</span>
         </div>
 
-        <span style="color:#000000; font-weight:800; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 4px;">${req.text}</span>
+        <span style="color:#000000; font-weight:800; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 4px;">${escapeHtml(req.text)}</span>
 
         <div style="direction:ltr; display:flex; align-items:center; gap:4px; flex-shrink:0; background:#f8fafc; padding:3px 6px; border-radius:6px; border:1px solid #e2e8f0;">
           <input type="time" id="editStart_${req.id}" value="${req.startTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
@@ -2587,7 +3009,7 @@ async function renderHadragPendingRequests() {
         </div>
 
         <div style="display:flex; gap:6px; flex-shrink:0;">
-          <button class="btn-approve" style="background:linear-gradient(135deg, #16a34a, #15803d); color:#ffffff; border:none; padding:4px 12px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(22,163,74,0.2);" onclick="approveHadragRequest('${req.id}')">✓ שבץ</button>
+          <button class="btn-approve" style="background:linear-gradient(135deg, #16a34a, #15803d); color:#ffffff; border:none; padding:4px 12px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(22,163,74,0.2);" onclick="approveHadragRequest('${req.id}')">שבץ</button>
           <button class="btn-reject" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:4px 10px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center;" onclick="rejectHadragRequest('${req.id}')">✕</button>
         </div>
       </div>
@@ -2661,6 +3083,7 @@ async function approveHadragRequest(reqId) {
     const unitClass = req.unit || 'bg-esuk';
     firstCell.classList.add(unitClass, 'imported');
   }
+  firstCell.dataset.reqId = reqId;
 
   req.status = 'approved';
   await saveHadragRequests(requests, currentWeek, currentYear);
@@ -2725,17 +3148,25 @@ function saveHadragTables() {
         const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
         if(!cell) continue;
         const textarea = cell.querySelector('textarea');
+        const textVal = textarea ? textarea.value : '';
+        if (cell.dataset.reqId && textVal.trim() === '') {
+          // הטקסט נוקה ידנית (הקלדה) בלי לעבור דרך תפריט המחיקה - יש לנתק את הבקשה המקושרת
+          if (typeof removeGridRequestLink === 'function') removeGridRequestLink(cell.dataset.reqId, tbody);
+          delete cell.dataset.reqId;
+        }
         tableData[`${r}_${c}`] = {
-          val: textarea ? textarea.value : '',
+          val: textVal,
           span: cell.rowSpan,
           disp: cell.style.display,
-          classes: Array.from(cell.classList).filter(cls => ['merged', ...ALL_COLOR_CLASSES].includes(cls))
+          classes: Array.from(cell.classList).filter(cls => ['merged', ...PERSISTABLE_CELL_CLASSES].includes(cls)),
+          reqId: cell.dataset.reqId || null
         };
       }
     }
     persist(`hadragData_${tableId}_week${currentWeek}_year${currentYear}`, tableData);
   });
   updatePlatoonGridConflictHighlight(TABLE_IDS, 'hadragData');
+  if (typeof _recordUndoChange === 'function') _recordUndoChange();
 }
 
 /**
@@ -2798,6 +3229,7 @@ async function loadHadragTables(week, year) {
           cell.rowSpan = data.span || 1;
           cell.style.display = data.disp || '';
           if (data.classes) data.classes.forEach(cls => cell.classList.add(cls));
+          if (data.reqId) cell.dataset.reqId = data.reqId; else delete cell.dataset.reqId;
         }
       }
     }
@@ -2911,7 +3343,7 @@ async function renderShekemRequestsList() {
     return `
       <div class="hipok-entry-row" style="max-width: 700px; margin: 0 auto 10px auto; background-color: ${styleObj.bg}; border: 2px solid ${styleObj.border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <span style="font-weight: bold; width: 80px; color: #333;">יום ${HADRAG_DAY_LABELS[req.day]}</span>
-        <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${req.text}</span>
+        <span style="flex:1; text-align:right; padding-right: 15px; color: #000;">${escapeHtml(req.text)}</span>
         <span style="direction: ltr; font-weight: bold; color: #333; margin-left: 14px;">${req.startTime} - ${req.endTime}</span>
         <button class="hipok-delete-btn" onclick="deleteShekemRequest('${req.id}')">✕</button>
       </div>
@@ -2924,10 +3356,15 @@ async function renderShekemRequestsList() {
  */
 async function renderShekemPendingRequests() {
   const container = document.getElementById('shekemPendingList');
-  if (!container) return; 
+  if (!container) return;
 
   const allRequests = await loadShekemRequests(currentWeek, currentYear);
-  const pendingRequests = allRequests.filter(req => req.status !== 'approved');
+  // רק בקשות שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") מוצגות למנהל - לא בקשה שהוקלדה
+  // ועדיין לא נשמרה על ידי היחידה (אפיון QA).
+  const publishedKey = getShekemRequestsKey(currentWeek, currentYear) + '_published';
+  const publishedRequests = (await fetchTableData(publishedKey)) || [];
+  const publishedIds = new Set(publishedRequests.map(r => r.id));
+  const pendingRequests = allRequests.filter(req => req.status !== 'approved' && publishedIds.has(req.id));
 
   if (pendingRequests.length === 0) {
     container.innerHTML = '<p style="text-align:center; color:#64748b; font-size:13px; font-weight:700; margin:6px 0;">אין בקשות לשעות שק"ם הממתינות לאישור.</p>';
@@ -2943,11 +3380,11 @@ async function renderShekemPendingRequests() {
     return `
       <div class="request-card" style="background:#ffffff; border:1px solid #cbd5e1; border-right:4px solid ${info.border}; padding:6px 12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:4px;">
         <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-          <span style="background:${info.bg}; border:1px solid ${info.border}; color:${info.text}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:11.5px;">${unitName}</span>
+          <span style="background:${info.bg}; border:1px solid ${info.border}; color:${info.text}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:11.5px;">${escapeHtml(unitName)}</span>
           <span style="background:#0f172a; color:#ffffff; padding:2px 8px; border-radius:6px; font-weight:700; font-size:11.5px;">שק"ם • ${dayName}</span>
         </div>
 
-        <span style="color:#000000; font-weight:800; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 4px;">${req.text}</span>
+        <span style="color:#000000; font-weight:800; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 4px;">${escapeHtml(req.text)}</span>
 
         <div style="direction:ltr; display:flex; align-items:center; gap:4px; flex-shrink:0; background:#f8fafc; padding:3px 6px; border-radius:6px; border:1px solid #e2e8f0;">
           <input type="time" id="editShekemStart_${req.id}" value="${req.startTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
@@ -2956,7 +3393,7 @@ async function renderShekemPendingRequests() {
         </div>
 
         <div style="display:flex; gap:6px; flex-shrink:0;">
-          <button class="btn-approve" style="background:linear-gradient(135deg, #16a34a, #15803d); color:#ffffff; border:none; padding:4px 12px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(22,163,74,0.2);" onclick="approveShekemRequest('${req.id}')">✓ שבץ</button>
+          <button class="btn-approve" style="background:linear-gradient(135deg, #16a34a, #15803d); color:#ffffff; border:none; padding:4px 12px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(22,163,74,0.2);" onclick="approveShekemRequest('${req.id}')">שבץ</button>
           <button class="btn-reject" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:4px 10px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center;" onclick="rejectShekemRequest('${req.id}')">✕</button>
         </div>
       </div>
@@ -3029,6 +3466,7 @@ async function approveShekemRequest(reqId) {
     const unitClass = req.unit || 'bg-esuk';
     firstCell.classList.add(unitClass, 'imported');
   }
+  firstCell.dataset.reqId = reqId;
 
   req.status = 'approved';
   await saveShekemRequests(requests, currentWeek, currentYear);
@@ -3059,16 +3497,24 @@ function saveShekemTables() {
       const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
       if(!cell) continue;
       const textarea = cell.querySelector('textarea');
+      const textVal = textarea ? textarea.value : '';
+      if (cell.dataset.reqId && textVal.trim() === '') {
+        // הטקסט נוקה ידנית (הקלדה) בלי לעבור דרך תפריט המחיקה - יש לנתק את הבקשה המקושרת
+        if (typeof removeGridRequestLink === 'function') removeGridRequestLink(cell.dataset.reqId, tbody);
+        delete cell.dataset.reqId;
+      }
       tableData[`${r}_${c}`] = {
-        val: textarea ? textarea.value : '',
+        val: textVal,
         span: cell.rowSpan,
         disp: cell.style.display,
-        classes: Array.from(cell.classList).filter(cls => ['merged', ...ALL_COLOR_CLASSES].includes(cls))
+        classes: Array.from(cell.classList).filter(cls => ['merged', ...PERSISTABLE_CELL_CLASSES].includes(cls)),
+        reqId: cell.dataset.reqId || null
       };
     }
   }
   persist(`shekemData_body-shekem_week${currentWeek}_year${currentYear}`, tableData);
   updatePlatoonGridConflictHighlight(['body-shekem'], 'shekemData');
+  if (typeof _recordUndoChange === 'function') _recordUndoChange();
 }
 
 /**
@@ -3106,6 +3552,7 @@ async function loadShekemTables(week, year) {
         cell.rowSpan = data.span || 1;
         cell.style.display = data.disp || '';
         if (data.classes) data.classes.forEach(cls => cell.classList.add(cls));
+        if (data.reqId) cell.dataset.reqId = data.reqId; else delete cell.dataset.reqId;
       }
     }
   }
@@ -3270,7 +3717,10 @@ window.onload = function () {
   // שומר כניסה: ללא סשן פעיל - הפניה למסך ההתחברות (אפיון חלק 3)
   if (typeof AUTH !== 'undefined' && !AUTH.requireAuth()) return;
 
-  const { week, year } = getCurrentWeekAndYear();
+  // משתמשים בשבוע שהמשתמש צפה בו לאחרונה (אם קיים באותה כרטיסייה/סשן) במקום לאפס תמיד
+  // לשבוע הקלנדרי האמיתי - כדי שמעבר בין טבלאות ישמור על אותו שבוע (אפיון QA).
+  const viewed = loadViewedWeek();
+  const { week, year } = viewed || getCurrentWeekAndYear();
   currentWeek = week;
   currentYear = year;
 
@@ -3295,6 +3745,13 @@ window.onload = function () {
   window.addEventListener('storage', () => {
     checkRequirementChanges('keshertable');
     checkRequirementChanges('optictable');
+    // הרחבה: נותנת נדנוד חי גם לחדר"ג/שק"ם/סטטוס ההפצה כשטאב אחר (אותו דפדפן) שינה נתונים -
+    // בלי לטעון מחדש את הגריד הניתן לעריכה (שעלול לדרוס עריכה פעילה באמצע), רק מרעננת
+    // תצוגות קריאה-בלבד (רשימות ממתינות) וסממנים (כפתור הפצה, התראות).
+    if (typeof renderHadragPendingRequests === 'function') renderHadragPendingRequests();
+    if (typeof renderShekemPendingRequests === 'function') renderShekemPendingRequests();
+    if (typeof updateGlobalExportButtonStatus === 'function') updateGlobalExportButtonStatus();
+    if (typeof updateNotifBadge === 'function') updateNotifBadge();
   });
 };
 
@@ -3327,23 +3784,160 @@ function _getUndoFieldMap() {
   return map;
 }
 
-function _captureUndoState() {
+// גריד המיזוג של חדר"ג/שק"ם (גרירה/מיזוג/שינוי גודל/הדבקה/תפריט קליק ימני) לא היה מכוסה
+// ע"י מנגנון הביטול/ביצוע-חוזר בכלל (רק שדות .cell-input/.task-input/.time-input) - כלומר
+// מחיקה/הזזה בטעות בגריד לא הייתה ניתנת לשחזור. כל נתיבי העריכה בגריד עוברים בסופו של דבר
+// דרך saveHadragTables/saveShekemTables, ולכן החיבור למנגנון הביטול נעשה שם (ראו למטה).
+const UNDO_HADRAG_TABLE_IDS = ['body-chadrag', 'body-anafit8', 'body-anafit-bah', 'body-tavor'];
+const UNDO_SHEKEM_TABLE_IDS = ['body-shekem'];
+
+function _captureGridState(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return null;
+  const cells = {};
+  for (let r = 0; r < 36; r++) {
+    for (let c = 0; c < 7; c++) {
+      const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
+      if (!cell) continue;
+      const ta = cell.querySelector('textarea');
+      cells[`${r}_${c}`] = {
+        val: ta ? ta.value : '',
+        span: cell.rowSpan,
+        disp: cell.style.display,
+        classes: Array.from(cell.classList).filter(cls => ['merged', ...PERSISTABLE_CELL_CLASSES].includes(cls)),
+        reqId: cell.dataset.reqId || null
+      };
+    }
+  }
+  return cells;
+}
+
+function _applyGridState(tbodyId, cells) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody || !cells) return;
+  for (let r = 0; r < 36; r++) {
+    for (let c = 0; c < 7; c++) {
+      const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
+      if (!cell) continue;
+      const data = cells[`${r}_${c}`] || { val: '', span: 1, disp: '', classes: [], reqId: null };
+      const ta = cell.querySelector('textarea');
+      if (ta) { ta.value = data.val || ''; ta.style.height = '100%'; }
+      cell.rowSpan = data.span || 1;
+      cell.style.display = data.disp || '';
+      cell.className = 'platoon-cell';
+      (data.classes || []).forEach(cls => cell.classList.add(cls));
+      if (data.reqId) cell.dataset.reqId = data.reqId; else delete cell.dataset.reqId;
+    }
+  }
+}
+
+// שיבוץ מאושר בגריד חדר"ג/שק"ם מתויג ב-reqId המקשר אותו לרשומת בקשה נפרדת (hadragRequests/
+// shekemRequests). ביטול/ביצוע-חוזר של הגריד לבדו (בלי הרשימות האלה) היה משאיר "רפאים": התא
+// חוזר ויזואלית עם reqId שמצביע לרשומה שכבר נמחקה בפועל (למשל אחרי מחיקה+Ctrl+Z), כי המחיקה
+// המקורית מסירה את הרשומה לצמיתות מהרשימה המשותפת - לכן חובה לתעד/לשחזר גם את הרשימות עצמן.
+function _captureRequestsState() {
   const state = {};
-  _getUndoFieldMap().forEach((el, key) => { state[key] = el.value; });
+  if (typeof getHadragRequestsKey === 'function') {
+    const k = getHadragRequestsKey(currentWeek, currentYear);
+    const raw = localStorage.getItem(k);
+    if (raw !== null) state[k] = raw;
+  }
+  if (typeof getShekemRequestsKey === 'function') {
+    const k = getShekemRequestsKey(currentWeek, currentYear);
+    const raw = localStorage.getItem(k);
+    if (raw !== null) state[k] = raw;
+  }
+  return state;
+}
+
+function _applyRequestsState(reqState) {
+  let changed = false;
+  Object.keys(reqState || {}).forEach(key => {
+    if (localStorage.getItem(key) !== reqState[key]) {
+      try {
+        // עוברים דרך persist() (לא כתיבה ישירה ל-localStorage) כדי שהשחזור גם יתוזמן
+        // לסנכרון מרוחק (SharePoint/רשת צבאית) במצב שרת, בדיוק כמו כל שמירה רגילה אחרת.
+        persist(key, JSON.parse(reqState[key]));
+      } catch (e) { /* ignore */ }
+      changed = true;
+    }
+  });
+  if (changed) {
+    if (typeof renderHadragRequestsList === 'function') renderHadragRequestsList();
+    if (typeof renderShekemRequestsList === 'function') renderShekemRequestsList();
+    if (typeof renderHadragPendingRequests === 'function') renderHadragPendingRequests();
+    if (typeof renderShekemPendingRequests === 'function') renderShekemPendingRequests();
+  }
+}
+
+// צביעת תא חיפוקים (setCellColor ב-hipokim.html) היא מחלקת CSS על ה-wrapper, לא .value של
+// שדה - לכן לא נתפסת ע"י _getUndoFieldMap/.task-input/.time-input, וללא הקוד הזה שינוי צבע
+// בלבד לא היה ניתן לביטול (Ctrl+Z) בכלל.
+function _captureHipokColorsState() {
+  if (typeof ALL_HIPOK_COLORS === 'undefined') return null;
+  const wrappers = document.querySelectorAll('#hipoktable .cell-wrapper');
+  if (!wrappers.length) return null;
+  const colors = {};
+  wrappers.forEach((wrapper, i) => {
+    colors[i] = ALL_HIPOK_COLORS.find(c => wrapper.classList.contains(c)) || '';
+  });
+  return colors;
+}
+
+function _applyHipokColorsState(colors) {
+  if (!colors || typeof ALL_HIPOK_COLORS === 'undefined') return false;
+  const wrappers = document.querySelectorAll('#hipoktable .cell-wrapper');
+  if (!wrappers.length) return false;
+  let changed = false;
+  wrappers.forEach((wrapper, i) => {
+    const target = colors[i] || '';
+    const current = ALL_HIPOK_COLORS.find(c => wrapper.classList.contains(c)) || '';
+    if (current !== target) {
+      wrapper.classList.remove(...ALL_HIPOK_COLORS);
+      if (target) wrapper.classList.add(target);
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function _captureUndoState() {
+  const state = { fields: {}, grid: {}, requests: {}, hipokColors: null };
+  _getUndoFieldMap().forEach((el, key) => { state.fields[key] = el.value; });
+  [...UNDO_HADRAG_TABLE_IDS, ...UNDO_SHEKEM_TABLE_IDS].forEach(tbodyId => {
+    const g = _captureGridState(tbodyId);
+    if (g) state.grid[tbodyId] = g;
+  });
+  state.requests = _captureRequestsState();
+  state.hipokColors = _captureHipokColorsState();
   return state;
 }
 
 function _applyUndoState(state) {
   const fieldMap = _getUndoFieldMap();
   _undoSuppressed = true;
-  Object.keys(state).forEach(key => {
+  Object.keys(state.fields || {}).forEach(key => {
     const el = fieldMap.get(key);
     // אם השדה כבר לא קיים (השורה נמחקה בינתיים) - מדלגים עליו בלבד, לא נכשלים על כל הפעולה.
-    if (el && el.value !== state[key]) {
-      el.value = state[key];
+    if (el && el.value !== state.fields[key]) {
+      el.value = state.fields[key];
       el.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
+  const gridTables = Object.keys(state.grid || {});
+  gridTables.forEach(tbodyId => _applyGridState(tbodyId, state.grid[tbodyId]));
+  _applyRequestsState(state.requests);
+  if (gridTables.length > 0) {
+    if (typeof saveHadragTables === 'function') saveHadragTables();
+    if (typeof saveShekemTables === 'function') saveShekemTables();
+  }
+  const hipokColorsChanged = _applyHipokColorsState(state.hipokColors);
+  if (hipokColorsChanged) {
+    if (typeof saveHipokData === 'function') saveHipokData();
+    if (typeof updateHipokConflictHighlight === 'function' && typeof currentWeek !== 'undefined') {
+      updateHipokConflictHighlight(currentWeek, currentYear);
+    }
+  }
   _undoSuppressed = false;
   return true;
 }
@@ -3596,11 +4190,25 @@ function _selectionBlock() {
 }
 
 // אירוע העתקה אמיתי - יציב יותר מיירוט keydown, ותומך בהעתקה ל-Excel
+/**
+ * עוטפת שדה TSV במרכאות (RFC4180-style) אם הוא מכיל טאב/ירידת שורה/מרכאה - כדי שהעתקה
+ * של תוכן רב-שורתי (למשל textarea) תישאר ערך אחד תקין בהדבקה חוזרת (גם ל-Excel וגם חזרה
+ * לתוך המערכת), במקום להישבר לכמה תאים/שורות.
+ */
+function _tsvEscapeField(val) {
+  const s = val === undefined || val === null ? '' : String(val);
+  if (/[\t\n"]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function _blockToTsv(block) {
+  return block.map(row => row.map(_tsvEscapeField).join('\t')).join('\n');
+}
+
 document.addEventListener('copy', (e) => {
   if (!_hasSelection()) return;
   const { block } = _selectionBlock();
   _blockClipboard = block;
-  const tsv = block.map(row => row.join('\t')).join('\n');
+  const tsv = _blockToTsv(block);
   if (e.clipboardData) {
     e.clipboardData.setData('text/plain', tsv);
     e.preventDefault();
@@ -3612,7 +4220,7 @@ document.addEventListener('cut', (e) => {
   if (!_hasSelection()) return;
   const { block, startR, startC } = _selectionBlock();
   _blockClipboard = block;
-  const tsv = block.map(row => row.join('\t')).join('\n');
+  const tsv = _blockToTsv(block);
   if (e.clipboardData) { e.clipboardData.setData('text/plain', tsv); e.preventDefault(); }
   // ניקוי התאים שנגזרו
   const tbody = _msTable.tBodies[0];
@@ -3625,6 +4233,42 @@ document.addEventListener('cut', (e) => {
 });
 
 // אירוע הדבקה אמיתי - מפרק TSV (גם מ-Excel) או משתמש בבלוק הפנימי
+/**
+ * מפרשת טקסט TSV שהועתק (כולל מ-Excel) לבלוק דו-ממדי, עם תמיכה בשדות עטופים במרכאות
+ * (RFC4180-style) שיכולים להכיל טאבים/ירידות שורה מוטבעות - כפי שאקסל עוטף תא שהתוכן שלו
+ * כולל ירידת שורה. פיצול נאיבי לפי \t/\n (כפי שהיה קודם) היה מפצל תא כזה לכמה שורות/תאים
+ * בטעות במקום לשמור אותו כערך אחד.
+ * @param {string} text
+ * @returns {string[][]}
+ */
+function parseTsvClipboard(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  let i = 0;
+  const n = text.length;
+  while (i < n) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      field += ch; i++; continue;
+    }
+    if (ch === '"' && field === '') { inQuotes = true; i++; continue; }
+    if (ch === '\t') { row.push(field); field = ''; i++; continue; }
+    if (ch === '\r') { i++; continue; }
+    if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+    field += ch; i++;
+  }
+  row.push(field);
+  rows.push(row);
+  while (rows.length > 1 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') rows.pop();
+  return rows;
+}
+
 document.addEventListener('paste', (e) => {
   if (isReadOnlyMode()) { e.preventDefault(); return; }
   const active = document.activeElement;
@@ -3636,8 +4280,7 @@ document.addEventListener('paste', (e) => {
   if (text) {
     // יש טקסט בלוח (כולל מ-Excel): טקסט רב-תאי -> בלוק; ערך בודד -> הדבקה טבעית
     if (text.indexOf('\t') >= 0 || text.indexOf('\n') >= 0) {
-      block = text.replace(/\r/g, '').split('\n').map(line => line.split('\t'));
-      while (block.length > 1 && block[block.length - 1].length === 1 && block[block.length - 1][0] === '') block.pop();
+      block = parseTsvClipboard(text);
     } else {
       return; // ערך בודד -> להשאיר להדבקה טבעית של הדפדפן
     }
@@ -3752,7 +4395,7 @@ function renderNotifPanel() {
   } else {
     body = list.map(n => `
       <div class="notif-item ${n.read ? '' : 'unread'}">
-        <div class="notif-msg">${n.message}</div>
+        <div class="notif-msg">${escapeHtml(n.message)}</div>
         <div class="notif-time">${_formatNotifTime(n.ts)}</div>
       </div>`).join('');
   }
@@ -3821,7 +4464,8 @@ async function getHadragAllocationsForUnit(unitColor, week, year) {
   const tableIds = Object.keys(HADRAG_TABLES_MAP);
 
   for (const tableId of tableIds) {
-    const key = `hadragData_${tableId}_week${week}_year${year}`;
+    // הקצאות מוצגות ליחידה רק לאחר שהמנהל הפיץ בפועל - קוראים מה-published, לא מה-draft (אפיון QA)
+    const key = `hadragData_${tableId}_week${week}_year${year}_published`;
     let data = null;
     if (typeof DataService !== 'undefined') {
       data = await DataService.getItem(key);
@@ -3858,7 +4502,8 @@ async function getHadragAllocationsForUnit(unitColor, week, year) {
 
 async function getShekemAllocationsForUnit(unitColor, week, year) {
   const allocations = [];
-  const key = `shekemData_body-shekem_week${week}_year${year}`;
+  // הקצאות מוצגות ליחידה רק לאחר שהמנהל הפיץ בפועל - קוראים מה-published, לא מה-draft (אפיון QA)
+  const key = `shekemData_body-shekem_week${week}_year${year}_published`;
   let data = null;
   if (typeof DataService !== 'undefined') {
     data = await DataService.getItem(key);
@@ -3893,7 +4538,8 @@ async function getShekemAllocationsForUnit(unitColor, week, year) {
 
 async function getHipokimAllocationsForUnit(unitColor, week, year) {
   const allocations = [];
-  const key = getStorageKey('hipoktable', week, year);
+  // הקצאות מוצגות ליחידה רק לאחר שהמנהל הפיץ בפועל - קוראים מה-published, לא מה-draft (אפיון QA)
+  const key = getStorageKey('hipoktable', week, year) + '_published';
   let data = null;
   if (typeof DataService !== 'undefined') {
     data = await DataService.getItem(key);
@@ -3959,7 +4605,7 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
         <td style="text-align:center; font-weight:bold;">${a.day}</td>
         <td style="text-align:center; font-weight:bold;">${a.facility}</td>
         <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
-        <td style="text-align:center;">${a.text.replace(/\\n/g, '<br>')}</td>
+        <td style="text-align:center;">${escapeHtml(a.text).replace(/\\n/g, '<br>')}</td>
       </tr>`;
     });
   } 
@@ -3973,7 +4619,7 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
       tbody.innerHTML += `<tr>
         <td style="text-align:center; font-weight:bold;">${a.day}</td>
         <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
-        <td style="text-align:center;">${a.text.replace(/\\n/g, '<br>')}</td>
+        <td style="text-align:center;">${escapeHtml(a.text).replace(/\\n/g, '<br>')}</td>
       </tr>`;
     });
   }
@@ -3986,8 +4632,8 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
     allocations.forEach(a => {
       tbody.innerHTML += `<tr>
         <td style="text-align:center; font-weight:bold;">${a.day}</td>
-        <td style="text-align:center; font-weight:bold;">${a.task}</td>
-        <td style="text-align:center; font-weight:bold;">${a.time}</td>
+        <td style="text-align:center; font-weight:bold;">${escapeHtml(a.task)}</td>
+        <td style="text-align:center; font-weight:bold;">${escapeHtml(a.time)}</td>
       </tr>`;
     });
   }
@@ -4007,25 +4653,29 @@ function clearHadragCellData(cell) {
   const startRow = parseInt(cell.dataset.row);
   const col = parseInt(cell.dataset.col);
   const span = cell.rowSpan || 1;
-  
+  const reqId = cell.dataset.reqId || null;
+
   cell.rowSpan = 1;
   cell.className = 'platoon-cell';
+  delete cell.dataset.reqId;
   const ta = cell.querySelector('textarea');
   if (ta) {
     ta.value = '';
     ta.style.height = '100%';
   }
-  
+
   for (let i = startRow + 1; i < startRow + span; i++) {
     const hiddenCell = tbody ? tbody.querySelector(`td.platoon-cell[data-row="${i}"][data-col="${col}"]`) : null;
     if (hiddenCell) {
       hiddenCell.style.display = '';
       hiddenCell.rowSpan = 1;
       hiddenCell.className = 'platoon-cell';
+      delete hiddenCell.dataset.reqId;
       const hiddenTa = hiddenCell.querySelector('textarea');
       if (hiddenTa) hiddenTa.value = '';
     }
   }
+  return reqId;
 }
 
 function pasteOrMoveBlock(targetCell, dataObj, preventOverwrite = false) {
@@ -4055,7 +4705,8 @@ function pasteOrMoveBlock(targetCell, dataObj, preventOverwrite = false) {
   for (let r = startRow; r <= endRow; r++) {
     const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
     if (c && c.style.display !== 'none') {
-       clearHadragCellData(c);
+       const displacedReqId = clearHadragCellData(c);
+       if (displacedReqId && typeof removeGridRequestLink === 'function') removeGridRequestLink(displacedReqId, tbody);
     }
   }
   
@@ -4117,7 +4768,7 @@ document.addEventListener('keydown', function(e) {
     hadragClipboard = {
       text: ta ? ta.value : '',
       rowSpan: cell.rowSpan || 1,
-      cellClass: Array.from(cell.classList).filter(c => c !== 'selected-cell' && c !== 'resize-handle')
+      cellClass: Array.from(cell.classList).filter(c => c !== 'selected-cell' && c !== 'resize-handle' && c !== 'conflict-overlap')
     };
     cell.style.outline = '3px dashed #0284c7';
     cell.style.outlineOffset = '-3px';
@@ -4210,8 +4861,9 @@ document.addEventListener('drop', function(e) {
       return;
     }
     
-    clearHadragCellData(draggedSourceCell);
+    const movedReqId = clearHadragCellData(draggedSourceCell);
     pasteOrMoveBlock(cell, draggedHadragData, false);
+    if (movedReqId && typeof relinkGridRequestToCell === 'function') relinkGridRequestToCell(movedReqId, cell);
     if (typeof saveHadragTables === 'function') saveHadragTables();
     if (typeof saveShekemTables === 'function') saveShekemTables();
   }
@@ -4354,23 +5006,42 @@ document.addEventListener('mouseup', function(e) {
   if (newSpan !== oldSpan) {
     const tbody = resizeStartCell.closest('tbody');
     const col = parseInt(resizeStartCell.dataset.col);
-    
-    const ta = resizeStartCell.querySelector('textarea');
-    const dataObj = {
-      text: ta ? ta.value : '',
-      rowSpan: newSpan,
-      cellClass: Array.from(resizeStartCell.classList).filter(c => c !== 'platoon-cell' && c !== 'selected-cell' && c !== 'dragging')
-    };
-    
-    clearHadragCellData(resizeStartCell);
-    
-    const targetCell = tbody.querySelector(`td.platoon-cell[data-row="${startRow}"][data-col="${col}"]`);
-    if (targetCell) {
-      pasteOrMoveBlock(targetCell, dataObj);
-      selectCell(targetCell);
-      
-      if (typeof saveHadragTables === 'function') saveHadragTables();
-      if (typeof saveShekemTables === 'function') saveShekemTables();
+
+    // בהגדלת הבלוק (לא בהקטנה) - יש לבדוק שהשורות הנוספות פנויות, אחרת שינוי הגודל
+    // עלול לדרוס בשקט שיבוץ קיים של יחידה אחרת (בשונה מהעברה בגרירה, שכבר בודקת זאת).
+    let hasConflict = false;
+    if (newSpan > oldSpan) {
+      for (let r = startRow + oldSpan; r <= newEndRow; r++) {
+        const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
+        if (!c) continue;
+        if (c.style.display === 'none') { hasConflict = true; break; }
+        const taCheck = c.querySelector('textarea');
+        if (taCheck && taCheck.value.trim() !== '') { hasConflict = true; break; }
+        if (typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
+      }
+    }
+
+    if (hasConflict) {
+      alert('לא ניתן לשנות גודל: השטח חופף לשיבוץ קיים. נא לפנות את השעות תחילה.');
+    } else {
+      const ta = resizeStartCell.querySelector('textarea');
+      const dataObj = {
+        text: ta ? ta.value : '',
+        rowSpan: newSpan,
+        cellClass: Array.from(resizeStartCell.classList).filter(c => c !== 'platoon-cell' && c !== 'selected-cell' && c !== 'dragging' && c !== 'conflict-overlap')
+      };
+
+      const resizedReqId = clearHadragCellData(resizeStartCell);
+
+      const targetCell = tbody.querySelector(`td.platoon-cell[data-row="${startRow}"][data-col="${col}"]`);
+      if (targetCell) {
+        pasteOrMoveBlock(targetCell, dataObj);
+        selectCell(targetCell);
+        if (resizedReqId && typeof relinkGridRequestToCell === 'function') relinkGridRequestToCell(resizedReqId, targetCell);
+
+        if (typeof saveHadragTables === 'function') saveHadragTables();
+        if (typeof saveShekemTables === 'function') saveShekemTables();
+      }
     }
   }
   
@@ -4443,7 +5114,7 @@ document.addEventListener('DOMContentLoaded', () => {
       hadragClipboard = {
         text: ta ? ta.value : '',
         rowSpan: currentCtxCell.rowSpan || 1,
-        cellClass: Array.from(currentCtxCell.classList).filter(c => c !== 'selected-cell' && c !== 'resize-handle' && c !== 'dragging')
+        cellClass: Array.from(currentCtxCell.classList).filter(c => c !== 'selected-cell' && c !== 'resize-handle' && c !== 'dragging' && c !== 'conflict-overlap')
       };
       currentCtxCell.style.outline = '3px dashed #0284c7';
       currentCtxCell.style.outlineOffset = '-3px';
@@ -4460,13 +5131,15 @@ document.addEventListener('DOMContentLoaded', () => {
     ctxMenu.style.display = 'none';
   });
   
-  document.getElementById('ctx-btn-delete')?.addEventListener('click', function(e) {
+  document.getElementById('ctx-btn-delete')?.addEventListener('click', async function(e) {
     e.stopPropagation();
     if (currentCtxCell) {
-      clearHadragCellData(currentCtxCell);
+      const tbodyForDelete = currentCtxCell.closest('tbody');
+      const deletedReqId = clearHadragCellData(currentCtxCell);
       clearSelection();
       if (typeof saveHadragTables === 'function') saveHadragTables();
       if (typeof saveShekemTables === 'function') saveShekemTables();
+      if (deletedReqId && typeof removeGridRequestLink === 'function') await removeGridRequestLink(deletedReqId, tbodyForDelete);
     }
     ctxMenu.style.display = 'none';
   });
@@ -4493,6 +5166,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const table = e.target.closest('table');
       if (!table) return;
       const tableId = table.id;
+      // בטבלאות המשולבות (קשר/אופטיקה) הקלדה ישירה של המנהל לא אמורה לסמן/לבטל סימון כתום על
+      // תא ספציפי - הסימון שם נקבע אך ורק ע"י פעולת ייבוא מתת-טבלת יחידה (importFromSubTable),
+      // כדי שהכתום ישקף "יש דרישה מיובאת שטרם הופצה" ולא "המנהל הקליד משהו" (אפיון QA).
+      // כן מעדכנים את סטטוס כפתור "הפץ שינויים" (אדום/ירוק) - זהו סממן גלובלי ל"האם יש בכלל
+      // משהו שלא הופץ", וצריך לשקף גם עריכה ישירה של המנהל, לא רק ייבוא (אפיון QA).
+      if (MASTER_COMBINED_TABLES.includes(tableId)) {
+        if (typeof updateGlobalExportButtonStatus === 'function') await updateGlobalExportButtonStatus();
+        return;
+      }
       if (MANAGER_TRACKED_TABLES.includes(tableId)) {
         const td = e.target.closest('td');
         if (!td) return;

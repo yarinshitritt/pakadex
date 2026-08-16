@@ -535,16 +535,21 @@ td.test:hover .row-delete-icon,
   background: linear-gradient(135deg, #0284c7, #0369a1);
   color: #ffffff;
   border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-  transition: background 0.2s ease, transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 6px rgba(2, 132, 199, 0.3);
+  transition: all 0.2s ease;
 }
 
 .add-row-btn:hover {
   background: linear-gradient(135deg, #0369a1, #075985);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(2, 132, 199, 0.4);
 }

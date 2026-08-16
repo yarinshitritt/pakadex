@@ -2,18 +2,19 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=1">
-  <link rel="stylesheet" href="esuk.css?v=1">
-  <link rel="stylesheet" href="kesher.css?v=1">
-  <link rel="stylesheet" href="optic.css?v=1">
-  <link rel="stylesheet" href="modiein.css?v=1">
-  <link rel="stylesheet" href="hipokim.css?v=1">
+  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="esuk.css?v=17">
+  <link rel="stylesheet" href="kesher.css?v=17">
+  <link rel="stylesheet" href="optic.css?v=17">
+  <link rel="stylesheet" href="modiein.css?v=17">
+  <link rel="stylesheet" href="hipokim.css?v=17">
   <title>PAKADEX - גדוד הפיקוד</title>
 </head>
 <body>
  
   <div class="container1">
-    <div style="display:flex; align-items:center; gap:8px; margin-right:auto; cursor:pointer;" onclick="window.location.href='index.html'">
+    <div id="user-chip-placeholder"></div>
+    <div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="window.location.href='index.html'">
       <h1 style="font-size:24px; color:white; margin:0;">PAKADEX</h1>
       <img src="images/לוגו בהלג בלי רקע.png" alt="לוגו" class="sidebar-image" width="36" style="height:auto;">
     </div>
@@ -31,8 +32,8 @@
  
         <div id="kesher" class="topsub">
           <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px;">
-            <button type="button" onclick="copyWeekToTarget('pkeshertable')" class="week-copy-btn" title="העתק את נתוני השבוע לשבוע אחר">📋 העתק שבוע</button>
-            <button type="button" onclick="applyWeekToRestOfYear('pkeshertable')" class="week-copy-btn" title="הדבק את תוכן השבוע לכל השבועות הבאים בשנה">📅 הדבק לכל השנה</button>
+            <button type="button" onclick="copyWeekToTarget('pkeshertable')" class="week-copy-btn" title="העתק את נתוני השבוע לשבוע אחר">העתק שבוע</button>
+            <button type="button" onclick="applyWeekToRestOfYear('pkeshertable')" class="week-copy-btn" title="הדבק את תוכן השבוע לכל השבועות הבאים בשנה">הדבק לכל השנה</button>
           </div>
           <div class="table-container">
             <table class="keshertable" id="pkeshertable" dir="rtl" border="1">
@@ -58,8 +59,8 @@
  
         <div id="optic" class="topsub" style="display:none;">
           <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px;">
-            <button type="button" onclick="copyWeekToTarget('poptictable')" class="week-copy-btn" title="העתק את נתוני השבוע לשבוע אחר">📋 העתק שבוע</button>
-            <button type="button" onclick="applyWeekToRestOfYear('poptictable')" class="week-copy-btn" title="הדבק את תוכן השבוע לכל השבועות הבאים בשנה">📅 הדבק לכל השנה</button>
+            <button type="button" onclick="copyWeekToTarget('poptictable')" class="week-copy-btn" title="העתק את נתוני השבוע לשבוע אחר">העתק שבוע</button>
+            <button type="button" onclick="applyWeekToRestOfYear('poptictable')" class="week-copy-btn" title="הדבק את תוכן השבוע לכל השבועות הבאים בשנה">הדבק לכל השנה</button>
           </div>
           <div class="table-container">
             <table class="optictable" id="poptictable" dir="rtl" border="1">
@@ -119,7 +120,7 @@
  
         <div id="hipok" class="topsub" style="display:none;">
           <div class="request-card-container">
-            <button id="openHipokModalBtn" onclick="openHipokModal()" class="hipok-choice-btn" style="margin-bottom:15px;">➕ הוספת חיפוק חדש</button>
+            <button id="openHipokModalBtn" onclick="openHipokModal()" class="hipok-choice-btn" style="margin-bottom:15px;">הוספת חיפוק חדש</button>
             <h3>חיפוקים שהוזנו לשבוע זה:</h3>
             <div id="hipokEntriesList"></div>
           </div>
@@ -159,7 +160,7 @@
                  <input type="time" id="hadragEndTime" step="1800">
                </div>
 
-               <button onclick="submitHadragRequest('bg-pikud', 'גדוד הפיקוד')" class="hipok-choice-btn">➕ הוסף בקשה</button>
+               <button onclick="submitHadragRequest('bg-pikud', 'גדוד הפיקוד')" class="hipok-choice-btn">הוסף בקשה</button>
             </div>
 
             <h3>בקשות שהוזנו לשבוע זה:</h3>
@@ -194,7 +195,7 @@
                  <input type="time" id="shekemEndTime" step="1800">
                </div>
 
-               <button onclick="submitShekemRequest('bg-pikud', 'גדוד הפיקוד')" class="hipok-choice-btn">➕ הוסף בקשה</button>
+               <button onclick="submitShekemRequest('bg-pikud', 'גדוד הפיקוד')" class="hipok-choice-btn">הוסף בקשה</button>
             </div>
 
             <h3>בקשות שהוזנו לשבוע זה:</h3>
@@ -355,7 +356,7 @@
         
         <div class="modal-footer">
           <button class="hipok-back-btn" onclick="hipokGoToStep(2)">➔ חזור</button>
-          <button class="hipok-submit-btn" onclick="submitHipokEntry()">✓ הוסף חיפוק</button>
+          <button class="hipok-submit-btn" onclick="submitHipokEntry()">הוסף חיפוק</button>
         </div>
       </div>
     </div>
@@ -455,7 +456,8 @@
     }
 
     async function renderHaktzaot() {
-      const key = getStorageKey('keshertable', currentWeek, currentYear);
+      // הקצאות מוצגות ליחידה רק לאחר שהמנהל הפיץ בפועל - קוראים מה-published, לא מה-draft (אפיון QA)
+      const key = getStorageKey('keshertable', currentWeek, currentYear) + '_published';
       const data = await fetchTableData(key);
       if (!data) {
         document.getElementById('haktzaot-body').innerHTML = '<tr><td colspan="8" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
@@ -465,7 +467,7 @@
     }
 
     async function renderHaktzaotOptic() {
-      const key = getStorageKey('optictable', currentWeek, currentYear);
+      const key = getStorageKey('optictable', currentWeek, currentYear) + '_published';
       const data = await fetchTableData(key);
       if (!data) {
         document.getElementById('haktzaot-optic-body').innerHTML = '<tr><td colspan="8" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
@@ -497,8 +499,9 @@
       for (let offset = -2; offset <= 2; offset++) {
         let week = currentWeek + offset;
         let year = currentYear;
-        if (week < 1) { week += 52; year--; }
-        if (week > 52) { week -= 52; year++; }
+        if (week < 1) { const prevYearWeeks = (typeof getWeeksInYear === 'function') ? getWeeksInYear(year - 1) : 52; week += prevYearWeeks; year--; }
+        const weeksInThisYear = (typeof getWeeksInYear === 'function') ? getWeeksInYear(year) : 52;
+        if (week > weeksInThisYear) { week -= weeksInThisYear; year++; }
 
         const btn = document.createElement('button');
         btn.textContent = `${week} (${year})`;
@@ -582,10 +585,10 @@
       }
     });
   </script>
-  <script src="config.js?v=1"></script>
-  <script src="sharepointService.js?v=1"></script>
-  <script src="auth.js?v=1"></script>
-  <script src="script.js?v=1"></script>
+  <script src="config.js?v=17"></script>
+  <script src="sharepointService.js?v=17"></script>
+  <script src="auth.js?v=17"></script>
+  <script src="script.js?v=17"></script>
 
 </body>
 </html>

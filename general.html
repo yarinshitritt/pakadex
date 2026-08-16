@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=17">
   <title>PAKADEX - טבלאות אקסל</title>
   <style>
     .excel-note {
@@ -37,25 +37,20 @@
     .excel-del-btn { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
     .excel-file-name { font-weight: 700; color: #334155; font-size: 13px; }
 
-    .sheet-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: -1px; }
-    .sheet-tab {
-      padding: 7px 14px; border: 1px solid var(--border-color); border-bottom: none;
-      border-radius: 8px 8px 0 0; background: #eef2f7; color: #334155; font-weight: 700; font-size: 13px; cursor: pointer;
-    }
-    .sheet-tab.active { background: #fff; color: var(--primary); border-color: var(--primary); border-bottom: 1px solid #fff; }
-
     .excel-viewer {
-      background: #fff; border: 1px solid var(--border-color); border-radius: 0 8px 8px 8px;
+      background: #fff; border: 1px solid var(--border-color); border-radius: 8px;
       box-shadow: var(--shadow-sm); overflow: auto; height: calc(100vh - 250px); min-height: 340px; padding: 10px;
     }
-    .excel-viewer table { border-collapse: collapse; width: max-content; min-width: 100%; }
-    .excel-viewer td, .excel-viewer th { border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 13px; white-space: nowrap; }
-    .excel-viewer tr:first-child td { background: #f1f5f9; font-weight: 700; }
     .excel-empty {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       height: 100%; color: #94a3b8; text-align: center; padding: 24px;
     }
     .excel-empty .big { font-size: 46px; margin-bottom: 10px; }
+    .excel-empty .open-file-btn {
+      margin-top: 14px; height: 44px; padding: 0 24px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg,#0284c7,#0369a1); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer;
+    }
+    .excel-empty .open-file-btn:hover { transform: translateY(-1px); }
   </style>
 </head>
 <body>
@@ -69,7 +64,7 @@
     <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
 
       <div class="excel-note">
-        📅 טבלאות אקסל מקובצות בשלשות שבועות. עבור כל טווח כזה ניתן להעלות קובץ אקסל אחד מהמחשב (הכולל מספר טבלאות/לשוניות) — הוא יישמר ויוצג כאן, כולל כל הלשוניות שבו. הניווט מדלג טווח שלם (3 שבועות) בכל פעם. העלאה/מחיקה של קובץ זמינה למנהלי מערכת בלבד.
+        📅 טבלאות אקסל מקובצות בשלשות שבועות. עבור כל טווח כזה ניתן להעלות קובץ אקסל אחד מהמחשב — הוא יישמר כאן, וניתן לפתוח אותו ישירות באקסל (הקובץ יורד למחשב ונפתח בתוכנת האקסל, לא בתוך האתר). הניווט מדלג טווח שלם (3 שבועות) בכל פעם. העלאה/מחיקה של קובץ זמינה למנהלי מערכת בלבד.
       </div>
 
       <div class="excel-weekbar">
@@ -80,18 +75,11 @@
         <div class="excel-actions" id="excelActions">
           <span id="fileNameLabel" class="excel-file-name"></span>
           <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="onFileChosen(event)">
-          <button class="excel-upload-btn" id="uploadBtn" onclick="document.getElementById('excelFileInput').click()">⬆️ העלה קובץ לטווח זה</button>
-          <button class="excel-upload-btn excel-edit-btn" onclick="downloadCurrentFile()" title="הורד את הקובץ לעריכה במחשב">📝 הורד לעריכה</button>
-          <button class="excel-upload-btn excel-del-btn" id="delBtn" onclick="deleteCurrentFile()">🗑️ מחק</button>
-        </div>
-
-        <div class="excel-actions" id="excelActionsViewOnly" style="display:none;">
-          <span id="fileNameLabelView" class="excel-file-name"></span>
-          <button class="excel-upload-btn excel-edit-btn" onclick="downloadCurrentFile()" title="הורד את הקובץ למחשב">📥 הורד קובץ</button>
+          <button class="excel-upload-btn" id="uploadBtn" onclick="document.getElementById('excelFileInput').click()">העלה קובץ לטווח זה</button>
+          <button class="excel-upload-btn excel-del-btn" id="delBtn" onclick="deleteCurrentFile()">מחק</button>
         </div>
       </div>
 
-      <div id="sheetTabs" class="sheet-tabs"></div>
       <div id="excelViewer" class="excel-viewer">
         <div class="excel-empty" id="excelEmpty">
           <div class="big">📊</div>
@@ -103,19 +91,20 @@
     </div>
   </div>
 
-  <script src="config.js?v=1"></script>
-  <script src="sharepointService.js?v=1"></script>
-  <script src="auth.js?v=1"></script>
-  <script src="script.js?v=1"></script>
-  <script src="xlsx.full.min.js?v=1"></script>
+  <script src="config.js?v=17"></script>
+  <script src="sharepointService.js?v=17"></script>
+  <script src="auth.js?v=17"></script>
+  <script src="script.js?v=17"></script>
 
   <script>
     const GROUP_SIZE = 3;
     let baseWeek, curYear;
-    let currentWorkbook = null;
 
     // מפתח שמירה לפי טווח שבועות (קבוצה של 3), לא לפי שבוע בודד
-    function groupEndWeek(start) { return Math.min(start + GROUP_SIZE - 1, 52); }
+    function groupEndWeek(start) {
+      const maxWeek = (typeof getWeeksInYear === 'function') ? getWeeksInYear(curYear) : 52;
+      return Math.min(start + GROUP_SIZE - 1, maxWeek);
+    }
     function excelKey(startWeek, year) { return `pakadex_excel_group${startWeek}_year${year}`; }
 
     function canManageExcel() {
@@ -125,7 +114,6 @@
     function applyExcelPermissions() {
       const canManage = canManageExcel();
       document.getElementById('excelActions').style.display = canManage ? 'flex' : 'none';
-      document.getElementById('excelActionsViewOnly').style.display = canManage ? 'none' : 'flex';
     }
 
     async function initWeeks() {
@@ -139,8 +127,9 @@
 
     async function shiftWeeks(delta) {
       baseWeek += delta;
+      const maxWeek = (typeof getWeeksInYear === 'function') ? getWeeksInYear(curYear) : 52;
       if (baseWeek < 1) baseWeek = 1;
-      if (baseWeek > 52) baseWeek = 52;
+      if (baseWeek > maxWeek) baseWeek = maxWeek;
       await renderWeekButtons();
       await loadGroupFile();
     }
@@ -185,21 +174,11 @@
       e.target.value = '';
     }
 
-    function _b64ToArray(b64) {
-      const bin = atob(b64);
-      const len = bin.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
-      return bytes;
-    }
-
+    // מציגה קישור לפתיחת/הורדת הקובץ (לא מציגה את תוכנו באתר) - לחיצה מורידה את הקובץ
+    // למחשב, ומשם הוא נפתח בתוכנת האקסל של המשתמש כרגיל.
     async function loadGroupFile() {
       const viewer = document.getElementById('excelViewer');
-      const tabs = document.getElementById('sheetTabs');
       const label = document.getElementById('fileNameLabel');
-      const labelView = document.getElementById('fileNameLabelView');
-      currentWorkbook = null;
-      tabs.innerHTML = '';
 
       const end = groupEndWeek(baseWeek);
       const rangeText = end > baseWeek ? `שבועות ${baseWeek}-${end}` : `שבוע ${baseWeek}`;
@@ -207,50 +186,37 @@
       const stored = await getStoredFile();
       if (!stored) {
         label.textContent = '';
-        labelView.textContent = '';
         viewer.innerHTML = '<div class="excel-empty"><div class="big">📊</div><div style="font-weight:800; font-size:18px; color:#64748b;">אין קובץ ל' + rangeText + '</div><div style="margin-top:6px;">' + (canManageExcel() ? 'לחץ "העלה קובץ לטווח זה" כדי לטעון גיליון אקסל מהמחשב.' : 'המנהל טרם העלה קובץ לטווח שבועות זה.') + '</div></div>';
         return;
       }
 
       label.textContent = '📄 ' + (stored.name || 'קובץ אקסל');
-      labelView.textContent = '📄 ' + (stored.name || 'קובץ אקסל');
 
-      try {
-        const data = _b64ToArray(stored.b64);
-        currentWorkbook = XLSX.read(data, { type: 'array' });
-      } catch (e) {
-        viewer.innerHTML = '<div class="excel-empty">שגיאה בקריאת הקובץ.</div>';
-        return;
-      }
-
-      // לשוניות (sheets) - כל לשונית בקובץ מייצגת טבלה/שבוע בתוך הטווח
-      const names = currentWorkbook.SheetNames || [];
-      names.forEach((name, idx) => {
-        const tab = document.createElement('button');
-        tab.className = 'sheet-tab' + (idx === 0 ? ' active' : '');
-        tab.textContent = name;
-        tab.onclick = () => showSheet(name, tab);
-        tabs.appendChild(tab);
-      });
-
-      if (names.length) showSheet(names[0], tabs.firstChild);
+      viewer.innerHTML = `
+        <div class="excel-empty">
+          <div class="big">📗</div>
+          <div style="font-weight:800; font-size:18px; color:#334155;">${escapeHtml(stored.name) || 'קובץ אקסל'}</div>
+          <div style="margin-top:6px;">הקובץ נשמר עבור ${rangeText}. לחיצה על הכפתור תוריד אותו למחשב ותפתח אותו בתוכנת האקסל.</div>
+          <button class="open-file-btn" onclick="downloadCurrentFile()">📗 פתח באקסל</button>
+        </div>`;
     }
 
-    function showSheet(name, tabEl) {
-      if (!currentWorkbook) return;
-      document.querySelectorAll('.sheet-tab').forEach(t => t.classList.remove('active'));
-      if (tabEl) tabEl.classList.add('active');
-      const ws = currentWorkbook.Sheets[name];
-      const html = XLSX.utils.sheet_to_html(ws, { editable: false });
-      document.getElementById('excelViewer').innerHTML = html;
+    // המרת סיומת הקובץ שהועלה ל-MIME type תואם - העלאה תומכת גם ב-.xls/.csv (accept=".xlsx,.xls,.csv"),
+    // אז לא נכון לתייג הכל תמיד כ-xlsx.
+    function excelMimeType(filename) {
+      const ext = (filename || '').split('.').pop().toLowerCase();
+      if (ext === 'csv') return 'text/csv';
+      if (ext === 'xls') return 'application/vnd.ms-excel';
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     }
 
     async function downloadCurrentFile() {
       const stored = await getStoredFile();
       if (!stored) { alert('אין קובץ לטווח זה.'); return; }
+      const fileName = stored.name || ('weeks' + baseWeek + '-' + groupEndWeek(baseWeek) + '.xlsx');
       const a = document.createElement('a');
-      a.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + stored.b64;
-      a.download = stored.name || ('weeks' + baseWeek + '-' + groupEndWeek(baseWeek) + '.xlsx');
+      a.href = 'data:' + excelMimeType(fileName) + ';base64,' + stored.b64;
+      a.download = fileName;
       document.body.appendChild(a); a.click(); a.remove();
     }
 

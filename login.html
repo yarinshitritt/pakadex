@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=17">
   <title>PAKADEX - כניסה למערכת</title>
   <style>
     body {
@@ -93,7 +93,7 @@
 
     <label class="login-label" for="pnInput">מספר אישי</label>
     <input type="text" id="pnInput" class="login-input" inputmode="numeric" autocomplete="off"
-           placeholder="הזן / העבר כרטיס" autofocus>
+           placeholder="הזן מספר אישי" autofocus>
 
     <button class="login-btn" id="loginBtn">כניסה למערכת ➔</button>
 
@@ -103,9 +103,9 @@
     <div class="card-note">💳 ניתן להעביר כרטיס חוגר בקורא — הקריאה תתבצע אוטומטית</div>
   </div>
 
-  <script src="config.js?v=1"></script>
-  <script src="sharepointService.js?v=1"></script>
-  <script src="auth.js?v=1"></script>
+  <script src="config.js?v=17"></script>
+  <script src="sharepointService.js?v=17"></script>
+  <script src="auth.js?v=17"></script>
   <script>
     // אם כבר קיים סשן פעיל - מעבר ישיר למערכת
     if (AUTH.getSession()) window.location.replace('index.html');
@@ -155,10 +155,31 @@
     // שמירה על הפוקוס בשדה כדי שקריאת כרטיס תיקלט תמיד
     document.addEventListener('click', () => pnInput.focus());
 
-    // רענון רשימת המשתמשים מהשרת (אם מוגדר) ואז עדכון ההנחיה
+    /**
+     * ניסיון זיהוי אוטומטי דרך זהות ה-Windows/AD המאומתת (מפל"ז + SharePoint).
+     * במקרה כשל (לא מוגדר / לא נמצא / שגיאת רשת) - נופל בחזרה בשקט למסך ההזנה הידנית/קורא הכרטיסים,
+     * מבלי להציג שגיאה למשתמש (זו לא "טעות כניסה" אלא פשוט מעבר לזרימה הרגילה).
+     */
+    async function tryAutoLogin() {
+      if (typeof AUTH.tryAutoLoginFromSharePoint !== 'function') return false;
+      pnInput.disabled = true;
+      pnInput.placeholder = 'מזהה משתמש...';
+      const res = await AUTH.tryAutoLoginFromSharePoint();
+      if (res.ok) {
+        window.location.href = 'index.html';
+        return true;
+      }
+      pnInput.disabled = false;
+      pnInput.placeholder = 'הזן מספר אישי';
+      pnInput.focus();
+      return false;
+    }
+
+    // רענון רשימת המשתמשים מהשרת (אם מוגדר), ניסיון זיהוי אוטומטי, ואז עדכון ההנחיה
     (async () => {
       try { if (typeof DataService !== 'undefined') await AUTH.refreshUsers(); } catch (e) {}
-      refreshHint();
+      const autoLoggedIn = await tryAutoLogin();
+      if (!autoLoggedIn) refreshHint();
     })();
     refreshHint();
   </script>

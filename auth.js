@@ -61,7 +61,9 @@ const AUTH = {
     if (typeof DataService !== 'undefined') {
       DataService.setItem(this.USERS_KEY, list);
     } else {
-      try { localStorage.setItem(this.USERS_KEY, JSON.stringify(list)); } catch (e) {}
+      try { localStorage.setItem(this.USERS_KEY, JSON.stringify(list)); } catch (e) {
+        if (typeof window !== 'undefined' && typeof window._handleStorageWriteFailure === 'function') window._handleStorageWriteFailure(e);
+      }
     }
   },
 
@@ -70,7 +72,9 @@ const AUTH = {
     if (typeof DataService === 'undefined') return this.loadUsers();
     const remote = await DataService.getItem(this.USERS_KEY);
     if (Array.isArray(remote)) {
-      try { localStorage.setItem(this.USERS_KEY, JSON.stringify(remote)); } catch (e) {}
+      try { localStorage.setItem(this.USERS_KEY, JSON.stringify(remote)); } catch (e) {
+        if (typeof window !== 'undefined' && typeof window._handleStorageWriteFailure === 'function') window._handleStorageWriteFailure(e);
+      }
       return remote;
     }
     return this.loadUsers();
@@ -185,6 +189,60 @@ const AUTH = {
   logout() {
     this.clearSession();
     window.location.href = 'login.html';
+  },
+
+  /**
+   * ניסיון התחברות אוטומטית לפי זהות ה-Windows/AD המאומתת של המשתמש דרך SharePoint
+   * (מפל"ז מבצע Smart Card Logon ל-Windows; SharePoint מאמת את הסשן אוטומטית מולו
+   * דרך Windows Integrated Authentication - אין צורך בהזנת סיסמה נוספת בדפדפן).
+   * פועל רק כאשר CONFIG.DATA_SOURCE === 'sharepoint' וכן CONFIG.SHAREPOINT.AUTO_LOGIN === true.
+   * בכל מקרה כשל (לא בתוך SharePoint, שדה לא מוגדר, המספר לא נמצא ברשימת המשתמשים וכו')
+   * מחזירה {ok:false} כדי לאפשר נפילה חזרה להזנה ידנית/קורא כרטיסים - לעולם לא "מנחשת" משתמש.
+   * @returns {Promise<{ok:boolean, user?:object, error?:string}>}
+   */
+  async tryAutoLoginFromSharePoint() {
+    if (typeof CONFIG === 'undefined' || CONFIG.DATA_SOURCE !== 'sharepoint') {
+      return { ok: false, error: 'not-sharepoint' };
+    }
+    if (!CONFIG.SHAREPOINT.AUTO_LOGIN) {
+      return { ok: false, error: 'auto-login-disabled' };
+    }
+    const propKey = CONFIG.SHAREPOINT.PN_PROFILE_KEY;
+    if (!propKey) {
+      console.warn('[AUTH] AUTO_LOGIN מופעל אך CONFIG.SHAREPOINT.PN_PROFILE_KEY אינו מוגדר.');
+      return { ok: false, error: 'no-profile-key-configured' };
+    }
+
+    try {
+      const url = `${CONFIG.SHAREPOINT.SITE_URL}/_api/SP.UserProfiles.PeopleManager/GetMyProperties?$select=UserProfileProperties`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json;odata=verbose' },
+        credentials: 'same-origin'
+      });
+      if (!res.ok) {
+        return { ok: false, error: `http-${res.status}` };
+      }
+
+      const data = await res.json();
+      const props = (data && data.d && data.d.UserProfileProperties && data.d.UserProfileProperties.results) || [];
+      const entry = props.find(p => p.Key === propKey);
+      const pn = this.normalizePn(entry ? entry.Value : '');
+      if (!pn) {
+        return { ok: false, error: 'pn-not-found-in-profile' };
+      }
+
+      // login() בודק מול רשימת המשתמשים המורשית - אם המספר לא רשום, מוחזר ok:false כרגיל
+      // (ולא נוצר "מנהל" חדש אוטומטית - bootstrap הראשוני חל רק בזרימת הכניסה הידנית).
+      const user = this.findUser(pn);
+      if (!user) {
+        return { ok: false, error: 'pn-not-authorized' };
+      }
+      this.setSession(user);
+      return { ok: true, user };
+    } catch (e) {
+      return { ok: false, error: 'network-error' };
+    }
   },
 
   /* =========================================================

@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=17">
   <title>PAKADEX - ניהול הרשאות</title>
   <style>
     .users-wrap { width: 100%; }
@@ -107,7 +107,7 @@
         <div class="user-form">
           <div class="field">
             <label for="pnField">מספר אישי</label>
-            <input type="text" id="pnField" inputmode="numeric" placeholder="הזן / העבר כרטיס" autocomplete="off">
+            <input type="text" id="pnField" inputmode="numeric" placeholder="הזן מספר אישי" autocomplete="off">
           </div>
           <div class="field">
             <label for="nameField">שם המשתמש</label>
@@ -137,7 +137,7 @@
               </div>
             </div>
           </div>
-          <button class="save-user-btn" onclick="submitUser()">💾 שמור</button>
+          <button class="save-user-btn" onclick="submitUser()">שמור</button>
           <button class="clear-btn" onclick="clearForm()">נקה</button>
         </div>
       </div>
@@ -166,10 +166,10 @@
     </div>
   </div>
 
-  <script src="config.js?v=1"></script>
-  <script src="sharepointService.js?v=1"></script>
-  <script src="auth.js?v=1"></script>
-  <script src="script.js?v=1"></script>
+  <script src="config.js?v=17"></script>
+  <script src="sharepointService.js?v=17"></script>
+  <script src="auth.js?v=17"></script>
+  <script src="script.js?v=17"></script>
 
   <script>
     // מסך זה פתוח למנהל בלבד
@@ -258,6 +258,19 @@
 
       if (!res.ok) { showMsg(res.error, true); return; }
       showMsg(`ההרשאה נשמרה עבור מספר אישי ${res.user.pn}.`, false);
+
+      // אם המשתמש שנערך הוא בעל הסשן הנוכחי (למשל מנהל שמעדכן/מוריד את ההרשאה של עצמו) -
+      // יש לרענן את הסשן מיד, אחרת ההרשאות הישנות (כולל admin) ימשיכו לחול עד יציאה ידנית.
+      const me = AUTH.getSession();
+      if (me && AUTH.normalizePn(me.pn) === AUTH.normalizePn(res.user.pn)) {
+        AUTH.setSession(res.user);
+        if (!AUTH.canManageUsers()) {
+          alert('ההרשאה שלך שונתה ואינה כוללת יותר גישה למסך זה - מועבר לעמוד הראשי.');
+          window.location.href = 'index.html';
+          return;
+        }
+      }
+
       clearForm();
       renderUsers();
     }
@@ -279,6 +292,16 @@
       if (!confirm(`להסיר את ההרשאה של ${u.name || 'משתמש'} (מספר אישי ${u.pn})?`)) return;
       const res = AUTH.removeUser(pn);
       if (!res.ok) { showMsg(res.error, true); return; }
+
+      // אם המשתמש שהוסר הוא בעל הסשן הנוכחי - הסשן נשאר מצביע על משתמש שכבר לא קיים
+      // ברשימה, ולכן חובה להתנתק מיד במקום להמשיך לפעול עם הרשאות "רפאים".
+      const me = AUTH.getSession();
+      if (me && AUTH.normalizePn(me.pn) === AUTH.normalizePn(pn)) {
+        alert('ההרשאה שלך הוסרה מהמערכת - מתנתק כעת.');
+        AUTH.logout();
+        return;
+      }
+
       showMsg('המשתמש הוסר מהמערכת.', false);
       renderUsers();
     }
@@ -310,8 +333,8 @@
         const label = u.role === 'unit' ? AUTH.roleLabel(u) : AUTH.ROLES[u.role];
         return `
           <tr>
-            <td style="font-weight:800; letter-spacing:1px;">${u.pn}${isMe ? ' <span style="color:#0284c7; font-size:11px;">(אני)</span>' : ''}</td>
-            <td>${u.name || '—'}</td>
+            <td style="font-weight:800; letter-spacing:1px;">${escapeHtml(u.pn)}${isMe ? ' <span style="color:#0284c7; font-size:11px;">(אני)</span>' : ''}</td>
+            <td>${escapeHtml(u.name) || '—'}</td>
             <td><span class="role-chip role-${u.role}">${label}</span></td>
             <td>
               <button class="row-btn edit-btn" onclick="editUser('${u.pn}')">ערוך</button>

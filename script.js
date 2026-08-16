@@ -4496,14 +4496,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (MANAGER_TRACKED_TABLES.includes(tableId)) {
         const td = e.target.closest('td');
         if (!td) return;
-        const tr = td.closest('tr');
-        const tbody = table.tBodies[0];
-        const rowIdx = Array.from(tbody.rows).indexOf(tr);
-        const colIdx = Array.from(tr.cells).indexOf(td);
-        if (rowIdx < 0 || colIdx < 1) return;
-        
-        const globalIndex = rowIdx * (tr.cells.length - 1) + (colIdx - 1);
-        
+
+        // אינדקס לפי סדר המסמך בפועל בתוך .cell-input (זהה למנגנון readTableData/הפרסום) -
+        // ולא חישוב שורה*עמודה, שמתפספס בטבלאות עם תא נוסף שאינו קלט (כמו עמודת סה"כ).
+        const globalIndex = Array.from(table.querySelectorAll('.cell-input')).indexOf(e.target);
+        if (globalIndex < 0) return;
+
         const managerPublishedKey = getStorageKey(tableId, currentWeek, currentYear) + '_published';
         let managerPublishedData = {};
         if (typeof fetchTableData === 'function') {

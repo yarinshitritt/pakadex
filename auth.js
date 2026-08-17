@@ -284,6 +284,24 @@ const AUTH = {
     return false;
   },
 
+  /**
+   * האם למשתמש המחובר מותר בכלל *לצפות* בעמוד יחידה נתון (esuk.html וכו').
+   * בשונה מ-canEditPage (שרק קובעת אם שדות הקלט נעולים), הבדיקה הזו חוסמת גישה מוחלטת -
+   * חשוב כי לינק ישיר ל-URL של עמוד יחידה אחרת (לא רק כפתור מוסתר בתפריט) לא היה חסום כלל,
+   * ומשתמש פלוגתי יכול היה לצפות בנתונים הפרטיים של יחידה שאינה שלו (פרצת הרשאות).
+   * @param {string} [page] - שם קובץ העמוד; ברירת מחדל: העמוד הנוכחי
+   */
+  canViewUnitPage(page) {
+    const s = this.getSession();
+    if (!s) return false;
+    const p = (page || this.currentPage()).toLowerCase();
+    const unitKey = this.PAGE_UNIT[p];
+    if (!unitKey) return true; // לא עמוד יחידה בכלל - הבדיקה הזו לא רלוונטית
+    if (s.role !== 'unit') return true; // מנהל/עורך/צפייה-בלבד רואים הכל
+    const units = Array.isArray(s.unit) ? s.unit : (s.unit ? [s.unit] : []);
+    return units.includes(unitKey);
+  },
+
   /** תיאור התפקיד לתצוגה (כולל שמות היחידות לפלוגתי) */
   roleLabel(user) {
     const u = user || this.getSession();

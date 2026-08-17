@@ -576,6 +576,26 @@ table tbody tr:hover {
   font-weight: 800;
   font-size: 18px;
 }
+
+/* ================================
+   כפתורי הפלוגות/יחידות בעמוד הראשי - הרקע עצמו בצבע הפלוגה
+   (במקום אימוג'י צבע), לפי אותם צבעים המזוהים עם כל יחידה בכל
+   המערכת (כותרות טבלת קשר/אופטיקה, נקודות סרגל הצד וכו').
+================================ */
+.shortcut-card.unit-esuk    { background-color: #fbc02d; color: #1a1a1a; border-color: #d4a017; }
+.shortcut-card.unit-hirg    { background-color: #388e3c; color: #ffffff; border-color: #2e7031; }
+.shortcut-card.unit-pikud   { background-color: #1976d2; color: #ffffff; border-color: #145ea8; }
+.shortcut-card.unit-tazam   { background-color: #8e24aa; color: #ffffff; border-color: #701c86; }
+.shortcut-card.unit-bahalag { background-color: #f57c00; color: #1a1a1a; border-color: #c46200; }
+
+.shortcut-card.unit-esuk:hover,
+.shortcut-card.unit-hirg:hover,
+.shortcut-card.unit-pikud:hover,
+.shortcut-card.unit-tazam:hover,
+.shortcut-card.unit-bahalag:hover {
+  color: inherit;
+  filter: brightness(1.08);
+}
 /* ================================
    סממן הפצה (ליד כפתור "הפץ שינויים")
 ================================ */

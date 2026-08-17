@@ -76,6 +76,29 @@
   color: #000 !important;
 }
 
+/* עמודת הכפתורים (ידית גרירה + מחיקה) קיימת רק בטבלה הגדולה (הראשית) - #keshertable/#optictable -
+   ולא בטבלאות המשנה של היחידות. צובעים אותה בצבע ייחודי (כחול-נייבי + פס זהב) כדי שיהיה
+   ברור במבט חטוף שזו הטבלה הראשית/הגדולה, ולא טבלת משנה. */
+#keshertable tbody tr td:first-child,
+#optictable tbody tr td:first-child {
+  background-color: #1e3a5f !important;
+  color: #ffffff !important;
+  border-left: 3px solid #fbbf24 !important;
+}
+
+#keshertable tbody tr.topic-row td:first-child,
+#keshertable tbody tr.special-note-row td:first-child,
+#optictable tbody tr.topic-row td:first-child {
+  background-color: #35507a !important;
+  color: #ffffff !important;
+}
+
+#keshertable tbody tr:hover td:first-child,
+#optictable tbody tr:hover td:first-child {
+  background-color: #2c4d78 !important;
+  color: #ffffff !important;
+}
+
 /* ================== INPUT - מרכוז והתאמה למשבצות קטנות ================== */
 .keshertable input.cell-input,
 .optictable input.cell-input {

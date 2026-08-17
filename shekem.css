@@ -176,6 +176,96 @@
 .bg-maphat { background-color: #fff3e0 !important; border: 1.5px solid #fdba74 !important; }
 .imported:not([class*="bg-"]) { background-color: #e8f5e9 !important; border: 1.5px solid #86efac !important; }
 
+/* ================== Excel-like Selection ================== */
+.selected-cell {
+  outline: 2px solid #22c55e !important;
+  outline-offset: -2px;
+  position: relative;
+  z-index: 5;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  background-color: #22c55e;
+  border: 2px solid #ffffff;
+  cursor: ns-resize;
+  z-index: 10;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0,0,0,0.3);
+}
+
+/* ================== Custom Context Menu ================== */
+#custom-context-menu {
+  position: absolute;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  z-index: 1000;
+  min-width: 140px;
+}
+
+#custom-context-menu button {
+  background: transparent;
+  border: none;
+  padding: 10px 16px;
+  text-align: right;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  color: #1e293b;
+  width: 100%;
+}
+
+#custom-context-menu button:hover {
+  background: #f1f5f9;
+}
+
+#ctx-btn-delete {
+  color: #dc2626 !important;
+}
+#ctx-btn-delete:hover {
+  background: #fef2f2 !important;
+}
+
+.ctx-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 0;
+}
+.ctx-colors-title {
+  font-size: 12px;
+  color: #64748b;
+  padding: 4px 16px;
+  text-align: right;
+  font-weight: 600;
+}
+.ctx-colors-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 16px 8px;
+}
+.ctx-color-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.1s;
+}
+.ctx-color-dot:hover {
+  transform: scale(1.2);
+}
+
 /* ================== קונטיינר מרכזי ================== */
 .table-container {
   flex: 1;

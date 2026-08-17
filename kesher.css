@@ -15,6 +15,16 @@
   font-weight: bold !important;
 }
 
+/* בר הכפתורים (הוסף אמצעי / העתק שבוע / הדבק לכל השנה) שמעל הטבלה הגדולה (הראשית) -
+   #keshertable/#optictable בלבד. צובעים אותו כדי שיהיה ברור במבט חטוף שזו הטבלה
+   הראשית/הגדולה, ולא טבלת המשנה של יחידה (שם אותו בר נשאר ללא צבע רקע). */
+.master-table-toolbar {
+  background: linear-gradient(135deg, #0f2b46, #1e3a5f);
+  border-radius: var(--radius-md, 8px);
+  padding: 8px 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
 /* ================== ביטול פדינג בקונטיינר להצמדה מלאה לימין ================== */
 .table-container {
   flex: 1;
@@ -74,29 +84,6 @@
 .optictable tbody tr:hover td:first-child {
   background-color: #cfe3ff !important;
   color: #000 !important;
-}
-
-/* עמודת הכפתורים (ידית גרירה + מחיקה) קיימת רק בטבלה הגדולה (הראשית) - #keshertable/#optictable -
-   ולא בטבלאות המשנה של היחידות. צובעים אותה בצבע ייחודי (כחול-נייבי + פס זהב) כדי שיהיה
-   ברור במבט חטוף שזו הטבלה הראשית/הגדולה, ולא טבלת משנה. */
-#keshertable tbody tr td:first-child,
-#optictable tbody tr td:first-child {
-  background-color: #1e3a5f !important;
-  color: #ffffff !important;
-  border-left: 3px solid #fbbf24 !important;
-}
-
-#keshertable tbody tr.topic-row td:first-child,
-#keshertable tbody tr.special-note-row td:first-child,
-#optictable tbody tr.topic-row td:first-child {
-  background-color: #35507a !important;
-  color: #ffffff !important;
-}
-
-#keshertable tbody tr:hover td:first-child,
-#optictable tbody tr:hover td:first-child {
-  background-color: #2c4d78 !important;
-  color: #ffffff !important;
 }
 
 /* ================== INPUT - מרכוז והתאמה למשבצות קטנות ================== */

@@ -559,6 +559,8 @@ table tbody tr:hover {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 104px;
+  box-sizing: border-box;
 }
 
 .shortcut-card:hover {
@@ -582,11 +584,11 @@ table tbody tr:hover {
    (במקום אימוג'י צבע), לפי אותם צבעים המזוהים עם כל יחידה בכל
    המערכת (כותרות טבלת קשר/אופטיקה, נקודות סרגל הצד וכו').
 ================================ */
-.shortcut-card.unit-esuk    { background-color: #fbc02d; color: #1a1a1a; border-color: #d4a017; }
-.shortcut-card.unit-hirg    { background-color: #388e3c; color: #ffffff; border-color: #2e7031; }
-.shortcut-card.unit-pikud   { background-color: #1976d2; color: #ffffff; border-color: #145ea8; }
-.shortcut-card.unit-tazam   { background-color: #8e24aa; color: #ffffff; border-color: #701c86; }
-.shortcut-card.unit-bahalag { background-color: #f57c00; color: #1a1a1a; border-color: #c46200; }
+.shortcut-card.unit-esuk    { background-color: #fff9c4; color: #856404; border-color: #ffe082; }
+.shortcut-card.unit-hirg    { background-color: #c8e6c9; color: #1b5e20; border-color: #81c784; }
+.shortcut-card.unit-pikud   { background-color: #bbdefb; color: #0d47a1; border-color: #64b5f6; }
+.shortcut-card.unit-tazam   { background-color: #e1bee7; color: #4a148c; border-color: #ba68c8; }
+.shortcut-card.unit-bahalag { background-color: #ffe0b2; color: #e65100; border-color: #ffb74d; }
 
 .shortcut-card.unit-esuk:hover,
 .shortcut-card.unit-hirg:hover,
@@ -594,7 +596,7 @@ table tbody tr:hover {
 .shortcut-card.unit-tazam:hover,
 .shortcut-card.unit-bahalag:hover {
   color: inherit;
-  filter: brightness(1.08);
+  filter: brightness(0.97);
 }
 /* ================================
    סממן הפצה (ליד כפתור "הפץ שינויים")

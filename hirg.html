@@ -2,12 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=17">
-  <link rel="stylesheet" href="esuk.css?v=17">
-  <link rel="stylesheet" href="kesher.css?v=17">
-  <link rel="stylesheet" href="optic.css?v=17">
-  <link rel="stylesheet" href="modiein.css?v=17">
-  <link rel="stylesheet" href="hipokim.css?v=17">
+  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="esuk.css?v=20">
+  <link rel="stylesheet" href="kesher.css?v=20">
+  <link rel="stylesheet" href="optic.css?v=20">
+  <link rel="stylesheet" href="modiein.css?v=20">
+  <link rel="stylesheet" href="hipokim.css?v=20">
   <title>PAKADEX - בא"ח חיר"ג</title>
 </head>
 <body>
@@ -204,9 +204,9 @@
         </div>
  
         <div id="nextbt">
-          <button onclick="nextWeek()">▶</button>
-          <div id="pageNumbers"></div>
           <button onclick="prevWeek()">◀</button>
+          <div id="pageNumbers"></div>
+          <button onclick="nextWeek()">▶</button>
         </div>
  
       </div>
@@ -298,9 +298,9 @@
         </div>
 
         <div id="nextbt2">
-          <button onclick="nextWeek()">▶</button>
-          <div id="pageNumbers2"></div>
           <button onclick="prevWeek()">◀</button>
+          <div id="pageNumbers2"></div>
+          <button onclick="nextWeek()">▶</button>
         </div>
 
       </div>
@@ -369,6 +369,10 @@
       document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
       document.getElementById(id).style.display = 'flex';
 
+      // איפוס ללשונית "קשר" בכל מעבר בין בקשות/הקצאות - כברירת מחדל היא תמיד נבחרת
+      // אוטומטית, בלי קשר לאיזו קטגוריה הייתה פתוחה קודם (אפיון QA).
+      currentCategory = 'kesher';
+
       const btnShekem = document.getElementById('btn-shekem');
       const btnChadrag = document.getElementById('btn-chadrag');
       const btnHipok = document.getElementById('btn-hipok');
@@ -381,14 +385,6 @@
         if (typeof renderHaktzaotHipok === 'function') renderHaktzaotHipok();
 
         if (typeof renderHaktzaotHirg === 'function') renderHaktzaotHirg();
-        
-        
-        
-        
-
-        if (false) {
-          currentCategory = 'kesher';
-        }
       } else {
         if (btnShekem) btnShekem.style.display = '';
         if (btnChadrag) btnChadrag.style.display = '';
@@ -496,7 +492,7 @@
       if (!container) return;
       container.innerHTML = '';
 
-      for (let offset = -2; offset <= 2; offset++) {
+      for (let offset = 2; offset >= -2; offset--) {
         let week = currentWeek + offset;
         let year = currentYear;
         if (week < 1) { const prevYearWeeks = (typeof getWeeksInYear === 'function') ? getWeeksInYear(year - 1) : 52; week += prevYearWeeks; year--; }
@@ -585,10 +581,10 @@
       }
     });
   </script>
-  <script src="config.js?v=17"></script>
-  <script src="sharepointService.js?v=17"></script>
-  <script src="auth.js?v=17"></script>
-  <script src="script.js?v=17"></script>
+  <script src="config.js?v=20"></script>
+  <script src="sharepointService.js?v=20"></script>
+  <script src="auth.js?v=20"></script>
+  <script src="script.js?v=20"></script>
 
 </body>
 </html>

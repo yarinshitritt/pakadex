@@ -1114,7 +1114,9 @@ function renderPageNumbers() {
     const container = document.getElementById(id);
     if (container) {
       container.innerHTML = '';
-      for (let offset = -2; offset <= 2; offset++) {
+      // סדר הופעה הפוך (מהשבוע הגדול לקטן) - כדי שבתצוגה (RTL) השבוע הגדול/מאוחר יותר
+      // יופיע בצד שמאל והקטן/מוקדם יותר בצד ימין, בהתאמה לכפתורי "הבא"/"קודם" שהוחלפו (אפיון QA).
+      for (let offset = 2; offset >= -2; offset--) {
         let week = currentWeek + offset, year = currentYear;
         if (week < 1) { const prevYearWeeks = getWeeksInYear(year - 1); week += prevYearWeeks; year--; }
         if (week > getWeeksInYear(year)) { week -= getWeeksInYear(year); year++; }
@@ -2547,7 +2549,9 @@ function checkRequirementChanges(tableId) {
   const ackData = ackSavedRaw ? JSON.parse(ackSavedRaw) : {};
 
   configs.forEach(config => {
-    const subKey = getStorageKey(config.sourceTableId, tw.week, tw.year);
+    // קוראים מה-published (לא הטיוטה הגולמית) - הסימון הזה מיועד להראות למנהל רק דרישה
+    // שהיחידה כבר שמרה ופרסמה בפועל ("שמור ומוכן לייבוא"), לא כל הקלדה שטרם פורסמה (אפיון QA).
+    const subKey = getStorageKey(config.sourceTableId, tw.week, tw.year) + '_published';
     const subSavedRaw = localStorage.getItem(subKey);
     const subData = subSavedRaw ? JSON.parse(subSavedRaw) : {};
 
@@ -3725,6 +3729,11 @@ window.onload = function () {
   currentYear = year;
 
   renderNavbars();
+  // renderNavbars() בונה את סרגל הקטגוריות (קשר/אופטיקה/...) מחדש לפי שם הקובץ בלבד,
+  // ולכן בעמודי יחידה (esuk/hirg/pikud/tazam/bahalag) היא תמיד מאבדת את סימון ה"active"
+  // שנקבע קודם לכן (ב-DOMContentLoaded של העמוד) - כי היא לא מכירה את currentCategory
+  // הפנימי של העמוד. לכן צריך להחיל שוב את הסימון אחרי שהניווט המשותף עלה מחדש.
+  if (typeof updateCategoryView === 'function') updateCategoryView();
   applyPermissions();
   initTableListeners();
   initTopicExpansion();

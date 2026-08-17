@@ -498,6 +498,18 @@ input[type="date"] {
   background-color: #ea580c !important;
 }
 
+/* סימון "דרישה השתנתה" מיועד למנהל בלבד (אותו קהל כמו .conflict-overlap) - ראו
+   body.hide-conflict-overlap ב-style.css. משתמש שאינו מנהל לא אמור לראות אותו. */
+body.hide-conflict-overlap .keshertable input.cell-input.req-changed,
+body.hide-conflict-overlap .optictable input.cell-input.req-changed,
+body.hide-conflict-overlap .keshertable .topic-textarea.req-changed,
+body.hide-conflict-overlap .optictable .topic-textarea.req-changed {
+  background-color: transparent !important;
+  color: inherit !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+
 /* ================== כפתורי ניהול שורות (הוספה ומחיקה) ================== */
 td.test {
   position: relative !important;

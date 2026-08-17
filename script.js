@@ -281,7 +281,7 @@ function renderNavbars() {
     // שורת כלים: כרטיסיות ניווט בין הקטגוריות מימין, וכלי עבודה + פעולת ההפצה משמאל - מקובצים בבירור כדי לצמצם עומס חזותי.
     const toolbarRowBlock = !isMain ? `
       <div class="toolbar-row">
-        <div class="nav-tabs">
+        <div class="nav-tabs ${!isUnitPage ? 'nav-tabs-master' : ''}">
           <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
           <button class="topnav-btn ${isOptic ? 'active' : ''}" id="btn-optic" onclick="${isUnitPage ? "showTopSection('optic')" : "window.location.href='optic.html'"}">אופטיקה</button>
           <button class="topnav-btn ${isModiein ? 'active' : ''}" id="btn-modiein" onclick="${isUnitPage ? "showTopSection('modiein')" : "window.location.href='modiein.html'"}">מודיעין</button>

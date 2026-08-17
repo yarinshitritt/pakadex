@@ -15,16 +15,6 @@
   font-weight: bold !important;
 }
 
-/* בר הכפתורים (הוסף אמצעי / העתק שבוע / הדבק לכל השנה) שמעל הטבלה הגדולה (הראשית) -
-   #keshertable/#optictable בלבד. צובעים אותו כדי שיהיה ברור במבט חטוף שזו הטבלה
-   הראשית/הגדולה, ולא טבלת המשנה של יחידה (שם אותו בר נשאר ללא צבע רקע). */
-.master-table-toolbar {
-  background: linear-gradient(135deg, #0f2b46, #1e3a5f);
-  border-radius: var(--radius-md, 8px);
-  padding: 8px 10px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-}
-
 /* ================== ביטול פדינג בקונטיינר להצמדה מלאה לימין ================== */
 .table-container {
   flex: 1;

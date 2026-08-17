@@ -2,12 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=25">
-  <link rel="stylesheet" href="esuk.css?v=25">
-  <link rel="stylesheet" href="kesher.css?v=25">
-  <link rel="stylesheet" href="optic.css?v=25">
-  <link rel="stylesheet" href="modiein.css?v=25">
-  <link rel="stylesheet" href="hipokim.css?v=25">
+  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="esuk.css?v=26">
+  <link rel="stylesheet" href="kesher.css?v=26">
+  <link rel="stylesheet" href="optic.css?v=26">
+  <link rel="stylesheet" href="modiein.css?v=26">
+  <link rel="stylesheet" href="hipokim.css?v=26">
   <title>PAKADEX - מפח"ט</title>
 </head>
 <body>
@@ -571,6 +571,16 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      // מאתחלים את השבוע הנוכחי כבר כאן (סינכרוני, זהה ללוגיקה ב-window.onload של script.js) -
+      // אחרת showSection('haktzaot') למטה מציג לרגע קצר את שבוע 1 (ברירת המחדל של currentWeek
+      // לפני שהוא מתוקן ב-onload), מה שגורם ל"אין נתונים לשבוע זה" ומבזיק לפני התיקון האמיתי.
+      if (typeof loadViewedWeek === 'function' && typeof getCurrentWeekAndYear === 'function') {
+        const viewedEarly = loadViewedWeek();
+        const wy = viewedEarly || getCurrentWeekAndYear();
+        currentWeek = wy.week;
+        currentYear = wy.year;
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       const isHaktzaot = (urlParams.get('view') === 'haktzaot');
 
@@ -581,10 +591,10 @@
       }
     });
   </script>
-  <script src="config.js?v=25"></script>
-  <script src="sharepointService.js?v=25"></script>
-  <script src="auth.js?v=25"></script>
-  <script src="script.js?v=25"></script>
+  <script src="config.js?v=26"></script>
+  <script src="sharepointService.js?v=26"></script>
+  <script src="auth.js?v=26"></script>
+  <script src="script.js?v=26"></script>
 
 </body>
 </html>

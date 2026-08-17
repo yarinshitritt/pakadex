@@ -985,13 +985,11 @@ async function globalExportManager() {
 
   if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
 
-  // 3. Trigger save again so the orange class removal is saved
+  // 3. Trigger save again so the orange class removal is saved (רק חדר"ג/שק"ם - קשר/אופטיקה/מודיעין/
+  // חיפוקים לא נשמרים דרך פונקציית save ייעודית; סימון הכתום שלהם מחושב חי מהשוואת draft מול published
+  // ומתעדכן ממילא בטעינה/עדכון הבא, לא צריך "שמירה חוזרת" מפורשת).
   if (typeof saveHadragTables === 'function') saveHadragTables();
   if (typeof saveShekemTables === 'function') saveShekemTables();
-  if (typeof saveKesherTables === 'function') saveKesherTables();
-  if (typeof saveOpticTables === 'function') saveOpticTables();
-  if (typeof saveModieinTables === 'function') saveModieinTables();
-  if (typeof saveHipokTables === 'function') saveHipokTables();
 
   if (typeof addNotification === 'function') {
     addNotification(`📢 המנהל הפיץ שינויים לשבוע ${currentWeek} (${currentYear})`, 'distribute');

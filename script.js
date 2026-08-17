@@ -3089,8 +3089,9 @@ async function approveHadragRequest(reqId) {
 
   req.status = 'approved';
   await saveHadragRequests(requests, currentWeek, currentYear);
-  if (typeof saveHadragTables === 'function') saveHadragTables(); 
-  await renderHadragPendingRequests(); 
+  if (typeof saveHadragTables === 'function') saveHadragTables();
+  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
+  await renderHadragPendingRequests();
 }
 
 /**
@@ -3472,8 +3473,9 @@ async function approveShekemRequest(reqId) {
 
   req.status = 'approved';
   await saveShekemRequests(requests, currentWeek, currentYear);
-  if (typeof saveShekemTables === 'function') saveShekemTables(); 
-  await renderShekemPendingRequests(); 
+  if (typeof saveShekemTables === 'function') saveShekemTables();
+  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
+  await renderShekemPendingRequests();
 }
 
 /**
@@ -3631,6 +3633,7 @@ function addDirectEntry(type) {
 
   if (type === 'hadrag' && typeof saveHadragTables === 'function') saveHadragTables();
   if (type === 'shekem' && typeof saveShekemTables === 'function') saveShekemTables();
+  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
 }
 
 /* =========================================================
@@ -3652,6 +3655,7 @@ function stopDragging() {
     dragCol = -1;
     if (typeof saveHadragTables === 'function') saveHadragTables();
     if (typeof saveShekemTables === 'function') saveShekemTables();
+    if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
   }
 }
 
@@ -3977,6 +3981,23 @@ function _recordUndoChange() {
     }
     _undoCurrentState = newState;
   }, 350);
+}
+
+// גרסה לא-מדורגת (ללא debounce) של _recordUndoChange - מיועדת לפעולות גריד בדידות ושלמות
+// (גרירה, שינוי גודל, מחיקה, שינוי צבע, הדבקה, שיבוץ ישיר, אישור בקשה) בחדר"ג/שק"ם. בלי זה,
+// כל הפעולות האלה עברו דרך אותו טיימר משותף של 350ms עם הקלדה בתיבות טקסט - כך שרצף טבעי של
+// "גרור ליצירת בלוק ואז הקלד טקסט בתוכו" (נפוץ מאוד בשימוש בפועל) מתמזג לצעד ביטול אחד בלבד,
+// וCtrl+Z נראה כאילו הוא "מבטל יותר מדי בבת אחת" או "לא עובד" (אפיון QA: תלונה על חדר"ג/שק"ם).
+function _recordUndoChangeImmediate() {
+  if (_undoSuppressed) return;
+  clearTimeout(_undoRecordTimer);
+  const newState = _captureUndoState();
+  if (_undoCurrentState && JSON.stringify(newState) !== JSON.stringify(_undoCurrentState)) {
+    _undoStack.push(_undoCurrentState);
+    if (_undoStack.length > UNDO_LIMIT) _undoStack.shift();
+    _redoStack = [];
+  }
+  _undoCurrentState = newState;
 }
 
 function doUndo() {
@@ -4752,9 +4773,10 @@ function pasteOrMoveBlock(targetCell, dataObj, preventOverwrite = false) {
     ta.value = dataObj.text;
     ta.style.height = '100%';
   }
-  
+
   if (typeof saveHadragTables === 'function') saveHadragTables();
   if (typeof saveShekemTables === 'function') saveShekemTables();
+  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
 }
 
 // 1. Copy and Paste (Ctrl+C, Ctrl+V)
@@ -5225,6 +5247,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof saveHadragTables === 'function') saveHadragTables();
       if (typeof saveShekemTables === 'function') saveShekemTables();
       if (deletedReqId && typeof removeGridRequestLink === 'function') await removeGridRequestLink(deletedReqId, tbodyForDelete);
+      if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
     }
     ctxMenu.style.display = 'none';
   });
@@ -5238,9 +5261,10 @@ document.addEventListener('DOMContentLoaded', () => {
         currentCtxCell.classList.add(this.dataset.color);
         
         clearSelection();
-        
+
         if (typeof saveHadragTables === 'function') saveHadragTables();
         if (typeof saveShekemTables === 'function') saveShekemTables();
+        if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
       }
       ctxMenu.style.display = 'none';
     });

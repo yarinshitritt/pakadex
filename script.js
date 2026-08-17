@@ -4799,6 +4799,7 @@ document.addEventListener('keydown', function(e) {
 // 2. HTML5 Drag & Drop
 let draggedHadragData = null;
 let draggedSourceCell = null;
+let dragPreviewElement = null;
 
 document.addEventListener('mouseover', function(e) {
   const cell = e.target.closest('td.platoon-cell');
@@ -4814,15 +4815,41 @@ document.addEventListener('mouseover', function(e) {
   }
 });
 
+/**
+ * מוצאת את אינדקס השורה (data-row) שבה נמצא Y נתון בתוך ה-tbody, לפי גבולות תא עמודת השעה
+ * של כל שורה - מדויק יותר מ-e.target.closest, שעלול "לפספס" עקב תאים ממוזגים (rowSpan)
+ * שמכסים חזותית כמה שורות עם td.platoon-cell בודד.
+ */
+function getRowIndexAtY(tbody, clientY) {
+  if (!tbody) return -1;
+  for (let i = 0; i < tbody.rows.length; i++) {
+    const timeCell = tbody.rows[i].firstElementChild;
+    if (timeCell) {
+      const rect = timeCell.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) return i;
+    }
+  }
+  return -1;
+}
+
 document.addEventListener('dragstart', function(e) {
   const cell = e.target.closest('td.platoon-cell');
   if (!cell) return;
-  
+
+  // שומרים את השורה הספציפית (בתוך הבלוק המרובה-שורות) שבה המשתמש בפועל תפס את הגרירה -
+  // כדי שבזמן ההטלה נשמור על אותו יחס, ולא תמיד "יקפוץ" ראש הבלוק למקום העכבר (אפיון QA:
+  // "המשבצת תנחת בדיוק איפה שאני שם אותה").
+  const tbody = cell.closest('tbody');
+  const startRow = parseInt(cell.dataset.row);
+  const grabbedRow = getRowIndexAtY(tbody, e.clientY);
+  const grabOffset = grabbedRow !== -1 ? Math.max(0, grabbedRow - startRow) : 0;
+
   const ta = cell.querySelector('textarea');
   draggedHadragData = {
     text: ta ? ta.value : '',
     rowSpan: cell.rowSpan || 1,
-    cellClass: Array.from(cell.classList)
+    cellClass: Array.from(cell.classList),
+    grabOffset: grabOffset
   };
   draggedSourceCell = cell;
   e.dataTransfer.effectAllowed = 'move';
@@ -4830,58 +4857,101 @@ document.addEventListener('dragstart', function(e) {
   setTimeout(() => cell.style.opacity = '0.5', 0);
 });
 
-document.addEventListener('dragover', function(e) {
+/**
+ * מחשבת את שורת/עמודת ההתחלה שבהן ינחת הבלוק הנגרר אם ישוחרר עכשיו - לפי מיקום העכבר
+ * בפועל בתוך ה-tbody, בהפחתת האופסט שבו נתפס הבלוק (grabOffset).
+ */
+function computeDragTarget(e) {
   const cell = e.target.closest('td.platoon-cell');
-  if (cell && draggedHadragData) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+  if (!cell || !draggedHadragData) return null;
+  const tbody = cell.closest('tbody');
+  if (!tbody) return null;
+
+  const col = parseInt(cell.dataset.col);
+  const hoverRow = getRowIndexAtY(tbody, e.clientY);
+  const baseRow = hoverRow !== -1 ? hoverRow : parseInt(cell.dataset.row);
+  const startRow = Math.max(0, baseRow - (draggedHadragData.grabOffset || 0));
+  const maxStartRow = tbody.rows.length - draggedHadragData.rowSpan;
+  const clampedStartRow = Math.min(startRow, Math.max(0, maxStartRow));
+  const endRow = Math.min(tbody.rows.length - 1, clampedStartRow + draggedHadragData.rowSpan - 1);
+
+  return { tbody, col, startRow: clampedStartRow, endRow };
+}
+
+document.addEventListener('dragover', function(e) {
+  const target = computeDragTarget(e);
+  if (!target) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+
+  // תצוגה מקדימה חיה (מסגרת ירוקה מקווקוות) של המקום המדויק שבו הבלוק ינחת - זהה בסגנון
+  // לתצוגה המקדימה של גרירת ידית שינוי הגודל, כדי שהמשתמש יראה בבירור לפני השחרור.
+  const startDom = target.tbody.querySelector(`td.platoon-cell[data-row="${target.startRow}"][data-col="${target.col}"]`);
+  const endTr = target.tbody.rows[target.endRow];
+  if (!startDom || !endTr) return;
+  const startRect = startDom.getBoundingClientRect();
+  const timeCellEnd = endTr.firstElementChild;
+  if (!timeCellEnd) return;
+  const endRect = timeCellEnd.getBoundingClientRect();
+
+  if (!dragPreviewElement) {
+    dragPreviewElement = document.createElement('div');
+    dragPreviewElement.style.position = 'absolute';
+    dragPreviewElement.style.border = '2px dashed #22c55e';
+    dragPreviewElement.style.pointerEvents = 'none';
+    dragPreviewElement.style.zIndex = '100';
+    dragPreviewElement.style.background = 'rgba(34, 197, 94, 0.15)';
+    document.body.appendChild(dragPreviewElement);
   }
+  dragPreviewElement.style.top = startRect.top + window.scrollY + 'px';
+  dragPreviewElement.style.left = startRect.left + window.scrollX + 'px';
+  dragPreviewElement.style.width = startRect.width + 'px';
+  dragPreviewElement.style.height = (endRect.bottom - startRect.top) + 'px';
 });
 
 document.addEventListener('dragend', function(e) {
   if (draggedSourceCell) draggedSourceCell.style.opacity = '1';
+  if (dragPreviewElement) { dragPreviewElement.remove(); dragPreviewElement = null; }
   draggedHadragData = null;
   draggedSourceCell = null;
 });
 
 document.addEventListener('drop', function(e) {
-  const cell = e.target.closest('td.platoon-cell');
-  if (!cell || !draggedHadragData) return;
+  const target = computeDragTarget(e);
+  if (!target || !draggedHadragData || !draggedSourceCell) return;
   e.preventDefault();
-  
-  if (draggedSourceCell && draggedSourceCell !== cell) {
-    const tbody = cell.closest('tbody');
-    const startRow = parseInt(cell.dataset.row);
-    const col = parseInt(cell.dataset.col);
-    const endRow = Math.min(35, startRow + draggedHadragData.rowSpan - 1);
-    
-    const srcStart = parseInt(draggedSourceCell.dataset.row);
-    const srcEnd = srcStart + (draggedSourceCell.rowSpan || 1) - 1;
-    const srcCol = parseInt(draggedSourceCell.dataset.col);
-    
-    let hasConflict = false;
-    for (let r = startRow; r <= endRow; r++) {
-      if (col === srcCol && r >= srcStart && r <= srcEnd) continue;
-      
-      const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
-      if (!c) continue;
-      if (c.style.display === 'none') { hasConflict = true; break; }
-      const ta = c.querySelector('textarea');
-      if (ta && ta.value.trim() !== '') { hasConflict = true; break; }
-      if (typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
-    }
-    
-    if (hasConflict) {
-      alert('לא ניתן להזיז: השטח חופף לשיבוץ קיים.');
-      return;
-    }
-    
-    const movedReqId = clearHadragCellData(draggedSourceCell);
-    pasteOrMoveBlock(cell, draggedHadragData, false);
-    if (movedReqId && typeof relinkGridRequestToCell === 'function') relinkGridRequestToCell(movedReqId, cell);
-    if (typeof saveHadragTables === 'function') saveHadragTables();
-    if (typeof saveShekemTables === 'function') saveShekemTables();
+  if (dragPreviewElement) { dragPreviewElement.remove(); dragPreviewElement = null; }
+
+  const targetCell = target.tbody.querySelector(`td.platoon-cell[data-row="${target.startRow}"][data-col="${target.col}"]`);
+  if (!targetCell || targetCell === draggedSourceCell) return;
+
+  const { startRow, endRow, col } = target;
+  const srcStart = parseInt(draggedSourceCell.dataset.row);
+  const srcEnd = srcStart + (draggedSourceCell.rowSpan || 1) - 1;
+  const srcCol = parseInt(draggedSourceCell.dataset.col);
+
+  let hasConflict = false;
+  for (let r = startRow; r <= endRow; r++) {
+    if (col === srcCol && r >= srcStart && r <= srcEnd) continue;
+
+    const c = target.tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
+    if (!c) continue;
+    if (c.style.display === 'none') { hasConflict = true; break; }
+    const ta = c.querySelector('textarea');
+    if (ta && ta.value.trim() !== '') { hasConflict = true; break; }
+    if (typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
   }
+
+  if (hasConflict) {
+    alert('לא ניתן להזיז: השטח חופף לשיבוץ קיים.');
+    return;
+  }
+
+  const movedReqId = clearHadragCellData(draggedSourceCell);
+  pasteOrMoveBlock(targetCell, draggedHadragData, false);
+  if (movedReqId && typeof relinkGridRequestToCell === 'function') relinkGridRequestToCell(movedReqId, targetCell);
+  if (typeof saveHadragTables === 'function') saveHadragTables();
+  if (typeof saveShekemTables === 'function') saveShekemTables();
 });
 
 /* =========================================================

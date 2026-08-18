@@ -307,6 +307,20 @@
 /* קלאס נפרד מ-.platoon-cell בכוונה - כדי שמאזיני הגרירה/שינוי-הגודל/קליק-ימני הגלובליים של
    מסך המנהל (המוגבלים לתפקיד admin) לא "יתפסו" בטעות את התאים האלה. ראו script.js לוגיקת
    היצירה/הזזה/מחיקה החדשה שמופעלת עצמאית על .req-cell. */
+
+/* ביטול ה-position:sticky שמגיע בירושה מ-.hadrag-table td.time-col / th:first-child: כש-4
+   טבלאות המתקנים יושבות זו לצד זו בתוך מיכל גלילה משותף (.req-facility-row), עמודת השעה
+   "הדביקה" (sticky) של כל טבלה נצמדת לקצה הימני של אזור הגלילה המשותף - לא של הטבלה שלה
+   בלבד - כך שבגלילה בין המתקנים עמודת השעה של טבלה אחת "דולפת" ויזואלית לתוך הטבלה הבאה
+   ונראית כעמודה מיותרת (דיווח משתמש). כאן כל טבלה קטנה מספיק שלא נדרשת גלילה פנימית משלה,
+   ולכן ה-sticky מיותר ומזיק - מבטלים אותו כאן בלבד (הגריד של המנהל, table-container אחד
+   שגם הוא עלול לסבול מאותה בעיה, לא נוגעים בו - מחוץ להיקף הבקשה הזו).
+*/
+.req-facility-wrapper .time-col,
+.req-facility-wrapper thead th:first-child {
+  position: static !important;
+}
+
 .req-cell {
   border: 1px solid #cbd5e1 !important;
   padding: 0;
@@ -427,3 +441,21 @@
   width: 100%;
 }
 .req-context-menu button:hover { background: #fef2f2; }
+
+/* כפתור "שמור בקשות" צובע את עצמו אדום/ירוק לפי קיום שינויים שטרם נשמרו - אותה מוסכמה כמו
+   .global-export-btn.has-pending/.all-published (style.css), אך בקלאס נפרד כדי לא לרשת שינויי
+   פריסה (margin/display) שלא רלוונטיים לכפתור הזה - רק background/box-shadow משתנים. */
+.hipok-choice-btn.has-pending {
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+  box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3) !important;
+}
+.hipok-choice-btn.has-pending:hover {
+  box-shadow: 0 6px 12px rgba(220, 38, 38, 0.4) !important;
+}
+.hipok-choice-btn.all-published {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  box-shadow: 0 4px 6px rgba(22, 163, 74, 0.3) !important;
+}
+.hipok-choice-btn.all-published:hover {
+  box-shadow: 0 6px 12px rgba(22, 163, 74, 0.4) !important;
+}

@@ -2750,7 +2750,7 @@ function paintPendingBlock(tbody, block, idx) {
   ta.placeholder = 'פרטי הבקשה...';
   ta.value = block.text || '';
   ta.dataset.stagedIdx = String(idx);
-  ta.addEventListener('input', () => { block.text = ta.value; });
+  ta.addEventListener('input', () => { block.text = ta.value; block.dirty = true; updateReqSaveButtonStatus(); });
 
   cell.appendChild(handle);
   cell.appendChild(del);
@@ -2802,6 +2802,29 @@ async function paintUnitRequestGrid(type) {
     const tbody = document.getElementById('req-body-' + facility);
     if (tbody) paintPendingBlock(tbody, block, idx);
   });
+
+  updateReqSaveButtonStatus();
+}
+
+/**
+ * צובעת את כפתור "שמור בקשות" (חדר"ג/שק"ם) אדום/ירוק - אותה מוסכמה כמו הכפתור הכללי
+ * "הפץ שינויים"/"שמור ומוכן לייבוא" (updateGlobalExportButtonStatus): אדום = יש בלוק חדש
+ * שעדיין לא נשמר (ללא reqId) או בלוק קיים שהוזז/שונה גודלו/נערך טקסט שלו (dirty) מאז
+ * שנטען לאחרונה מהאחסון; ירוק = כל הבלוקים תואמים למה שכבר נשמר בפועל.
+ */
+function updateReqSaveButtonStatus() {
+  const hadragBtn = document.getElementById('saveHadragReqBtn');
+  if (hadragBtn) {
+    const pending = hadragStagedBlocks.some(b => !b.reqId || b.dirty);
+    hadragBtn.classList.toggle('has-pending', pending);
+    hadragBtn.classList.toggle('all-published', !pending);
+  }
+  const shekemBtn = document.getElementById('saveShekemReqBtn');
+  if (shekemBtn) {
+    const pending = shekemStagedBlocks.some(b => !b.reqId || b.dirty);
+    shekemBtn.classList.toggle('has-pending', pending);
+    shekemBtn.classList.toggle('all-published', !pending);
+  }
 }
 
 /**
@@ -2831,7 +2854,8 @@ async function loadUnitRequestGridState(type) {
       span: Math.max(1, timeToRowIndex(r.endTime) - startRow),
       text: r.text,
       unitClass: r.unit || unitClass,
-      unitName: r.unitName || unitName
+      unitName: r.unitName || unitName,
+      dirty: false
     };
   });
 
@@ -2928,48 +2952,67 @@ document.addEventListener('mousedown', function(e) {
   markReqPreview(tbody, reqGridDragCtx.day, row, 1);
 });
 
-// 2. מהלך הגרירה - יצירה/שינוי-משך מוגבלים לאותה טבלת-מתקן (כמו במנהל); הזזה (move) יכולה
-//    לעבור בין טבלאות מתקנים שונות (חדר"ג/ענפית 1/ענפית בא"ח/פיקוד 1), בדיוק כמו אצל המנהל.
+// 2א. מהלך גרירת-יצירה (mouseover רגיל מספיק - תאים ריקים לעולם לא display:none).
 document.addEventListener('mouseover', function(e) {
-  if (!reqGridDragMode || !reqGridDragCtx) return;
+  if (reqGridDragMode !== 'create' || !reqGridDragCtx) return;
   const cell = e.target.closest('td.req-cell');
   if (!cell) return;
   const tbody = cell.closest('tbody');
-  if (!tbody) return;
+  if (!tbody || tbody !== reqGridDragCtx.tbody) return;
 
   const hoverRow = parseInt(cell.dataset.row, 10);
   const hoverCol = parseInt(cell.dataset.col, 10);
+  if (hoverCol !== reqGridDragCtx.day || hoverRow < reqGridDragCtx.startRow) return;
+  clearReqPreview(tbody);
+  reqGridDragCtx.currentRow = hoverRow;
+  markReqPreview(tbody, reqGridDragCtx.day, reqGridDragCtx.startRow, hoverRow - reqGridDragCtx.startRow + 1);
+});
 
-  if (reqGridDragMode === 'create') {
-    if (tbody !== reqGridDragCtx.tbody) return;
-    if (hoverCol !== reqGridDragCtx.day || hoverRow < reqGridDragCtx.startRow) return;
-    clearReqPreview(tbody);
-    reqGridDragCtx.currentRow = hoverRow;
-    markReqPreview(tbody, reqGridDragCtx.day, reqGridDragCtx.startRow, hoverRow - reqGridDragCtx.startRow + 1);
-  } else if (reqGridDragMode === 'resize') {
-    if (tbody !== reqGridDragCtx.tbody) return;
-    const stagedArr = reqGridDragCtx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
-    const block = stagedArr[reqGridDragCtx.resizingIdx];
+// 2ב. מהלך הזזה/שינוי-משך - מבוסס קואורדינטת Y בפועל (getRowIndexAtY, כמו אצל המנהל) ולא
+//    mouseover על תא ספציפי: כשמקטינים בלוק, השורות שצריך לגרור אליהן הן בדיוק השורות שכרגע
+//    "מכוסות" (display:none) על ידי הבלוק עצמו (rowSpan) - mouseover לעולם לא נורה על תא
+//    מוסתר, כך שהתא הראשון של הבלוק "בולע" את כל אירועי ה-mouseover באזור שלו ומונע כל
+//    הקטנה (דיווח משתמש). getRowIndexAtY מודדת מול עמודת השעה (תמיד גלויה בכל שורה) ולא
+//    תלויה בזה שהתא הספציפי בעמודת היום גלוי.
+document.addEventListener('mousemove', function(e) {
+  if (reqGridDragMode !== 'resize' && reqGridDragMode !== 'move') return;
+  const ctx = reqGridDragCtx;
+  if (!ctx) return;
+
+  if (reqGridDragMode === 'resize') {
+    const stagedArr = ctx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+    const block = stagedArr[ctx.resizingIdx];
     if (!block) return;
-    if (hoverCol !== block.day || hoverRow < block.startRow) return;
-    clearReqPreview(tbody);
-    reqGridDragCtx.currentEndRow = hoverRow;
-    markReqPreview(tbody, block.day, block.startRow, hoverRow - block.startRow + 1);
+    const row = getRowIndexAtY(ctx.tbody, e.clientY);
+    if (row === -1 || row < block.startRow || row === ctx.currentEndRow) return;
+    clearReqPreview(ctx.tbody);
+    ctx.currentEndRow = row;
+    markReqPreview(ctx.tbody, block.day, block.startRow, row - block.startRow + 1);
   } else if (reqGridDragMode === 'move') {
-    if (!tbody.id.startsWith('req-body-')) return;
+    const elAtPoint = document.elementFromPoint(e.clientX, e.clientY);
+    const cellAtPoint = elAtPoint ? elAtPoint.closest('td.req-cell') : null;
+    if (!cellAtPoint) return;
+    const tbody = cellAtPoint.closest('tbody');
+    if (!tbody || !tbody.id.startsWith('req-body-')) return;
     const hoverType = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
-    if (hoverType !== reqGridDragCtx.type) return;
-    const stagedArr = reqGridDragCtx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
-    const block = stagedArr[reqGridDragCtx.movingIdx];
+    if (hoverType !== ctx.type) return;
+
+    const stagedArr = ctx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+    const block = stagedArr[ctx.movingIdx];
     if (!block) return;
-    const prevPreviewTbody = reqGridDragCtx.previewTbody;
+    const hoverCol = parseInt(cellAtPoint.dataset.col, 10);
+    const row = getRowIndexAtY(tbody, e.clientY);
+    if (row === -1) return;
+    let previewStart = Math.min(row, 36 - block.span);
+    if (previewStart < 0) previewStart = 0;
+    if (tbody === ctx.previewTbody && hoverCol === ctx.previewDay && previewStart === ctx.previewStartRow) return;
+
+    const prevPreviewTbody = ctx.previewTbody;
     if (prevPreviewTbody && prevPreviewTbody !== tbody) clearReqPreview(prevPreviewTbody);
     clearReqPreview(tbody);
-    let previewStart = Math.min(hoverRow, 36 - block.span);
-    if (previewStart < 0) previewStart = 0;
-    reqGridDragCtx.previewTbody = tbody;
-    reqGridDragCtx.previewDay = hoverCol;
-    reqGridDragCtx.previewStartRow = previewStart;
+    ctx.previewTbody = tbody;
+    ctx.previewDay = hoverCol;
+    ctx.previewStartRow = previewStart;
     markReqPreview(tbody, hoverCol, previewStart, block.span);
   }
 });
@@ -3024,6 +3067,7 @@ async function finishReqGridDrag() {
           alert('⛔ המשבצת תפוסה! לא ניתן לשנות לגודל הזה.');
         } else {
           block.span = newSpan;
+          block.dirty = true;
         }
       }
     }
@@ -3039,6 +3083,7 @@ async function finishReqGridDrag() {
         block.facility = newFacility;
         block.day = ctx.previewDay;
         block.startRow = ctx.previewStartRow;
+        block.dirty = true;
       }
     }
     await paintUnitRequestGrid(ctx.type);

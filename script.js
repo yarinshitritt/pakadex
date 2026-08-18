@@ -220,7 +220,7 @@ function renderNavbars() {
     const isShekem = currentPage.includes('shekem');
 
     const logoBlock = !isUnitPage ? `
-      <div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="window.location.href='index.html'">
+      <div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="clearViewedWeek(); window.location.href='index.html'">
         <h1 style="font-size:20px; color:white; margin:0;">PAKADEX</h1>
         <img src="images/לוגו בהלג בלי רקע.png" alt="לוגו" class="sidebar-image" width="36" style="height:auto;">
       </div>
@@ -235,7 +235,7 @@ function renderNavbars() {
           <span class="user-chip-role">${AUTH.roleLabel(session)}</span>
         </div>
         ${AUTH.canManageUsers()
-          ? '<button class="user-chip-btn" onclick="window.location.href=\'users.html\'" title="ניהול הרשאות">👥</button>'
+          ? '<button class="user-chip-btn" onclick="clearViewedWeek(); window.location.href=\'users.html\'" title="ניהול הרשאות">👥</button>'
           : ''}
         <button class="user-chip-btn logout" onclick="AUTH.logout()" title="יציאה מהמערכת">⏻</button>
       </div>
@@ -341,10 +341,10 @@ function renderNavbars() {
           <span>${emoji}</span> <span class="sidebar-text">${label}</span>
         </button>
         <div id="subMenu_${key}" class="submenu ${isActive ? 'show' : ''}">
-          <button class="sidebar-btn ${isActive && !isHaktzaotView ? 'active' : ''}" onclick="window.location.href='${key}.html?view=bakashot'">
+          <button class="sidebar-btn ${isActive && !isHaktzaotView ? 'active' : ''}" onclick="clearViewedWeek(); window.location.href='${key}.html?view=bakashot'">
             <span class="sidebar-text">דרישות</span>
           </button>
-          <button class="sidebar-btn ${isActive && isHaktzaotView ? 'active' : ''}" onclick="window.location.href='${key}.html?view=haktzaot'">
+          <button class="sidebar-btn ${isActive && isHaktzaotView ? 'active' : ''}" onclick="clearViewedWeek(); window.location.href='${key}.html?view=haktzaot'">
             <span class="sidebar-text">הקצאות</span>
           </button>
         </div>`;
@@ -356,14 +356,14 @@ function renderNavbars() {
           <span class="sidebar-text">כווץ תפריט</span>
         </button>
 
-        <button class="sidebar-btn ${isMain ? 'active' : ''}" onclick="window.location.href='index.html'">
+        <button class="sidebar-btn ${isMain ? 'active' : ''}" onclick="clearViewedWeek(); window.location.href='index.html'">
           <span>🏠</span> <span class="sidebar-text">ראשי</span>
         </button>
-        <button class="sidebar-btn ${isTabels ? 'active' : ''}" onclick="window.location.href='kesher.html'">
+        <button class="sidebar-btn ${isTabels ? 'active' : ''}" onclick="clearViewedWeek(); window.location.href='kesher.html'">
           <span>📊</span> <span class="sidebar-text">טבלאות</span>
         </button>
         ${(typeof AUTH !== 'undefined' && AUTH.canManageUsers()) ? `
-        <button class="sidebar-btn ${currentPage.includes('users') ? 'active' : ''}" onclick="window.location.href='users.html'">
+        <button class="sidebar-btn ${currentPage.includes('users') ? 'active' : ''}" onclick="clearViewedWeek(); window.location.href='users.html'">
           <span>👥</span> <span class="sidebar-text">ניהול הרשאות</span>
         </button>` : ''}
 
@@ -667,6 +667,15 @@ function loadViewedWeek() {
     if (parsed && Number.isInteger(parsed.week) && Number.isInteger(parsed.year)) return parsed;
   } catch (e) {}
   return null;
+}
+
+// מנקה את השבוע הנצפה לפני ניווט לאזור/עמוד אחר בתפריט הצדדי (ראשי/טבלאות/ניהול הרשאות/
+// עמוד יחידה) - כדי שמעבר בין *אזורים* שונים באפליקציה תמיד ינחת מחדש על השבוע הקלנדרי
+// האמיתי, בניגוד למעבר בין *קטגוריות טבלה* (קשר/אופטיקה/מודיעין/חיפוקים/פלוגתי/שעות שק"ם)
+// דרך סרגל הקטגוריות העליון, שממשיך לשמר את השבוע הנצפה כרגיל (אפיון QA: "בין עמודים תמיד
+// לשבוע הנוכחי, אבל בין טבלה לטבלה באותו עמוד להישאר על השבוע שנבחר").
+function clearViewedWeek() {
+  try { sessionStorage.removeItem(VIEWED_WEEK_KEY); } catch (e) {}
 }
 
 /**

@@ -596,7 +596,7 @@ async function loadTableData(tableId, week, year) {
       if (inputs[idx]) {
         inputs[idx].value = data[indexStr];
         // הצבת value ישירות לא מפעילה אירוע 'input' (רק הקלדה אמיתית/dispatchEvent מפעילים אותו) -
-        // בלי זה, תיבת "נושא שבוע"/"משיכה\זיכוי" נשארת בגובה המינימלי שנקבע כשרוקנו אותה קודם
+        // בלי זה, תיבת "נושא שבוע"/"הערות משיכה\זיכוי" נשארת בגובה המינימלי שנקבע כשרוקנו אותה קודם
         // (שורה 546-551 למעלה), כך שטקסט ארוך שהוזן קודם נשאר קיים ב-value אך "נעלם" ויזואלית
         // בכל טעינה/רענון מחדש (אפיון QA: "שיראו את כל הטקסט שמכניסים").
         if (inputs[idx].classList.contains('topic-textarea')) {
@@ -1775,7 +1775,7 @@ async function importDirectToTable(sourceTableId, targetTableId) {
 const DEFAULT_KESHER_ROWS = [
   "נושא שבוע", "715/709", "POC", "710", "שקדון", "CF-33", "700", "דיסקית", "סל\"צ", "נתונים",
   "מגבר", "מח-120", "מח-121", "מח-122", "מדונה", "אול\"רים", "מר2791",
-  "מזוודת הטענה בומבה", "מזוודת הטענה ליתיום", "משיכה\\זיכוי"
+  "מזוודת הטענה בומבה", "מזוודת הטענה ליתיום", "הערות משיכה\\זיכוי"
 ];
 
 const DEFAULT_OPTIC_ROWS = [
@@ -1810,14 +1810,25 @@ function getRowsStorageKey(category, week, year) {
 function getRowsForWeek(category, week, year) {
   const key = getRowsStorageKey(category, week, year);
   const saved = localStorage.getItem(key);
-  if (saved) return JSON.parse(saved);
+  if (saved) {
+    const rows = JSON.parse(saved);
+    // מיגרציה חד-פעמית בזמן טעינה: שבועות שכבר נשמרו לפני שינוי שם שורת "משיכה\זיכוי" ל"הערות
+    // משיכה\זיכוי" עדיין מכילים את השם הישן במערך השמור - מתקנים אותו כאן כדי שכל השבועות
+    // (גם ישנים) יציגו את השם המעודכן, בלי לפגוע בהגנות על השורה המיוחדת (מחיקה/גרירה/הדגשה).
+    if (category === 'kesher') {
+      const oldIdx = rows.indexOf("משיכה\\זיכוי");
+      if (oldIdx !== -1) rows[oldIdx] = "הערות משיכה\\זיכוי";
+    }
+    return rows;
+  }
 
   if (week > 1) {
     return getRowsForWeek(category, week - 1, year);
   } else if (year > new Date().getFullYear() - 2) {
     const prevYearKey = getRowsStorageKey(category, getWeeksInYear(year - 1), year - 1);
-    const prevYearSaved = localStorage.getItem(prevYearKey);
-    if (prevYearSaved) return JSON.parse(prevYearSaved);
+    if (localStorage.getItem(prevYearKey) !== null) {
+      return getRowsForWeek(category, getWeeksInYear(year - 1), year - 1);
+    }
   }
 
   return category === 'kesher' ? [...DEFAULT_KESHER_ROWS] : [...DEFAULT_OPTIC_ROWS];
@@ -1923,9 +1934,9 @@ function renderDynamicTableStructure(tableId, week, year) {
 
   rowsList.forEach((rowName, rowIndex) => {
     const isTopicRow = (rowIndex === 0);
-    // שורת "משיכה\זיכוי" בקשר היא שורה קבועה (תמיד אחרונה) - אסור שתהיה ניתנת למחיקה או לגרירה
+    // שורת "הערות משיכה\זיכוי" בקשר היא שורה קבועה (תמיד אחרונה) - אסור שתהיה ניתנת למחיקה או לגרירה
     // (ראו גם ההגנה הזהה ב-deleteRowItem ואי-הוספת מחלקת reorderable-row).
-    const isSpecialNoteRow = (category === 'kesher' && rowIndex === rowsList.length - 1 && rowName === "משיכה\\זיכוי");
+    const isSpecialNoteRow = (category === 'kesher' && rowIndex === rowsList.length - 1 && rowName === "הערות משיכה\\זיכוי");
     const isReorderable = isMasterTable && !isTopicRow && !isSpecialNoteRow;
 
     let deleteBtnHtml = '';
@@ -2094,7 +2105,7 @@ function addItemRow(category, itemName) {
       const currentList = snapshots[`${w}_${y}`];
       
       let insertIdx = currentList.length;
-      if (category === 'kesher' && currentList[currentList.length - 1] === "משיכה\\זיכוי") {
+      if (category === 'kesher' && currentList[currentList.length - 1] === "הערות משיכה\\זיכוי") {
         insertIdx = currentList.length - 1;
       }
       
@@ -2144,8 +2155,8 @@ function deleteRowItem(category, rowIndex) {
     return;
   }
 
-  if (category === 'kesher' && rowIndex === currentList.length - 1 && itemName === "משיכה\\זיכוי") {
-    alert("לא ניתן למחוק את שורת \"משיכה\\זיכוי\".");
+  if (category === 'kesher' && rowIndex === currentList.length - 1 && itemName === "הערות משיכה\\זיכוי") {
+    alert("לא ניתן למחוק את שורת \"הערות משיכה\\זיכוי\".");
     return;
   }
 
@@ -2254,7 +2265,7 @@ async function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbody
     if (!hasValue) return;
     hasAny = true;
 
-    const isSpecialRow = rowIndex === 0 || (name === "משיכה\\זיכוי");
+    const isSpecialRow = rowIndex === 0 || (name === "הערות משיכה\\זיכוי");
     let tds = `<td class="test">${escapeHtml(name)}</td>`;
     values.forEach(val => {
       tds += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;

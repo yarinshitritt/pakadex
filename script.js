@@ -1089,25 +1089,52 @@ async function copyWeekToTarget(tableId) {
 
 /**
  * מדביקה את תוכן השבוע הנוכחי לכל השבועות הבאים באותה שנה (דורס נתונים קיימים).
+ * בנוסף, שומרת ומייצאת (מפרסמת) אוטומטית את דרישות הפלוגות (טבלאות הבקשה היחידתיות
+ * שמיובאות לטבלת המנהל - ראו SUB_TABLE_MAPS) עבור השבוע הנוכחי ועבור כל שבוע שאליו
+ * מדביקים, כדי שלא יווצר פער בין תוכן טבלת המנהל שהודבק לבין מצב "הדרישה המפורסמת"
+ * שהיחידות רואות (checkRequirementChanges קוראת רק מ-_published).
  */
 async function applyWeekToRestOfYear(tableId) {
   const category = getKesherOpticCategory(tableId);
   const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
   const weeksInYear = getWeeksInYear(currentYear);
   if (currentWeek >= weeksInYear) { alert('זהו השבוע האחרון בשנה - אין שבועות הבאים להדבקה.'); return; }
-  if (!confirm(`פעולה זו תעתיק את תוכן טבלת ${catName} משבוע ${currentWeek} לכל השבועות ${currentWeek + 1}-${weeksInYear} בשנת ${currentYear}, ותדרוס את הנתונים הקיימים בהם.\n\nלהמשיך?`)) return;
+  if (!confirm(`פעולה זו תעתיק את תוכן טבלת ${catName} משבוע ${currentWeek} לכל השבועות ${currentWeek + 1}-${weeksInYear} בשנת ${currentYear}, ותדרוס את הנתונים הקיימים בהם.\nבנוסף, דרישות הפלוגות של השבוע הנוכחי יישמרו ויוצאו אוטומטית לכל אותם שבועות.\n\nלהמשיך?`)) return;
 
   await saveCurrentWeek();
   const data = await fetchTableData(getStorageKey(tableId, currentWeek, currentYear));
   if (!data) { alert('אין נתונים להעתקה בשבוע הנוכחי.'); return; }
 
+  const subTableConfigs = SUB_TABLE_MAPS[tableId] || [];
+  const subTableSnapshots = {};
+  for (const cfg of subTableConfigs) {
+    subTableSnapshots[cfg.sourceTableId] = await fetchTableData(getStorageKey(cfg.sourceTableId, currentWeek, currentYear));
+  }
+  for (const cfg of subTableConfigs) {
+    const snap = subTableSnapshots[cfg.sourceTableId];
+    if (!snap) continue;
+    await DataService.setItem(getStorageKey(cfg.sourceTableId, currentWeek, currentYear) + '_published', snap);
+  }
+
   let count = 0;
   for (let w = currentWeek + 1; w <= weeksInYear; w++) {
     await DataService.setItem(getStorageKey(tableId, w, currentYear), data);
     copyRowListToWeek(category, w, currentYear);
+
+    for (const cfg of subTableConfigs) {
+      const snap = subTableSnapshots[cfg.sourceTableId];
+      if (!snap) continue;
+      const subKey = getStorageKey(cfg.sourceTableId, w, currentYear);
+      await DataService.setItem(subKey, snap);
+      await DataService.setItem(subKey + '_published', snap);
+    }
+
     count++;
   }
-  alert(`הנתונים הועתקו ל-${count} שבועות (${currentWeek + 1}-${weeksInYear}).`);
+
+  if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
+
+  alert(`הנתונים הועתקו ל-${count} שבועות (${currentWeek + 1}-${weeksInYear}), כולל שמירה וייצוא אוטומטיים של דרישות הפלוגות.`);
 }
 
 /**

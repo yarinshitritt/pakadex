@@ -2,20 +2,20 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=47">
-  <link rel="stylesheet" href="esuk.css?v=47">
-  <link rel="stylesheet" href="kesher.css?v=47">
-  <link rel="stylesheet" href="optic.css?v=47">
-  <link rel="stylesheet" href="modiein.css?v=47">
-  <link rel="stylesheet" href="hipokim.css?v=47">
-  <link rel="stylesheet" href="hadrag.css?v=47">
+  <link rel="stylesheet" href="style.css?v=49">
+  <link rel="stylesheet" href="esuk.css?v=49">
+  <link rel="stylesheet" href="kesher.css?v=49">
+  <link rel="stylesheet" href="optic.css?v=49">
+  <link rel="stylesheet" href="modiein.css?v=49">
+  <link rel="stylesheet" href="hipokim.css?v=49">
+  <link rel="stylesheet" href="hadrag.css?v=49">
   <title>PAKADEX - בא"ח חיר"ג</title>
 </head>
 <body>
  
   <div class="container1">
     <div id="user-chip-placeholder"></div>
-    <div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="clearViewedWeek(); window.location.href='index.html'">
+    <div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="clearViewedWeek(); clearViewedCategory(); window.location.href='index.html'">
       <h1 style="font-size:24px; color:white; margin:0;">PAKADEX</h1>
       <img src="images/לוגו בהלג בלי רקע.png" alt="לוגו" class="sidebar-image" width="36" style="height:auto;">
     </div>
@@ -356,9 +356,8 @@
       document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
       document.getElementById(id).style.display = 'flex';
 
-      // איפוס ללשונית "קשר" בכל מעבר בין בקשות/הקצאות - כברירת מחדל היא תמיד נבחרת
-      // אוטומטית, בלי קשר לאיזו קטגוריה הייתה פתוחה קודם (אפיון QA).
-      currentCategory = 'kesher';
+      // currentCategory לא מתאפס בכוונה - מעבר בין בקשות/הקצאות נשאר על אותה קטגוריית טבלה
+      // (קשר/אופטיקה/מודיעין/חיפוקים/פלוגתי/שעות שק"ם) שהייתה פתוחה, ולא קופץ תמיד לקשר (אפיון QA).
 
       const btnShekem = document.getElementById('btn-shekem');
       const btnChadrag = document.getElementById('btn-chadrag');
@@ -383,6 +382,7 @@
 
     function showTopSection(id) {
       currentCategory = id;
+      if (typeof saveCurrentCategory === 'function') saveCurrentCategory(id);
       updateCategoryView();
     }
 
@@ -570,6 +570,11 @@
       const urlParams = new URLSearchParams(window.location.search);
       const isHaktzaot = (urlParams.get('view') === 'haktzaot');
 
+      if (typeof loadCurrentCategory === 'function') {
+        const savedCategory = loadCurrentCategory();
+        if (savedCategory) currentCategory = savedCategory;
+      }
+
       if (isHaktzaot) {
         showSection('haktzaot');
       } else {
@@ -577,10 +582,10 @@
       }
     });
   </script>
-  <script src="config.js?v=47"></script>
-  <script src="sharepointService.js?v=47"></script>
-  <script src="auth.js?v=47"></script>
-  <script src="script.js?v=47"></script>
+  <script src="config.js?v=49"></script>
+  <script src="sharepointService.js?v=49"></script>
+  <script src="auth.js?v=49"></script>
+  <script src="script.js?v=49"></script>
 
 </body>
 </html>

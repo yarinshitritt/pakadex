@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=49">
   <title>PAKADEX - ראשי</title>
   <style>
     .welcome-container {
@@ -34,37 +34,37 @@
       
       <h2 style="color: #334155; margin: 0 0 16px 0;">גישה מהירה לניהול</h2>
       <div class="shortcuts-grid">
-        <a href="kesher.html" class="shortcut-card" onclick="clearViewedWeek()">
+        <a href="kesher.html" class="shortcut-card" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-icon">📻</div>
           <div class="shortcut-title">קשר</div>
           <div style="font-size: 14px; color: var(--text-muted);">הקצאות אמצעי קשר</div>
         </a>
-        <a href="optic.html" class="shortcut-card" onclick="clearViewedWeek()">
+        <a href="optic.html" class="shortcut-card" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-icon">🔭</div>
           <div class="shortcut-title">אופטיקה</div>
           <div style="font-size: 14px; color: var(--text-muted);">  הקצאות אמצעי אופטיקה</div>
         </a>
-        <a href="modiein.html" class="shortcut-card" onclick="clearViewedWeek()">
+        <a href="modiein.html" class="shortcut-card" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-icon">📡</div>
           <div class="shortcut-title">מודיעין</div>
           <div style="font-size: 14px; color: var(--text-muted);">הקצאות אמצעי מודיעין</div>
         </a>
-        <a href="hipokim.html" class="shortcut-card" onclick="clearViewedWeek()">
+        <a href="hipokim.html" class="shortcut-card" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-icon">🚑</div>
           <div class="shortcut-title">חיפוקים</div>
           <div style="font-size: 14px; color: var(--text-muted);">שיבוץ לחיפוקים</div>
         </a>
-        <a href="hadrag.html" class="shortcut-card" onclick="clearViewedWeek()">
+        <a href="hadrag.html" class="shortcut-card" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-icon">🎯</div>
           <div class="shortcut-title">פלוגתי</div>
           <div style="font-size: 14px; color: var(--text-muted);">שיבוצים לכיתות</div>
         </a>
-        <a href="shekem.html" class="shortcut-card" onclick="clearViewedWeek()">
+        <a href="shekem.html" class="shortcut-card" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-icon">🏪</div>
           <div class="shortcut-title">שק"ם</div>
           <div style="font-size: 14px; color: var(--text-muted);">שעות שק"ם</div>
         </a>
-        <a href="general.html" class="shortcut-card" onclick="clearViewedWeek()">
+        <a href="general.html" class="shortcut-card" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-icon">📊</div>
           <div class="shortcut-title">אקסל</div>
           <div style="font-size: 14px; color: var(--text-muted);">ניהול טבלאות אקסל</div>
@@ -73,29 +73,29 @@
 
       <h2 style="color: #334155; margin-top: 36px; margin-bottom: 16px;">מסכי פלוגות ויחידות</h2>
       <div class="shortcuts-grid">
-        <a href="esuk.html" class="shortcut-card unit-esuk" onclick="clearViewedWeek()">
+        <a href="esuk.html" class="shortcut-card unit-esuk" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-title">בא"ח איסו"ק</div>
         </a>
-        <a href="hirg.html" class="shortcut-card unit-hirg" onclick="clearViewedWeek()">
+        <a href="hirg.html" class="shortcut-card unit-hirg" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-title">בא"ח חיר"ג</div>
         </a>
-        <a href="pikud.html" class="shortcut-card unit-pikud" onclick="clearViewedWeek()">
+        <a href="pikud.html" class="shortcut-card unit-pikud" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-title">גדוד הפיקוד</div>
         </a>
-        <a href="tazam.html" class="shortcut-card unit-tazam" onclick="clearViewedWeek()">
+        <a href="tazam.html" class="shortcut-card unit-tazam" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-title">ענף תצ"מ</div>
         </a>
-        <a href="bahalag.html" class="shortcut-card unit-bahalag" onclick="clearViewedWeek()">
+        <a href="bahalag.html" class="shortcut-card unit-bahalag" onclick="clearViewedWeek(); clearViewedCategory()">
           <div class="shortcut-title">מפח"ט</div>
         </a>
       </div>
     </div>
   </div>
 
-  <script src="config.js?v=47"></script>
-  <script src="sharepointService.js?v=47"></script>
-  <script src="auth.js?v=47"></script>
-  <script src="script.js?v=47"></script>
+  <script src="config.js?v=49"></script>
+  <script src="sharepointService.js?v=49"></script>
+  <script src="auth.js?v=49"></script>
+  <script src="script.js?v=49"></script>
 
   <script>
     // משתמש פלוגתי רואה בעמוד הראשי רק את כרטיסי היחידות שהוא מורשה להן (ייתכן כמה) - זהה

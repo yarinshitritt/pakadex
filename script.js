@@ -286,7 +286,7 @@ function renderNavbars() {
           <button class="topnav-btn ${isOptic ? 'active' : ''}" id="btn-optic" onclick="${isUnitPage ? "showTopSection('optic')" : "window.location.href='optic.html'"}">אופטיקה</button>
           <button class="topnav-btn ${isModiein ? 'active' : ''}" id="btn-modiein" onclick="${isUnitPage ? "showTopSection('modiein')" : "window.location.href='modiein.html'"}">מודיעין</button>
           <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
-          <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">חדר"ג</button>
+          <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">פלוגתי</button>
           <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
           ${!isUnitPage ? `<button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 אקסל</button>` : ''}
         </div>
@@ -2636,9 +2636,9 @@ function initTopicExpansion() {
 
 const HADRAG_FACILITY_NAMES = {
   'chadrag': 'חדר"ג',
-  'anafit8': 'ענפית 8',
+  'anafit8': 'ענפית 1',
   'anafit-bah': 'ענפית בא"ח',
-  'tavor': 'תבור'
+  'tavor': 'פיקוד 1'
 };
 const HADRAG_DAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const ALL_COLOR_CLASSES = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'imported', 'conflict-overlap'];
@@ -4519,9 +4519,9 @@ function rowToTimeStr(r) {
 const DAYS_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 const HADRAG_TABLES_MAP = {
   'body-chadrag': 'חדר"ג',
-  'body-anafit8': 'אנפית 8',
+  'body-anafit8': 'ענפית 1',
   'body-anafit-bah': 'אנפית בא"ח',
-  'body-tavor': 'תבור'
+  'body-tavor': 'פיקוד 1'
 };
 
 async function getHadragAllocationsForUnit(unitColor, week, year) {

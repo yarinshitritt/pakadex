@@ -441,21 +441,3 @@
   width: 100%;
 }
 .req-context-menu button:hover { background: #fef2f2; }
-
-/* כפתור "שמור בקשות" צובע את עצמו אדום/ירוק לפי קיום שינויים שטרם נשמרו - אותה מוסכמה כמו
-   .global-export-btn.has-pending/.all-published (style.css), אך בקלאס נפרד כדי לא לרשת שינויי
-   פריסה (margin/display) שלא רלוונטיים לכפתור הזה - רק background/box-shadow משתנים. */
-.hipok-choice-btn.has-pending {
-  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
-  box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3) !important;
-}
-.hipok-choice-btn.has-pending:hover {
-  box-shadow: 0 6px 12px rgba(220, 38, 38, 0.4) !important;
-}
-.hipok-choice-btn.all-published {
-  background: linear-gradient(135deg, #16a34a, #15803d) !important;
-  box-shadow: 0 4px 6px rgba(22, 163, 74, 0.3) !important;
-}
-.hipok-choice-btn.all-published:hover {
-  box-shadow: 0 6px 12px rgba(22, 163, 74, 0.4) !important;
-}

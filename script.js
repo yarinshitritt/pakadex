@@ -901,6 +901,14 @@ async function hasUnitPendingChanges(currentPage, week, year) {
     if (await _hasUnitOwnEntryListPending(getShekemRequestsKey(week, year), r => r.unit === unitColor)) return true;
   }
 
+  // בלוקים שנוצרו/הוזזו/שונה גודלם/נערך הטקסט שלהם בגריד הבקשות (חדר"ג/שק"ם) אך עדיין לא
+  // הפכו לרשומת בקשה בפועל - קיימים רק בזיכרון (hadragStagedBlocks/shekemStagedBlocks), כך
+  // שההשוואה draft-מול-published למעלה לא תופסת אותם. אין כפתור "שמור בקשות" נפרד - גם הם
+  // נכללים ב"יש שינויים שטרם נשמרו" של "שמור ומוכן לייבוא" (commitHadragStagedBlocks/
+  // commitShekemStagedBlocks נקראות משם וממירות אותם לרשומה בפועל).
+  if (typeof hadragStagedBlocks !== 'undefined' && hadragStagedBlocks.some(b => !b.reqId || b.dirty)) return true;
+  if (typeof shekemStagedBlocks !== 'undefined' && shekemStagedBlocks.some(b => !b.reqId || b.dirty)) return true;
+
   return false;
 }
 
@@ -1010,6 +1018,12 @@ async function globalExportManager() {
  */
 async function globalExportUnit() {
   if (!confirm('האם סיימת את השיבוץ וברצונך לשמור את הנתונים כך שיהיו מוכנים לייבוא על ידי המנהל?')) return;
+
+  // ממירים קודם כל בלוק "ממתין" שנוצר/הוזז בגריד הבקשות (חדר"ג/שק"ם) לרשומת בקשה בפועל -
+  // אין כפתור "שמור בקשות" נפרד, "שמור ומוכן לייבוא" הוא הפעולה היחידה ששומרת אותן. אם יש
+  // בלוק עם טקסט ריק העדכון עוצר כאן (ראו commitHadragStagedBlocks/commitShekemStagedBlocks).
+  if (typeof commitHadragStagedBlocks === 'function' && !(await commitHadragStagedBlocks())) return;
+  if (typeof commitShekemStagedBlocks === 'function' && !(await commitShekemStagedBlocks())) return;
 
   const currentPrefix = `week${currentWeek}_year${currentYear}`;
 
@@ -2682,9 +2696,10 @@ function _timeRangesOverlap(s1, e1, s2, e2) {
    גריד בקשות חדר"ג/שק"ם בעמוד היחידה (מחליף את טופס הבקשה הישן + תצוגת "לו"ז משובץ").
    היחידה רואה את כל השיבוצים המאושרים כמו שהם (קריאה בלבד, נטען מה-published בכל רינדור),
    ויכולה לגרור על תא ריק ליצירת בלוק "ממתין לאישור" (צבע מעומעם/מקווקו), לגרור בלוק ממתין
-   כזה למשבצת אחרת, למחוק אותו, ולשמור - רק בלחיצת "שמור בקשות" נגזרים day/startTime/endTime
-   בפועל ממיקום הבלוק הנוכחי ונכתבים כרשומת בקשה (status: 'pending', אותה סכימה כמו קודם -
-   תהליך האישור/דחייה של המנהל לא משתנה).
+   כזה למשבצת אחרת, ולמחוק אותו. אין כפתור שמירה ייעודי - רק בלחיצה על "שמור ומוכן לייבוא"
+   הכללי (globalExportUnit, ראו commitHadragStagedBlocks/commitShekemStagedBlocks) נגזרים
+   day/startTime/endTime בפועל ממיקום הבלוק הנוכחי ונכתבים כרשומת בקשה (status: 'pending',
+   אותה סכימה כמו קודם - תהליך האישור/דחייה של המנהל לא משתנה).
 ========================================================= */
 
 let hadragStagedBlocks = [];
@@ -2750,7 +2765,7 @@ function paintPendingBlock(tbody, block, idx) {
   ta.placeholder = 'פרטי הבקשה...';
   ta.value = block.text || '';
   ta.dataset.stagedIdx = String(idx);
-  ta.addEventListener('input', () => { block.text = ta.value; block.dirty = true; updateReqSaveButtonStatus(); });
+  ta.addEventListener('input', () => { block.text = ta.value; block.dirty = true; if (typeof updateGlobalExportButtonStatus === 'function') updateGlobalExportButtonStatus(); });
 
   cell.appendChild(handle);
   cell.appendChild(del);
@@ -2803,28 +2818,10 @@ async function paintUnitRequestGrid(type) {
     if (tbody) paintPendingBlock(tbody, block, idx);
   });
 
-  updateReqSaveButtonStatus();
-}
-
-/**
- * צובעת את כפתור "שמור בקשות" (חדר"ג/שק"ם) אדום/ירוק - אותה מוסכמה כמו הכפתור הכללי
- * "הפץ שינויים"/"שמור ומוכן לייבוא" (updateGlobalExportButtonStatus): אדום = יש בלוק חדש
- * שעדיין לא נשמר (ללא reqId) או בלוק קיים שהוזז/שונה גודלו/נערך טקסט שלו (dirty) מאז
- * שנטען לאחרונה מהאחסון; ירוק = כל הבלוקים תואמים למה שכבר נשמר בפועל.
- */
-function updateReqSaveButtonStatus() {
-  const hadragBtn = document.getElementById('saveHadragReqBtn');
-  if (hadragBtn) {
-    const pending = hadragStagedBlocks.some(b => !b.reqId || b.dirty);
-    hadragBtn.classList.toggle('has-pending', pending);
-    hadragBtn.classList.toggle('all-published', !pending);
-  }
-  const shekemBtn = document.getElementById('saveShekemReqBtn');
-  if (shekemBtn) {
-    const pending = shekemStagedBlocks.some(b => !b.reqId || b.dirty);
-    shekemBtn.classList.toggle('has-pending', pending);
-    shekemBtn.classList.toggle('all-published', !pending);
-  }
+  // אין כפתור "שמור בקשות" ייעודי לצבוע - מצב "יש שינויים שלא נשמרו" (block.dirty/reqId חסר)
+  // נבדק כחלק מ-hasUnitPendingChanges, שכבר קובע את הצבע (אדום/ירוק) של הכפתור הכללי
+  // "שמור ומוכן לייבוא".
+  if (typeof updateGlobalExportButtonStatus === 'function') updateGlobalExportButtonStatus();
 }
 
 /**
@@ -3163,12 +3160,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-/** כפתור "שמור בקשות" (חדר"ג) - קובע day/startTime/endTime/text מהמיקום הנוכחי של כל בלוק ממתין. */
-async function saveHadragGridRequests() {
-  if (hadragStagedBlocks.length === 0) { alert('אין בקשות להוסיף - גרור על הגריד כדי ליצור בקשה.'); return; }
+/**
+ * ממירה כל בלוק "ממתין" בגריד הבקשות של חדר"ג לרשומת בקשה בפועל (יוצרת חדשה או מעדכנת
+ * קיימת), לפי המיקום הנוכחי שלו - day/startTime/endTime/facility/text. אין כפתור "שמור
+ * בקשות" ייעודי - זו נקראת כחלק מ-"שמור ומוכן לייבוא" (globalExportUnit), לפני שהוא ממשיך
+ * לפרסום הרגיל, כדי שהפרסום יכלול גם בקשות שנוצרו/הוזזו בגריד ועדיין לא נכתבו לרשומה.
+ * @returns {Promise<boolean>} false אם יש בלוק עם טקסט ריק (ומתריעה, בלי לשמור כלום);
+ *   true אחרת - כולל כשאין בלוקים בכלל, זה לא מצב שגיאה.
+ */
+async function commitHadragStagedBlocks() {
+  if (hadragStagedBlocks.length === 0) return true;
   if (hadragStagedBlocks.some(b => !b.text || !b.text.trim())) {
-    alert('יש להזין טקסט לכל בקשה לפני השמירה.');
-    return;
+    alert('יש להזין טקסט לכל בקשת חדר"ג בגריד לפני השמירה.');
+    return false;
   }
 
   const requests = await loadHadragRequests(currentWeek, currentYear);
@@ -3200,15 +3204,15 @@ async function saveHadragGridRequests() {
 
   await saveHadragRequests(requests, currentWeek, currentYear);
   if (typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
-  alert('הבקשות נשמרו בהצלחה!');
+  return true;
 }
 
-/** כפתור "שמור בקשות" (שק"ם) - מקביל ל-saveHadragGridRequests, בלי שדה facility. */
-async function saveShekemGridRequests() {
-  if (shekemStagedBlocks.length === 0) { alert('אין בקשות להוסיף - גרור על הגריד כדי ליצור בקשה.'); return; }
+/** מקבילה ל-commitHadragStagedBlocks עבור שק"ם (ללא שדה facility). */
+async function commitShekemStagedBlocks() {
+  if (shekemStagedBlocks.length === 0) return true;
   if (shekemStagedBlocks.some(b => !b.text || !b.text.trim())) {
-    alert('יש להזין טקסט לכל בקשה לפני השמירה.');
-    return;
+    alert('יש להזין טקסט לכל בקשת שק"ם בגריד לפני השמירה.');
+    return false;
   }
 
   const requests = await loadShekemRequests(currentWeek, currentYear);
@@ -3238,7 +3242,7 @@ async function saveShekemGridRequests() {
 
   await saveShekemRequests(requests, currentWeek, currentYear);
   if (typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
-  alert('הבקשות נשמרו בהצלחה!');
+  return true;
 }
 
 /**

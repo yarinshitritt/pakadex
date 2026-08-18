@@ -4520,7 +4520,7 @@ const DAYS_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמי�
 const HADRAG_TABLES_MAP = {
   'body-chadrag': 'חדר"ג',
   'body-anafit8': 'ענפית 1',
-  'body-anafit-bah': 'אנפית בא"ח',
+  'body-anafit-bah': 'ענפית בא"ח',
   'body-tavor': 'פיקוד 1'
 };
 

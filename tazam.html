@@ -2,12 +2,13 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=39">
-  <link rel="stylesheet" href="esuk.css?v=39">
-  <link rel="stylesheet" href="kesher.css?v=39">
-  <link rel="stylesheet" href="optic.css?v=39">
-  <link rel="stylesheet" href="modiein.css?v=39">
-  <link rel="stylesheet" href="hipokim.css?v=39">
+  <link rel="stylesheet" href="style.css?v=41">
+  <link rel="stylesheet" href="esuk.css?v=41">
+  <link rel="stylesheet" href="kesher.css?v=41">
+  <link rel="stylesheet" href="optic.css?v=41">
+  <link rel="stylesheet" href="modiein.css?v=41">
+  <link rel="stylesheet" href="hipokim.css?v=41">
+  <link rel="stylesheet" href="hadrag.css?v=41">
   <title>PAKADEX - ענף תצ"מ</title>
 </head>
 <body>
@@ -129,73 +130,63 @@
         <div id="chadrag" class="topsub" style="display:none;">
           <div class="request-card-container">
             <h2>בקשת הקצאה לחדר"ג / כיתות</h2>
-            
-            <div class="form-bar-card">
-               <select id="hadragFacilityInput">
-                  <option value="chadrag">חדר"ג</option>
-                  <option value="anafit8">ענפית 1</option>
-                  <option value="anafit-bah">ענפית בא"ח</option>
-                  <option value="tavor">פיקוד 1</option>
-               </select>
+            <p style="color:#666; font-size:13px; margin-top:-6px;">גרור על משבצת ריקה כדי ליצור בקשה, גרור מהידית ⠿ כדי להזיז בקשה שעדיין לא אושרה, ולחץ "שמור בקשות" כדי לשלוח.</p>
 
-               <input type="text" id="hadragTextInput" placeholder="פרטי האימון (למשל: פלוגת טל)" style="width: 200px;">
-               
-               <select id="hadragDayInput">
-                  <option value="0">ראשון</option>
-                  <option value="1">שני</option>
-                  <option value="2">שלישי</option>
-                  <option value="3">רביעי</option>
-                  <option value="4">חמישי</option>
-                  <option value="5">שישי</option>
-                  <option value="6">שבת</option>
-               </select>
-               
-               <div style="display: flex; align-items: center; gap: 5px;">
-                 <label style="font-weight: bold;">מ-</label>
-                 <input type="time" id="hadragStartTime" step="1800">
-               </div>
+            <div class="tabs-container" style="margin-bottom:10px;">
+              <button type="button" class="tab-btn req-facility-tab active" data-facility="chadrag" onclick="showReqFacility('chadrag')">חדר"ג</button>
+              <button type="button" class="tab-btn req-facility-tab" data-facility="anafit8" onclick="showReqFacility('anafit8')">ענפית 1</button>
+              <button type="button" class="tab-btn req-facility-tab" data-facility="anafit-bah" onclick="showReqFacility('anafit-bah')">ענפית בא"ח</button>
+              <button type="button" class="tab-btn req-facility-tab" data-facility="tavor" onclick="showReqFacility('tavor')">פיקוד 1</button>
+            </div>
 
-               <div style="display: flex; align-items: center; gap: 5px;">
-                 <label style="font-weight: bold;">עד-</label>
-                 <input type="time" id="hadragEndTime" step="1800">
-               </div>
+            <div id="req-wrapper-chadrag" class="req-facility-wrapper" style="display:block; overflow-x:auto;">
+              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
+                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                <tbody id="req-body-chadrag"></tbody>
+              </table>
+            </div>
+            <div id="req-wrapper-anafit8" class="req-facility-wrapper" style="display:none; overflow-x:auto;">
+              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
+                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                <tbody id="req-body-anafit8"></tbody>
+              </table>
+            </div>
+            <div id="req-wrapper-anafit-bah" class="req-facility-wrapper" style="display:none; overflow-x:auto;">
+              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
+                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                <tbody id="req-body-anafit-bah"></tbody>
+              </table>
+            </div>
+            <div id="req-wrapper-tavor" class="req-facility-wrapper" style="display:none; overflow-x:auto;">
+              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
+                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                <tbody id="req-body-tavor"></tbody>
+              </table>
+            </div>
 
-               <button onclick="submitHadragRequest('bg-tazam', 'ענף תצ&quot;מ')" class="hipok-choice-btn">הוסף בקשה</button>
+            <div style="text-align:center; margin-top:10px;">
+              <button onclick="saveHadragGridRequests()" class="hipok-choice-btn">שמור בקשות</button>
             </div>
 
             <h3>בקשות שהוזנו לשבוע זה:</h3>
             <div id="hadragRequestsList"></div>
           </div>
         </div>
- 
+
         <div id="shekem" class="topsub" style="display:none;">
           <div class="request-card-container">
             <h2>בקשת שעות לשק"ם</h2>
-            
-            <div class="form-bar-card">
-               <input type="text" id="shekemTextInput" placeholder="פרטי הפלוגה (למשל: פלוגת טל)" style="width: 200px;">
-               
-               <select id="shekemDayInput">
-                  <option value="0">ראשון</option>
-                  <option value="1">שני</option>
-                  <option value="2">שלישי</option>
-                  <option value="3">רביעי</option>
-                  <option value="4">חמישי</option>
-                  <option value="5">שישי</option>
-                  <option value="6">שבת</option>
-               </select>
-               
-               <div style="display: flex; align-items: center; gap: 5px;">
-                 <label style="font-weight: bold;">מ-</label>
-                 <input type="time" id="shekemStartTime" step="1800">
-               </div>
+            <p style="color:#666; font-size:13px; margin-top:-6px;">גרור על משבצת ריקה כדי ליצור בקשה, גרור מהידית ⠿ כדי להזיז בקשה שעדיין לא אושרה, ולחץ "שמור בקשות" כדי לשלוח.</p>
 
-               <div style="display: flex; align-items: center; gap: 5px;">
-                 <label style="font-weight: bold;">עד-</label>
-                 <input type="time" id="shekemEndTime" step="1800">
-               </div>
+            <div style="overflow-x:auto;">
+              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
+                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                <tbody id="req-body-shekem"></tbody>
+              </table>
+            </div>
 
-               <button onclick="submitShekemRequest('bg-tazam', 'ענף תצ&quot;מ')" class="hipok-choice-btn">הוסף בקשה</button>
+            <div style="text-align:center; margin-top:10px;">
+              <button onclick="saveShekemGridRequests()" class="hipok-choice-btn">שמור בקשות</button>
             </div>
 
             <h3>בקשות שהוזנו לשבוע זה:</h3>
@@ -595,10 +586,10 @@
       }
     });
   </script>
-  <script src="config.js?v=39"></script>
-  <script src="sharepointService.js?v=39"></script>
-  <script src="auth.js?v=39"></script>
-  <script src="script.js?v=39"></script>
+  <script src="config.js?v=41"></script>
+  <script src="sharepointService.js?v=41"></script>
+  <script src="auth.js?v=41"></script>
+  <script src="script.js?v=41"></script>
 
 </body>
 </html>

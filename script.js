@@ -741,8 +741,8 @@ async function updateUIForWeek() {
 
   if (typeof renderHipokEntriesList === 'function') await renderHipokEntriesList();
   
-  // פונקציות החדר"ג והשק"ם: הטבלאות (עם סימוני הכתום) חייבות להיטען לפני תצוגת הלו"ז המשובץ ליחידה,
-  // כדי שהסריקה הישירה של הגריד המפורסם (getAllGridAllocations) תפעל על נתונים עדכניים.
+  // פונקציות החדר"ג והשק"ם: הטבלאות (עם סימוני הכתום) חייבות להיטען לפני גריד הבקשות של היחידה,
+  // כדי שהסריקה הישירה של הגריד המפורסם (paintUnitRequestGrid) תפעל על נתונים עדכניים.
   if (typeof loadHadragTables === 'function') await loadHadragTables(currentWeek, currentYear);
   if (typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
   if (typeof renderHadragPendingRequests === 'function') await renderHadragPendingRequests();
@@ -2678,96 +2678,432 @@ function _timeRangesOverlap(s1, e1, s2, e2) {
   return s1 < e2 && s2 < e1;
 }
 
-/**
- * מרנדרת תצוגת לו"ז משובץ לקריאה בלבד (כל היחידות) בדף היחידה (אפיון 1.1).
- * @param {string} type - 'hadrag' או 'shekem'
- */
-const COLOR_UNIT_NAMES = {
-  'bg-esuk': 'בא"ח איסו"ק',
-  'bg-hirg': 'בא"ח חיר"ג',
-  'bg-pikud': 'גדוד הפיקוד',
-  'bg-tazam': 'ענף תצ"מ',
-  'bg-maphat': 'מפח"ט'
-};
+/* =========================================================
+   גריד בקשות חדר"ג/שק"ם בעמוד היחידה (מחליף את טופס הבקשה הישן + תצוגת "לו"ז משובץ").
+   היחידה רואה את כל השיבוצים המאושרים כמו שהם (קריאה בלבד, נטען מה-published בכל רינדור),
+   ויכולה לגרור על תא ריק ליצירת בלוק "ממתין לאישור" (צבע מעומעם/מקווקו), לגרור בלוק ממתין
+   כזה למשבצת אחרת, למחוק אותו, ולשמור - רק בלחיצת "שמור בקשות" נגזרים day/startTime/endTime
+   בפועל ממיקום הבלוק הנוכחי ונכתבים כרשומת בקשה (status: 'pending', אותה סכימה כמו קודם -
+   תהליך האישור/דחייה של המנהל לא משתנה).
+========================================================= */
+
+let hadragStagedBlocks = [];
+let shekemStagedBlocks = [];
+let reqGridDragMode = null; // null | 'create' | 'move'
+let reqGridDragCtx = null;
+
+/** בונה תא-שעה + 7 תאי גריד ריקים (ללא textarea כברירת מחדל) לכל 36 השורות. */
+function buildReqTableBody(tbody) {
+  let html = '';
+  for (let r = 0; r < 36; r++) {
+    html += `<tr><td class="time-col">${rowIndexToTime(r)}</td>`;
+    for (let c = 0; c < 7; c++) {
+      html += `<td class="req-cell" data-row="${r}" data-col="${c}"></td>`;
+    }
+    html += `</tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+/** מציירת בלוק מאושר (קריאה בלבד) - טקסט דרך textContent, בטוח מ-XSS. */
+function paintApprovedBlock(tbody, day, startRow, span, text, unitClasses) {
+  const cell = tbody.querySelector(`td.req-cell[data-row="${startRow}"][data-col="${day}"]`);
+  if (!cell) return;
+  cell.rowSpan = span;
+  cell.classList.add('approved-block', ...unitClasses);
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;font-weight:800;font-size:11.5px;padding:1px 2px;overflow:hidden;';
+  div.textContent = text;
+  cell.appendChild(div);
+  for (let r = startRow + 1; r < startRow + span; r++) {
+    const covered = tbody.querySelector(`td.req-cell[data-row="${r}"][data-col="${day}"]`);
+    if (covered) covered.style.display = 'none';
+  }
+}
+
+/** מציירת בלוק "ממתין לאישור" של היחידה - ידית גרירה, אייקון מחיקה, textarea לעריכת הטקסט. */
+function paintPendingBlock(tbody, block, idx) {
+  const cell = tbody.querySelector(`td.req-cell[data-row="${block.startRow}"][data-col="${block.day}"]`);
+  if (!cell) return;
+  cell.rowSpan = block.span;
+  cell.classList.add('pending-block', block.unitClass || 'bg-esuk');
+  cell.dataset.stagedIdx = String(idx);
+
+  const handle = document.createElement('span');
+  handle.className = 'req-drag-handle';
+  handle.textContent = '⠿';
+  handle.title = 'גרור למשבצת אחרת';
+  handle.dataset.stagedIdx = String(idx);
+
+  const del = document.createElement('span');
+  del.className = 'req-delete-icon';
+  del.textContent = '✕';
+  del.title = 'מחק בקשה';
+  del.dataset.stagedIdx = String(idx);
+
+  const ta = document.createElement('textarea');
+  ta.placeholder = 'פרטי הבקשה...';
+  ta.value = block.text || '';
+  ta.dataset.stagedIdx = String(idx);
+  ta.addEventListener('input', () => { block.text = ta.value; });
+
+  cell.appendChild(handle);
+  cell.appendChild(del);
+  cell.appendChild(ta);
+
+  for (let r = block.startRow + 1; r < block.startRow + block.span; r++) {
+    const covered = tbody.querySelector(`td.req-cell[data-row="${r}"][data-col="${block.day}"]`);
+    if (covered) covered.style.display = 'none';
+  }
+}
 
 /**
- * סורקת ישירות את הגריד המפורסם (חדר"ג/שק"ם) של כל היחידות יחד - ולא את רשימת הבקשות -
- * כדי שה"לו"ז משובץ" ישקף תמיד את המיקום האמיתי בגריד, גם אחרי שהמנהל הזיז/שינה גודל
- * שיבוץ ידנית לאחר האישור (רשימת הבקשות אינה מתעדכנת בגרירה, ולכן אינה מקור אמת אמין למיקום).
+ * מציירת מחדש את גריד הבקשות (חדר"ג/שק"ם) - מבוססת על נתונים מפורסמים טריים (נשלפים כאן, לא
+ * ממטמון) ועל מערך הבלוקים הממתינים הנוכחי בזיכרון. לא נוגעת באחסון - שימוש רגיל אחרי כל
+ * יצירה/הזזה/מחיקה של בלוק ממתין, בלי לאבד בלוקים שעדיין לא נשמרו.
+ * @param {'hadrag'|'shekem'} type
  */
-async function getAllGridAllocations(isHadrag, week, year) {
-  const allocations = [];
-  const tableIds = isHadrag ? Object.keys(HADRAG_TABLES_MAP) : ['body-shekem'];
+async function paintUnitRequestGrid(type) {
+  const isHadrag = type === 'hadrag';
+  const facilities = isHadrag ? Object.keys(HADRAG_FACILITY_NAMES) : ['shekem'];
+  const stagedArr = isHadrag ? hadragStagedBlocks : shekemStagedBlocks;
 
-  for (const tableId of tableIds) {
-    const key = `${isHadrag ? 'hadragData' : 'shekemData'}_${tableId}_week${week}_year${year}_published`;
-    const data = await fetchTableData(key);
-    if (!data) continue;
+  for (const facility of facilities) {
+    const tbody = document.getElementById('req-body-' + facility);
+    if (!tbody) continue;
+    buildReqTableBody(tbody);
+
+    const dataTableId = isHadrag ? ('body-' + facility) : 'body-shekem';
+    const pubKey = `${isHadrag ? 'hadragData' : 'shekemData'}_${dataTableId}_week${currentWeek}_year${currentYear}_published`;
+    const published = await fetchTableData(pubKey);
+    if (!published) continue;
 
     for (let c = 0; c < 7; c++) {
       for (let r = 0; r < 36; r++) {
-        const cellData = data[`${r}_${c}`];
+        const cellData = published[`${r}_${c}`];
         if (cellData && cellData.val && String(cellData.val).trim() !== '') {
           const span = cellData.span || 1;
-          const unitColor = (cellData.classes || []).find(cls => COLOR_UNIT_NAMES[cls]) || 'bg-esuk';
-          allocations.push({
-            day: c,
-            facility: isHadrag ? (HADRAG_TABLES_MAP[tableId] || 'חדר"ג') : null,
-            startTime: rowToTimeStr(r),
-            endTime: rowToTimeStr(r + span),
-            text: cellData.val,
-            unit: unitColor,
-            unitName: COLOR_UNIT_NAMES[unitColor]
-          });
+          const unitClasses = (cellData.classes || []).filter(cls => UNIT_BG_MAP[cls]);
+          paintApprovedBlock(tbody, c, r, span, cellData.val, unitClasses.length ? unitClasses : ['bg-esuk']);
           r += (span - 1);
         }
       }
     }
   }
-  return allocations;
+
+  stagedArr.forEach((block, idx) => {
+    const facility = isHadrag ? block.facility : 'shekem';
+    const tbody = document.getElementById('req-body-' + facility);
+    if (tbody) paintPendingBlock(tbody, block, idx);
+  });
 }
 
-async function renderUnitScheduleView(type) {
+/**
+ * טוענת מהאחסון את הבקשות הממתינות של היחידה הנוכחית לתוך מערך הבלוקים בזיכרון (מחליפה כל
+ * מצב זמני שלא נשמר) ומציירת את הגריד מחדש. נקראת בכל מעבר ללשונית/שינוי שבוע/אחרי שמירה
+ * או מחיקה שכתבו לאחסון - במצבים האלה אין בעיה "לאבד" מצב זמני כי האחסון כבר עדכני.
+ * @param {'hadrag'|'shekem'} type
+ */
+async function loadUnitRequestGridState(type) {
   const isHadrag = type === 'hadrag';
-  const listId = isHadrag ? 'hadragRequestsList' : 'shekemRequestsList';
-  const viewId = isHadrag ? 'hadragScheduleView' : 'shekemScheduleView';
-  const listEl = document.getElementById(listId);
-  if (!listEl) return;
+  const currentPage = window.location.pathname.split('/').pop();
+  const unitClass = PAGE_UNIT_MAP[currentPage] || 'bg-esuk';
+  const unitName = PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק';
 
-  let view = document.getElementById(viewId);
-  if (!view) {
-    view = document.createElement('div');
-    view.id = viewId;
-    view.className = 'schedule-view';
-    listEl.parentElement.appendChild(view);
+  const allRequests = isHadrag
+    ? await loadHadragRequests(currentWeek, currentYear)
+    : await loadShekemRequests(currentWeek, currentYear);
+
+  const own = allRequests.filter(r => r.status === 'pending' && (r.unit || 'bg-esuk') === unitClass);
+  const staged = own.map(r => {
+    const startRow = timeToRowIndex(r.startTime);
+    return {
+      reqId: r.id,
+      facility: r.facility || null,
+      day: r.day,
+      startRow,
+      span: Math.max(1, timeToRowIndex(r.endTime) - startRow),
+      text: r.text,
+      unitClass: r.unit || unitClass,
+      unitName: r.unitName || unitName
+    };
+  });
+
+  if (isHadrag) hadragStagedBlocks = staged;
+  else shekemStagedBlocks = staged;
+
+  await paintUnitRequestGrid(type);
+}
+
+/**
+ * בודקת חפיפה בין טווח שורות (startRow..endRow) בעמודת יום נתונה לבין: (1) המצב המפורסם
+ * בפועל בגריד (נשלף טרי בכל קריאה - כדי שהבדיקה תישאר נכונה גם אם המנהל הזיז שיבוץ מאושר
+ * מיד קודם לכן), ו-(2) בלוקים ממתינים אחרים של אותה יחידה (מונע שיבוץ-כפול-של-עצמך). לא
+ * נוגעת בשדות רשומת בקשה קיימת - ראו ההערה ליד relinkGridRequestToCell.
+ */
+async function reqGridHasConflict(type, facility, day, startRow, endRow, stagedArr, excludeIdx) {
+  const isHadrag = type === 'hadrag';
+  const dataTableId = isHadrag ? ('body-' + facility) : 'body-shekem';
+  const pubKey = `${isHadrag ? 'hadragData' : 'shekemData'}_${dataTableId}_week${currentWeek}_year${currentYear}_published`;
+  const published = await fetchTableData(pubKey);
+  if (published) {
+    for (let r = 0; r < 36; r++) {
+      const cellData = published[`${r}_${day}`];
+      if (cellData && cellData.val && String(cellData.val).trim() !== '') {
+        const span = cellData.span || 1;
+        const cellEnd = r + span - 1;
+        if (startRow <= cellEnd && r <= endRow) return true;
+      }
+    }
   }
+  for (let i = 0; i < stagedArr.length; i++) {
+    if (i === excludeIdx) continue;
+    const b = stagedArr[i];
+    if (isHadrag && b.facility !== facility) continue;
+    if (b.day !== day) continue;
+    const bEnd = b.startRow + b.span - 1;
+    if (startRow <= bEnd && b.startRow <= endRow) return true;
+  }
+  return false;
+}
 
-  // מוצג ליחידה רק לאחר שהמנהל בפועל הפיץ שינויים - נסרק ישירות מהגריד המפורסם (ראו הערה ב-getAllGridAllocations)
-  const approved = await getAllGridAllocations(isHadrag, currentWeek, currentYear);
+function markReqPreview(tbody, day, startRow, span) {
+  for (let r = startRow; r < startRow + span && r < 36; r++) {
+    const cell = tbody.querySelector(`td.req-cell[data-row="${r}"][data-col="${day}"]`);
+    if (cell) cell.classList.add('req-preview-cell');
+  }
+}
+function clearReqPreview(tbody) {
+  tbody.querySelectorAll('.req-preview-cell').forEach(c => c.classList.remove('req-preview-cell'));
+}
 
-  approved.sort((a, b) => (a.day - b.day) || String(a.startTime).localeCompare(String(b.startTime)));
+/** מעבר בין טאבי המתקנים (חדר"ג/ענפית 1/ענפית בא"ח/פיקוד 1) בגריד הבקשות של היחידה. */
+function showReqFacility(facilityKey) {
+  document.querySelectorAll('.req-facility-wrapper').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.req-facility-tab').forEach(btn => btn.classList.remove('active'));
+  const wrapper = document.getElementById('req-wrapper-' + facilityKey);
+  if (wrapper) wrapper.style.display = 'block';
+  const tab = document.querySelector(`.req-facility-tab[data-facility="${facilityKey}"]`);
+  if (tab) tab.classList.add('active');
+}
 
-  const title = `📅 לו"ז משובץ – כל היחידות (שבוע ${currentWeek}, ${currentYear})`;
+// 1. תחילת גרירה: יצירת בלוק חדש (mousedown על תא ריק) או הזזת בלוק ממתין קיים (mousedown על הידית ⠿)
+document.addEventListener('mousedown', function(e) {
+  if (e.button !== 0) return;
+  if (isReadOnlyMode()) return;
 
-  if (approved.length === 0) {
-    view.innerHTML = `<h3 class="schedule-title">${title}</h3><div class="schedule-empty">אין שיבוצים מאושרים לשבוע זה. שעות שיאושרו יופיעו כאן.</div>`;
+  const handle = e.target.closest('.req-drag-handle');
+  if (handle) {
+    e.preventDefault();
+    const tbody = handle.closest('tbody');
+    if (!tbody) return;
+    const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+    reqGridDragMode = 'move';
+    reqGridDragCtx = { type, tbody, movingIdx: parseInt(handle.dataset.stagedIdx, 10) };
     return;
   }
 
-  const rows = approved.map(r => {
-    const c = UNIT_BG_MAP[r.unit] || UNIT_BG_MAP['bg-esuk'];
-    const facilityChip = isHadrag ? `<span class="sch-facility">${r.facility || 'חדר"ג'}</span>` : '';
-    return `
-      <div class="sch-row" style="border-right:4px solid ${c.border};">
-        <span class="sch-unit" style="background:${c.bg}; border:1px solid ${c.border}; color:${c.text};">${escapeHtml(r.unitName)}</span>
-        <span class="sch-day">יום ${HADRAG_DAY_LABELS[r.day]}</span>
-        ${facilityChip}
-        <span class="sch-text">${escapeHtml(r.text)}</span>
-        <span class="sch-time" style="direction:ltr;">${r.startTime} - ${r.endTime}</span>
-      </div>`;
-  }).join('');
+  const cell = e.target.closest('td.req-cell');
+  if (!cell) return;
+  if (cell.style.display === 'none' || cell.classList.contains('approved-block') || cell.classList.contains('pending-block')) return;
 
-  view.innerHTML = `<h3 class="schedule-title">${title}</h3><div class="schedule-list">${rows}</div>`;
+  const tbody = cell.closest('tbody');
+  if (!tbody) return;
+  const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+  const row = parseInt(cell.dataset.row, 10);
+  reqGridDragMode = 'create';
+  reqGridDragCtx = { type, tbody, day: parseInt(cell.dataset.col, 10), startRow: row, currentRow: row };
+  markReqPreview(tbody, reqGridDragCtx.day, row, 1);
+});
+
+// 2. מהלך הגרירה
+document.addEventListener('mouseover', function(e) {
+  if (!reqGridDragMode || !reqGridDragCtx) return;
+  const cell = e.target.closest('td.req-cell');
+  if (!cell) return;
+  const tbody = cell.closest('tbody');
+  if (!tbody || tbody !== reqGridDragCtx.tbody) return;
+
+  const hoverRow = parseInt(cell.dataset.row, 10);
+  const hoverCol = parseInt(cell.dataset.col, 10);
+
+  if (reqGridDragMode === 'create') {
+    if (hoverCol !== reqGridDragCtx.day || hoverRow < reqGridDragCtx.startRow) return;
+    clearReqPreview(tbody);
+    reqGridDragCtx.currentRow = hoverRow;
+    markReqPreview(tbody, reqGridDragCtx.day, reqGridDragCtx.startRow, hoverRow - reqGridDragCtx.startRow + 1);
+  } else if (reqGridDragMode === 'move') {
+    const stagedArr = reqGridDragCtx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+    const block = stagedArr[reqGridDragCtx.movingIdx];
+    if (!block) return;
+    clearReqPreview(tbody);
+    let previewStart = Math.min(hoverRow, 36 - block.span);
+    if (previewStart < 0) previewStart = 0;
+    reqGridDragCtx.previewDay = hoverCol;
+    reqGridDragCtx.previewStartRow = previewStart;
+    markReqPreview(tbody, hoverCol, previewStart, block.span);
+  }
+});
+
+// 3. סיום גרירה: בדיקת התנגשות מול הגריד המפורסם (טרי) ומול בלוקים ממתינים אחרים, ואז מימוש/ביטול
+async function finishReqGridDrag() {
+  if (!reqGridDragMode || !reqGridDragCtx) return;
+  const mode = reqGridDragMode;
+  const ctx = reqGridDragCtx;
+  reqGridDragMode = null;
+  reqGridDragCtx = null;
+  clearReqPreview(ctx.tbody);
+
+  const stagedArr = ctx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+  const facility = ctx.tbody.id.replace('req-body-', '');
+
+  if (mode === 'create') {
+    const span = ctx.currentRow - ctx.startRow + 1;
+    const conflict = await reqGridHasConflict(ctx.type, facility, ctx.day, ctx.startRow, ctx.startRow + span - 1, stagedArr, -1);
+    if (conflict) {
+      alert('⛔ המשבצת תפוסה! יש לבחור שעה פנויה.');
+    } else {
+      const currentPage = window.location.pathname.split('/').pop();
+      stagedArr.push({
+        reqId: null,
+        facility: ctx.type === 'hadrag' ? facility : null,
+        day: ctx.day,
+        startRow: ctx.startRow,
+        span,
+        text: '',
+        unitClass: PAGE_UNIT_MAP[currentPage] || 'bg-esuk',
+        unitName: PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק'
+      });
+      await paintUnitRequestGrid(ctx.type);
+      // פוקוס אוטומטי על ה-textarea של הבלוק החדש - כדי שהיחידה יכולה להתחיל להקליד מיד,
+      // ובאותה הזדמנות שדה ממוקד מפעיל את השער הקיים (isEditingField) שמונע מהרענון האוטומטי
+      // (ראו DataService.startAutoSync) לדרוס את הבלוק שעדיין לא נשמר.
+      const newCell = ctx.tbody.querySelector(`td.req-cell[data-row="${ctx.startRow}"][data-col="${ctx.day}"]`);
+      const newTextarea = newCell ? newCell.querySelector('textarea') : null;
+      if (newTextarea) newTextarea.focus();
+      return;
+    }
+    await paintUnitRequestGrid(ctx.type);
+  } else if (mode === 'move') {
+    const block = stagedArr[ctx.movingIdx];
+    if (block && ctx.previewDay !== undefined) {
+      const conflict = await reqGridHasConflict(ctx.type, block.facility, ctx.previewDay, ctx.previewStartRow, ctx.previewStartRow + block.span - 1, stagedArr, ctx.movingIdx);
+      if (conflict) {
+        alert('⛔ המשבצת תפוסה! יש לבחור מיקום פנוי.');
+      } else {
+        block.day = ctx.previewDay;
+        block.startRow = ctx.previewStartRow;
+      }
+    }
+    await paintUnitRequestGrid(ctx.type);
+  }
+}
+document.addEventListener('mouseup', finishReqGridDrag);
+window.addEventListener('blur', () => {
+  if (reqGridDragCtx) clearReqPreview(reqGridDragCtx.tbody);
+  reqGridDragMode = null;
+  reqGridDragCtx = null;
+});
+
+// 4. מחיקת בלוק ממתין (אייקון ✕) - אם כבר נשמר כרשומה, מוחקת אותה מהאחסון (ומתרנדרת מחדש
+//    דרך renderHadragRequestsList/renderShekemRequestsList); אם עדיין לא נשמר, רק מסירה מהזיכרון.
+document.addEventListener('click', async function(e) {
+  const del = e.target.closest('.req-delete-icon');
+  if (!del) return;
+  if (isReadOnlyMode()) return;
+  const tbody = del.closest('tbody');
+  if (!tbody) return;
+  const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+  const idx = parseInt(del.dataset.stagedIdx, 10);
+  const stagedArr = type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+  const block = stagedArr[idx];
+  if (!block) return;
+
+  if (block.reqId) {
+    if (type === 'hadrag') await deleteHadragRequest(block.reqId);
+    else await deleteShekemRequest(block.reqId);
+  } else {
+    stagedArr.splice(idx, 1);
+    await paintUnitRequestGrid(type);
+  }
+});
+
+/** כפתור "שמור בקשות" (חדר"ג) - קובע day/startTime/endTime/text מהמיקום הנוכחי של כל בלוק ממתין. */
+async function saveHadragGridRequests() {
+  if (hadragStagedBlocks.length === 0) { alert('אין בקשות להוסיף - גרור על הגריד כדי ליצור בקשה.'); return; }
+  if (hadragStagedBlocks.some(b => !b.text || !b.text.trim())) {
+    alert('יש להזין טקסט לכל בקשה לפני השמירה.');
+    return;
+  }
+
+  const requests = await loadHadragRequests(currentWeek, currentYear);
+  hadragStagedBlocks.forEach((block, i) => {
+    const startTime = rowIndexToTime(block.startRow);
+    const endTime = rowIndexToTime(block.startRow + block.span);
+    if (block.reqId) {
+      const existing = requests.find(r => r.id === block.reqId);
+      if (existing) {
+        existing.facility = block.facility;
+        existing.day = block.day;
+        existing.startTime = startTime;
+        existing.endTime = endTime;
+        existing.text = block.text.trim();
+      }
+    } else {
+      requests.push({
+        id: Date.now().toString(36) + i,
+        facility: block.facility,
+        text: block.text.trim(),
+        day: block.day,
+        startTime, endTime,
+        unit: block.unitClass,
+        unitName: block.unitName,
+        status: 'pending'
+      });
+    }
+  });
+
+  await saveHadragRequests(requests, currentWeek, currentYear);
+  if (typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
+  alert('הבקשות נשמרו בהצלחה!');
+}
+
+/** כפתור "שמור בקשות" (שק"ם) - מקביל ל-saveHadragGridRequests, בלי שדה facility. */
+async function saveShekemGridRequests() {
+  if (shekemStagedBlocks.length === 0) { alert('אין בקשות להוסיף - גרור על הגריד כדי ליצור בקשה.'); return; }
+  if (shekemStagedBlocks.some(b => !b.text || !b.text.trim())) {
+    alert('יש להזין טקסט לכל בקשה לפני השמירה.');
+    return;
+  }
+
+  const requests = await loadShekemRequests(currentWeek, currentYear);
+  shekemStagedBlocks.forEach((block, i) => {
+    const startTime = rowIndexToTime(block.startRow);
+    const endTime = rowIndexToTime(block.startRow + block.span);
+    if (block.reqId) {
+      const existing = requests.find(r => r.id === block.reqId);
+      if (existing) {
+        existing.day = block.day;
+        existing.startTime = startTime;
+        existing.endTime = endTime;
+        existing.text = block.text.trim();
+      }
+    } else {
+      requests.push({
+        id: Date.now().toString(36) + i,
+        text: block.text.trim(),
+        day: block.day,
+        startTime, endTime,
+        unit: block.unitClass,
+        unitName: block.unitName,
+        status: 'pending'
+      });
+    }
+  });
+
+  await saveShekemRequests(requests, currentWeek, currentYear);
+  if (typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
+  alert('הבקשות נשמרו בהצלחה!');
 }
 
 /**
@@ -2852,45 +3188,6 @@ const PAGE_UNIT_NAMES = {
 };
 
 /**
- * מגישה בקשת שיבוץ חדר"ג חדשה מטעם יחידה ושומרת אותה כממתינה לאישור.
- * @param {string} [unitClass] - מחלקת צבע היחידה
- * @param {string} [unitName] - שם היחידה
- */
-async function submitHadragRequest(unitClass, unitName) {
-  const facility = document.getElementById('hadragFacilityInput').value;
-  const text = document.getElementById('hadragTextInput').value.trim();
-  const day = parseInt(document.getElementById('hadragDayInput').value);
-  const startTime = document.getElementById('hadragStartTime').value;
-  const endTime = document.getElementById('hadragEndTime').value;
-
-  if (!text || !startTime || !endTime) { alert('יש למלא את כל השדות.'); return; }
-  if (startTime >= endTime) { alert('שעת הסיום חייבת להיות מאוחרת משעת ההתחלה.'); return; }
-
-  const currentPage = window.location.pathname.split('/').pop();
-  if (!unitClass) unitClass = PAGE_UNIT_MAP[currentPage] || 'bg-esuk';
-  if (!unitName) unitName = PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק';
-
-  const requests = await loadHadragRequests(currentWeek, currentYear);
-
-  // התראת התנגשות (אפיון 1.1): בדיקה מול שיבוצים מאושרים באותו מתקן ויום
-  const clash = requests.find(r => r.status === 'approved' && r.facility === facility && r.day === day
-    && _timeRangesOverlap(startTime, endTime, r.startTime, r.endTime));
-  if (clash) {
-    alert(`⛔ המשבצת תפוסה!\n${clash.unitName} כבר משובץ ב${HADRAG_FACILITY_NAMES[facility] || 'חדר"ג'} ביום ${HADRAG_DAY_LABELS[day]} בשעות ${clash.startTime}-${clash.endTime}.\nיש לבחור שעה פנויה.`);
-    return;
-  }
-
-  requests.push({ id: Date.now().toString(36), facility, text, day, startTime, endTime, unit: unitClass, unitName: unitName, status: 'pending' });
-  await saveHadragRequests(requests, currentWeek, currentYear);
-
-  document.getElementById('hadragTextInput').value = '';
-  document.getElementById('hadragStartTime').value = '';
-  document.getElementById('hadragEndTime').value = '';
-  
-  if(typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
-}
-
-/**
  * מוחקת בקשת חדר"ג ומעדכנת את הרשימות בתצוגה.
  * @param {string} id - מזהה הבקשה
  */
@@ -2908,7 +3205,7 @@ async function renderHadragRequestsList() {
   const container = document.getElementById('hadragRequestsList');
   if (!container) return;
 
-  await renderUnitScheduleView('hadrag');
+  await loadUnitRequestGridState('hadrag');
 
   const requests = await loadHadragRequests(currentWeek, currentYear);
   const currentPage = window.location.pathname.split('/').pop();
@@ -2982,7 +3279,7 @@ async function removeGridRequestLink(reqId, tbody) {
  * של השיבוץ עדיין תדע לנקות את הבקשה המקושרת.
  * חשוב: אינה נוגעת בשדות הבקשה המקורית (day/startTime/endTime/facility) בכוונה -
  * הבקשה היא תיעוד של מה שהיחידה ביקשה, והזיהוי/תצוגה של המיקום בפועל תמיד
- * נעשית לפי סריקת הגריד (צבע), ראו getAllGridAllocations. שינוי שדות הבקשה
+ * נעשית לפי סריקת הגריד (צבע), ראו paintUnitRequestGrid. שינוי שדות הבקשה
  * כאן גרם לבאג: כתיבה ל-localStorage תוך כדי הזזה יכולה להתנגש עם מחזור ה"הפצה"
  * שרץ מיד אחרי (globalExportManager), ולגרום להקצאות לא להופיע בכלל.
  * @param {string} reqId
@@ -3302,44 +3599,6 @@ async function saveShekemRequests(requests, week, year) {
 }
 
 /**
- * מגישה בקשת שעות שק"ם חדשה מטעם יחידה.
- * @param {string} [unitClass] - מחלקת צבע היחידה
- * @param {string} [unitName] - שם היחידה
- */
-async function submitShekemRequest(unitClass, unitName) {
-  const text = document.getElementById('shekemTextInput').value.trim();
-  const day = parseInt(document.getElementById('shekemDayInput').value);
-  const startTime = document.getElementById('shekemStartTime').value;
-  const endTime = document.getElementById('shekemEndTime').value;
-
-  if (!text || !startTime || !endTime) { alert('יש למלא את כל השדות.'); return; }
-  if (startTime >= endTime) { alert('שעת הסיום חייבת להיות מאוחרת משעת ההתחלה.'); return; }
-
-  const currentPage = window.location.pathname.split('/').pop();
-  if (!unitClass) unitClass = PAGE_UNIT_MAP[currentPage] || 'bg-esuk';
-  if (!unitName) unitName = PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק';
-
-  const requests = await loadShekemRequests(currentWeek, currentYear);
-
-  // התראת התנגשות (אפיון 1.1): בדיקה מול שיבוצים מאושרים באותו יום
-  const clash = requests.find(r => r.status === 'approved' && r.day === day
-    && _timeRangesOverlap(startTime, endTime, r.startTime, r.endTime));
-  if (clash) {
-    alert(`⛔ המשבצת תפוסה!\n${clash.unitName} כבר משובץ בשק"ם ביום ${HADRAG_DAY_LABELS[day]} בשעות ${clash.startTime}-${clash.endTime}.\nיש לבחור שעה פנויה.`);
-    return;
-  }
-
-  requests.push({ id: Date.now().toString(36), text, day, startTime, endTime, unit: unitClass, unitName: unitName, status: 'pending' });
-  await saveShekemRequests(requests, currentWeek, currentYear);
-
-  document.getElementById('shekemTextInput').value = '';
-  document.getElementById('shekemStartTime').value = '';
-  document.getElementById('shekemEndTime').value = '';
-  
-  if(typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
-}
-
-/**
  * מוחקת בקשת שק"ם ומעדכנת את התצוגות.
  * @param {string} id - מזהה הבקשה
  */
@@ -3357,7 +3616,7 @@ async function renderShekemRequestsList() {
   const container = document.getElementById('shekemRequestsList');
   if (!container) return;
 
-  await renderUnitScheduleView('shekem');
+  await loadUnitRequestGridState('shekem');
 
   const requests = await loadShekemRequests(currentWeek, currentYear);
   const currentPage = window.location.pathname.split('/').pop();
@@ -3807,9 +4066,18 @@ window.onload = function () {
       // מצביעים על תא שכבר לא קיים בפועל - הפעולה (מחיקה/צביעה/הדבקה) נכשלת בשקט (אפיון QA).
       const ctxMenu = document.getElementById('custom-context-menu');
       const isContextMenuOpen = ctxMenu && ctxMenu.style.display !== 'none' && ctxMenu.style.display !== '';
+      // אותה בעיה קיימת גם בגריד הבקשות של היחידה (esuk/hirg/pikud/tazam/bahalag.html): בלוק
+      // "ממתין לאישור" שנוצר/הוזז אבל עדיין לא נשמר קיים רק בזיכרון (hadragStagedBlocks/
+      // shekemStagedBlocks) - רענון אוטומטי באמצע היה קורא מחדש מהאחסון (loadUnitRequestGridState)
+      // ומאבד אותו בשקט, גם אם אין באותו רגע פוקוס בתוך שדה עריכה (למשל בין הגרירה לבין
+      // תחילת ההקלדה, או תוך כדי גרירת בלוק קיים מהידית).
+      const hasUnsavedReqGridBlocks = (typeof hadragStagedBlocks !== 'undefined' && hadragStagedBlocks.some(b => !b.reqId))
+        || (typeof shekemStagedBlocks !== 'undefined' && shekemStagedBlocks.some(b => !b.reqId));
       const isGridInteractionActive = (typeof isDragging !== 'undefined' && isDragging)
         || (typeof isResizing !== 'undefined' && isResizing)
-        || (typeof draggedHadragData !== 'undefined' && draggedHadragData);
+        || (typeof draggedHadragData !== 'undefined' && draggedHadragData)
+        || (typeof reqGridDragMode !== 'undefined' && reqGridDragMode)
+        || hasUnsavedReqGridBlocks;
       if (isContextMenuOpen || isGridInteractionActive) return;
 
       await updateUIForWeek();

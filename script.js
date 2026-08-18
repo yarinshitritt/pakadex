@@ -3773,6 +3773,19 @@ window.onload = function () {
       const active = document.activeElement;
       const isEditingField = active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName);
       if (isEditingField) return;
+
+      // אותה בעיה בדיוק קיימת כשתפריט הקליק-הימני של חדר"ג/שק"ם פתוח (או שגרירה/שינוי-גודל
+      // באמצע ביצוע): קליק ימני לא ממקד input, אז הבדיקה למעלה לא תופסת את המקרה הזה - אם
+      // המשתמש פותח את התפריט ולוקח לו כמה שניות לבחור פעולה, הריענון האוטומטי היה יכול
+      // לבנות מחדש את הגריד באמצע ולהשאיר את currentCtxCell/resizeStartCell/draggedSourceCell
+      // מצביעים על תא שכבר לא קיים בפועל - הפעולה (מחיקה/צביעה/הדבקה) נכשלת בשקט (אפיון QA).
+      const ctxMenu = document.getElementById('custom-context-menu');
+      const isContextMenuOpen = ctxMenu && ctxMenu.style.display !== 'none' && ctxMenu.style.display !== '';
+      const isGridInteractionActive = (typeof isDragging !== 'undefined' && isDragging)
+        || (typeof isResizing !== 'undefined' && isResizing)
+        || (typeof draggedHadragData !== 'undefined' && draggedHadragData);
+      if (isContextMenuOpen || isGridInteractionActive) return;
+
       await updateUIForWeek();
     });
   }

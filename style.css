@@ -560,6 +560,12 @@ table tbody tr:hover {
   font-size: 28px;
 }
 
+.unit-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
 .shortcut-title {
   font-weight: 800;
   font-size: 18px;

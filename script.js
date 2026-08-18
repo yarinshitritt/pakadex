@@ -2765,7 +2765,17 @@ function paintPendingBlock(tbody, block, idx) {
   ta.placeholder = 'פרטי הבקשה...';
   ta.value = block.text || '';
   ta.dataset.stagedIdx = String(idx);
-  ta.addEventListener('input', () => { block.text = ta.value; block.dirty = true; if (typeof updateGlobalExportButtonStatus === 'function') updateGlobalExportButtonStatus(); });
+  ta.addEventListener('input', () => {
+    block.text = ta.value;
+    block.dirty = true;
+    if (typeof updateGlobalExportButtonStatus === 'function') updateGlobalExportButtonStatus();
+    // רישום מדורג (לא מיידי) - כמו הקלדה בתאי הגריד של המנהל (generateTimeSlots) - כדי
+    // שכל תו לא ייצור צעד ביטול נפרד, אבל Ctrl+Z עדיין יחזיר טקסט שהוקלד ולא רק פעולות בדידות.
+    if (typeof _recordUndoChange === 'function') _recordUndoChange();
+  });
+  // ממקדים את reqSelectedCell גם דרך פוקוס רגיל על תיבת הטקסט (לא רק קליק ימני) - כדי ש-Ctrl+C
+  // יעבוד באופן טבעי מיד אחרי לחיצה/הקלדה בבלוק, בלי צורך לעבור דרך תפריט קליק ימני קודם.
+  ta.addEventListener('focus', () => { reqSelectedCell = cell; });
 
   cell.appendChild(handle);
   cell.appendChild(del);
@@ -2904,8 +2914,21 @@ function clearReqPreview(tbody) {
   tbody.querySelectorAll('.req-preview-cell').forEach(c => c.classList.remove('req-preview-cell'));
 }
 
+/** מתחילה מצב שינוי-משך על בלוק ממתין נתון (idx במערך הבלוקים של tbody). */
+function startReqResize(tbody, idx) {
+  if (!tbody || isNaN(idx)) return;
+  const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+  const stagedArr = type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+  const block = stagedArr[idx];
+  if (!block) return;
+  reqGridDragMode = 'resize';
+  reqGridDragCtx = { type, tbody, resizingIdx: idx, currentEndRow: block.startRow + block.span - 1 };
+}
+
 // 1. תחילת גרירה: יצירת בלוק חדש (mousedown על תא ריק), הזזת בלוק ממתין קיים (מהידית ⠿, כולל
-//    בין טבלאות מתקנים שונות), או שינוי משך (מנקודת האחיזה resize-handle).
+//    בין טבלאות מתקנים שונות), או שינוי משך (מנקודת האחיזה resize-handle - ראו גם הגיבוי
+//    למטה: בלוק בן שורה אחת בזום 75% הופך את נקודת האחיזה (כ-10px) לקשה מאוד לפגיעה מדויקת,
+//    ופספוס קטן נופל על תא הבלוק עצמו שלא עושה כלום - נראה למשתמש כאילו "ההקטנה לא עובדת").
 document.addEventListener('mousedown', function(e) {
   if (e.button !== 0) return;
   if (isReadOnlyMode()) return;
@@ -2913,15 +2936,7 @@ document.addEventListener('mousedown', function(e) {
   const resizeHandle = e.target.closest('td.req-cell .resize-handle');
   if (resizeHandle) {
     e.preventDefault();
-    const tbody = resizeHandle.closest('tbody');
-    if (!tbody) return;
-    const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
-    const idx = parseInt(resizeHandle.dataset.stagedIdx, 10);
-    const stagedArr = type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
-    const block = stagedArr[idx];
-    if (!block) return;
-    reqGridDragMode = 'resize';
-    reqGridDragCtx = { type, tbody, resizingIdx: idx, currentEndRow: block.startRow + block.span - 1 };
+    startReqResize(resizeHandle.closest('tbody'), parseInt(resizeHandle.dataset.stagedIdx, 10));
     return;
   }
 
@@ -2936,9 +2951,25 @@ document.addEventListener('mousedown', function(e) {
     return;
   }
 
+  if (e.target.closest('.req-delete-icon')) return;
+
+  // גיבוי: קליק בתוך אזור הבלוק (לא ב-textarea עצמו) בטווח 8px האחרונים מהקצה התחתון של
+  // הבלוק נחשב תפיסה של נקודת שינוי-המשך, גם אם לא פגעו בדיוק בה - זה בדיוק מה שמאפשר
+  // להקטין בלוק קצר (שורה אחת) שבו נקודת האחיזה כמעט חופפת לשאר התא.
+  const pendingCell = e.target.closest('td.req-cell.pending-block');
+  if (pendingCell) {
+    if (e.target.closest('textarea')) return;
+    const rect = pendingCell.getBoundingClientRect();
+    if (e.clientY >= rect.bottom - 8) {
+      e.preventDefault();
+      startReqResize(pendingCell.closest('tbody'), parseInt(pendingCell.dataset.stagedIdx, 10));
+    }
+    return;
+  }
+
   const cell = e.target.closest('td.req-cell');
   if (!cell) return;
-  if (cell.style.display === 'none' || cell.classList.contains('approved-block') || cell.classList.contains('pending-block')) return;
+  if (cell.style.display === 'none' || cell.classList.contains('approved-block')) return;
 
   const tbody = cell.closest('tbody');
   if (!tbody) return;
@@ -3045,6 +3076,7 @@ async function finishReqGridDrag() {
         unitName: PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק'
       });
       await paintUnitRequestGrid(ctx.type);
+      if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
       // פוקוס אוטומטי על ה-textarea של הבלוק החדש - כדי שהיחידה יכולה להתחיל להקליד מיד,
       // ובאותה הזדמנות שדה ממוקד מפעיל את השער הקיים (isEditingField) שמונע מהרענון האוטומטי
       // (ראו DataService.startAutoSync) לדרוס את הבלוק שעדיין לא נשמר.
@@ -3065,6 +3097,7 @@ async function finishReqGridDrag() {
         } else {
           block.span = newSpan;
           block.dirty = true;
+          if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
         }
       }
     }
@@ -3081,6 +3114,7 @@ async function finishReqGridDrag() {
         block.day = ctx.previewDay;
         block.startRow = ctx.previewStartRow;
         block.dirty = true;
+        if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
       }
     }
     await paintUnitRequestGrid(ctx.type);
@@ -3111,6 +3145,7 @@ async function deletePendingReqBlock(type, idx) {
     stagedArr.splice(idx, 1);
     await paintUnitRequestGrid(type);
   }
+  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
 }
 
 document.addEventListener('click', async function(e) {
@@ -3123,28 +3158,82 @@ document.addEventListener('click', async function(e) {
   await deletePendingReqBlock(type, parseInt(del.dataset.stagedIdx, 10));
 });
 
-// 5. תפריט קליק-ימני על בלוק ממתין - מקביל לתפריט הקליק-הימני של המנהל (#custom-context-menu),
-//    אך תפריט נפרד ומצומצם (רק מחיקה) עבור הגריד של היחידה - אין למחזר את התפריט של המנהל
-//    כי הוא מוגדר ל-td.platoon-cell בלבד ומכיל פעולות שלא רלוונטיות כאן (הדבקה/צביעה מחדש
-//    ליחידה אחרת). ה-CSS (מיקום/עיצוב) ממוחזר מ-hadrag.css (#custom-context-menu).
+// 5. העתק/הדבק שיבוץ (תפריט קליק-ימני + Ctrl+C/Ctrl+V) - מקביל למנגנון ההעתקה-הדבקה של
+//    המנהל (hadragClipboard/pasteOrMoveBlock), אך עצמאי ומצומצם לבלוק {text, span} בלבד -
+//    שני הצדדים כותבים לזיכרון בלבד (hadragStagedBlocks/shekemStagedBlocks), לא ל-hadragData.
+let reqClipboard = null;
+
+/** מעתיקה בלוק "ממתין" מתא נתון (td.req-cell.pending-block) ל-reqClipboard. */
+function reqCopyFromCell(cell) {
+  if (!cell || cell.dataset.stagedIdx === undefined) return;
+  const tbody = cell.closest('tbody');
+  if (!tbody) return;
+  const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+  const stagedArr = type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+  const block = stagedArr[parseInt(cell.dataset.stagedIdx, 10)];
+  if (!block) return;
+  reqClipboard = { text: block.text, span: block.span };
+  cell.style.outline = '3px dashed #0284c7';
+  cell.style.outlineOffset = '-3px';
+  setTimeout(() => { cell.style.outline = ''; }, 600);
+}
+
+/** מדביקה את reqClipboard כבלוק "ממתין" חדש בתא ריק נתון (יום/שורה נגזרים מהתא). */
+async function reqPasteToCell(cell) {
+  if (!reqClipboard || !cell) return;
+  if (cell.classList.contains('pending-block') || cell.classList.contains('approved-block')) {
+    alert('אפשר להדביק רק על משבצת ריקה.');
+    return;
+  }
+  const tbody = cell.closest('tbody');
+  if (!tbody) return;
+  const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+  const day = parseInt(cell.dataset.col, 10);
+  const startRow = parseInt(cell.dataset.row, 10);
+  const facility = tbody.id.replace('req-body-', '');
+  const stagedArr = type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+  const endRow = Math.min(35, startRow + reqClipboard.span - 1);
+  const span = endRow - startRow + 1;
+
+  const conflict = await reqGridHasConflict(type, facility, day, startRow, endRow, stagedArr, -1);
+  if (conflict) { alert('⛔ המשבצת תפוסה! יש לבחור מיקום פנוי.'); return; }
+
+  const currentPage = window.location.pathname.split('/').pop();
+  stagedArr.push({
+    reqId: null,
+    facility: type === 'hadrag' ? facility : null,
+    day, startRow, span,
+    text: reqClipboard.text,
+    unitClass: PAGE_UNIT_MAP[currentPage] || 'bg-esuk',
+    unitName: PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק'
+  });
+  await paintUnitRequestGrid(type);
+  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
+}
+
+// 6. תפריט קליק-ימני - מקביל לתפריט הקליק-הימני של המנהל (#custom-context-menu), אך תפריט
+//    נפרד עבור הגריד של היחידה (העתק/הדבק/מחק בלבד - אין צביעה-מחדש ליחידה אחרת, זו תמיד
+//    היחידה של העמוד) - אין למחזר את התפריט של המנהל כי הוא מוגדר ל-td.platoon-cell בלבד.
+//    ה-CSS (מיקום/עיצוב) ממוחזר מ-hadrag.css (.req-context-menu, בהשראת #custom-context-menu).
 document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('req-context-menu')) return;
   document.body.insertAdjacentHTML('beforeend', `
     <div id="req-context-menu" class="req-context-menu" style="display:none;">
+      <button id="req-ctx-btn-copy">העתק שיבוץ</button>
+      <button id="req-ctx-btn-paste">הדבק שיבוץ</button>
+      <div class="ctx-divider"></div>
       <button id="req-ctx-btn-delete">מחק בקשה</button>
     </div>
   `);
   const menu = document.getElementById('req-context-menu');
-  let ctxType = null;
-  let ctxIdx = null;
+  let ctxCell = null;
 
   document.addEventListener('contextmenu', function(e) {
-    const cell = e.target.closest('td.req-cell.pending-block');
-    if (!cell || isReadOnlyMode()) return;
+    const cell = e.target.closest('td.req-cell');
+    if (!cell || cell.classList.contains('approved-block') || isReadOnlyMode()) return;
     e.preventDefault();
-    const tbody = cell.closest('tbody');
-    ctxType = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
-    ctxIdx = parseInt(cell.dataset.stagedIdx, 10);
+    ctxCell = cell;
+    reqSelectedCell = cell;
     menu.style.left = e.pageX + 'px';
     menu.style.top = e.pageY + 'px';
     menu.style.display = 'flex';
@@ -3152,12 +3241,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('click', () => { menu.style.display = 'none'; });
 
+  document.getElementById('req-ctx-btn-copy').addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.style.display = 'none';
+    reqCopyFromCell(ctxCell);
+  });
+
+  document.getElementById('req-ctx-btn-paste').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    menu.style.display = 'none';
+    await reqPasteToCell(ctxCell);
+  });
+
   document.getElementById('req-ctx-btn-delete').addEventListener('click', async (e) => {
     e.stopPropagation();
     menu.style.display = 'none';
-    if (ctxType === null || ctxIdx === null) return;
-    await deletePendingReqBlock(ctxType, ctxIdx);
+    if (!ctxCell || ctxCell.dataset.stagedIdx === undefined) return;
+    const tbody = ctxCell.closest('tbody');
+    if (!tbody) return;
+    const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+    await deletePendingReqBlock(type, parseInt(ctxCell.dataset.stagedIdx, 10));
   });
+});
+
+// 7. קיצורי מקלדת Ctrl+C / Ctrl+V - מקביל למנגנון של המנהל (script.js, "Copy and Paste"):
+//    התא הרלוונטי נקבע מ-reqSelectedCell (נקבע בקליק ימני או בפוקוס על textarea של בלוק),
+//    אחרת מ-document.activeElement (אם זה textarea/req-cell בתוך הגריד), ואחרת מה-:hover -
+//    אותה שרשרת בדיוק שהמנהל כבר משתמש בה, כדי שההתנהגות תהיה "אותו דבר" כמבוקש.
+let reqSelectedCell = null;
+
+document.addEventListener('keydown', async function(e) {
+  if (!e.ctrlKey || isReadOnlyMode()) return;
+
+  let cell = reqSelectedCell;
+  const activeElement = document.activeElement;
+  if (!cell && activeElement && activeElement.tagName === 'TEXTAREA') {
+    cell = activeElement.closest('td.req-cell');
+  }
+  if (!cell && activeElement && activeElement.classList && activeElement.classList.contains('req-cell')) {
+    cell = activeElement;
+  }
+  if (!cell) {
+    cell = document.querySelector('td.req-cell:hover');
+  }
+  if (!cell || cell.classList.contains('approved-block')) return;
+
+  if (e.code === 'KeyC' || e.key.toLowerCase() === 'c' || e.key === 'ב') {
+    e.preventDefault();
+    reqCopyFromCell(cell);
+  } else if (e.code === 'KeyV' || e.key.toLowerCase() === 'v' || e.key === 'ה') {
+    e.preventDefault();
+    await reqPasteToCell(cell);
+  }
 });
 
 /**
@@ -4384,8 +4519,37 @@ function _applyHipokColorsState(colors) {
   return changed;
 }
 
+// גריד הבקשות של היחידה (esuk/hirg/pikud/tazam/bahalag.html) שומר את הבלוקים ה"ממתינים" רק
+// בזיכרון (hadragStagedBlocks/shekemStagedBlocks) עד שהם נשמרים כרשומה בפועל - לכן, בניגוד
+// לגריד המיזוג של המנהל (_captureGridState, DOM-מבוסס) או לרשומות שכבר נשמרו (_captureRequestsState,
+// localStorage-מבוסס), צריך תיעוד/שחזור ייעודי כאן שפשוט משכפל את מערכי הבלוקים עצמם.
+function _captureReqGridState() {
+  if (typeof hadragStagedBlocks === 'undefined') return null;
+  return {
+    hadrag: hadragStagedBlocks.map(b => ({ ...b })),
+    shekem: shekemStagedBlocks.map(b => ({ ...b }))
+  };
+}
+
+function _applyReqGridState(state) {
+  if (!state || typeof hadragStagedBlocks === 'undefined') return false;
+  const newHadrag = state.hadrag || [];
+  const newShekem = state.shekem || [];
+  const changed = JSON.stringify(hadragStagedBlocks) !== JSON.stringify(newHadrag)
+    || JSON.stringify(shekemStagedBlocks) !== JSON.stringify(newShekem);
+  if (changed) {
+    hadragStagedBlocks = newHadrag.map(b => ({ ...b }));
+    shekemStagedBlocks = newShekem.map(b => ({ ...b }));
+    if (typeof paintUnitRequestGrid === 'function') {
+      paintUnitRequestGrid('hadrag');
+      paintUnitRequestGrid('shekem');
+    }
+  }
+  return changed;
+}
+
 function _captureUndoState() {
-  const state = { fields: {}, grid: {}, requests: {}, hipokColors: null };
+  const state = { fields: {}, grid: {}, requests: {}, hipokColors: null, reqGrid: null };
   _getUndoFieldMap().forEach((el, key) => { state.fields[key] = el.value; });
   [...UNDO_HADRAG_TABLE_IDS, ...UNDO_SHEKEM_TABLE_IDS].forEach(tbodyId => {
     const g = _captureGridState(tbodyId);
@@ -4393,6 +4557,7 @@ function _captureUndoState() {
   });
   state.requests = _captureRequestsState();
   state.hipokColors = _captureHipokColorsState();
+  state.reqGrid = _captureReqGridState();
   return state;
 }
 
@@ -4421,6 +4586,7 @@ function _applyUndoState(state) {
       updateHipokConflictHighlight(currentWeek, currentYear);
     }
   }
+  if (typeof _applyReqGridState === 'function') _applyReqGridState(state.reqGrid);
   _undoSuppressed = false;
   return true;
 }

@@ -437,7 +437,9 @@
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  color: #dc2626;
+  color: #1e293b;
   width: 100%;
 }
-.req-context-menu button:hover { background: #fef2f2; }
+.req-context-menu button:hover { background: #f1f5f9; }
+.req-context-menu #req-ctx-btn-delete { color: #dc2626; }
+.req-context-menu #req-ctx-btn-delete:hover { background: #fef2f2; }

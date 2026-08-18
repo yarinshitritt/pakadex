@@ -2877,16 +2877,6 @@ function clearReqPreview(tbody) {
   tbody.querySelectorAll('.req-preview-cell').forEach(c => c.classList.remove('req-preview-cell'));
 }
 
-/** מעבר בין טאבי המתקנים (חדר"ג/ענפית 1/ענפית בא"ח/פיקוד 1) בגריד הבקשות של היחידה. */
-function showReqFacility(facilityKey) {
-  document.querySelectorAll('.req-facility-wrapper').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('.req-facility-tab').forEach(btn => btn.classList.remove('active'));
-  const wrapper = document.getElementById('req-wrapper-' + facilityKey);
-  if (wrapper) wrapper.style.display = 'block';
-  const tab = document.querySelector(`.req-facility-tab[data-facility="${facilityKey}"]`);
-  if (tab) tab.classList.add('active');
-}
-
 // 1. תחילת גרירה: יצירת בלוק חדש (mousedown על תא ריק) או הזזת בלוק ממתין קיים (mousedown על הידית ⠿)
 document.addEventListener('mousedown', function(e) {
   if (e.button !== 0) return;

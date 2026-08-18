@@ -2,13 +2,13 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=41">
-  <link rel="stylesheet" href="esuk.css?v=41">
-  <link rel="stylesheet" href="kesher.css?v=41">
-  <link rel="stylesheet" href="optic.css?v=41">
-  <link rel="stylesheet" href="modiein.css?v=41">
-  <link rel="stylesheet" href="hipokim.css?v=41">
-  <link rel="stylesheet" href="hadrag.css?v=41">
+  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="esuk.css?v=42">
+  <link rel="stylesheet" href="kesher.css?v=42">
+  <link rel="stylesheet" href="optic.css?v=42">
+  <link rel="stylesheet" href="modiein.css?v=42">
+  <link rel="stylesheet" href="hipokim.css?v=42">
+  <link rel="stylesheet" href="hadrag.css?v=42">
   <title>PAKADEX - בא"ח איסו"ק</title>
 </head>
 <body>
@@ -133,36 +133,35 @@
             <h2>בקשת הקצאה לחדר"ג / כיתות</h2>
             <p style="color:#666; font-size:13px; margin-top:-6px;">גרור על משבצת ריקה כדי ליצור בקשה, גרור מהידית ⠿ כדי להזיז בקשה שעדיין לא אושרה, ולחץ "שמור בקשות" כדי לשלוח.</p>
 
-            <div class="tabs-container" style="margin-bottom:10px;">
-              <button type="button" class="tab-btn req-facility-tab active" data-facility="chadrag" onclick="showReqFacility('chadrag')">חדר"ג</button>
-              <button type="button" class="tab-btn req-facility-tab" data-facility="anafit8" onclick="showReqFacility('anafit8')">ענפית 1</button>
-              <button type="button" class="tab-btn req-facility-tab" data-facility="anafit-bah" onclick="showReqFacility('anafit-bah')">ענפית בא"ח</button>
-              <button type="button" class="tab-btn req-facility-tab" data-facility="tavor" onclick="showReqFacility('tavor')">פיקוד 1</button>
-            </div>
-
-            <div id="req-wrapper-chadrag" class="req-facility-wrapper" style="display:block; overflow-x:auto;">
-              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
-                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
-                <tbody id="req-body-chadrag"></tbody>
-              </table>
-            </div>
-            <div id="req-wrapper-anafit8" class="req-facility-wrapper" style="display:none; overflow-x:auto;">
-              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
-                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
-                <tbody id="req-body-anafit8"></tbody>
-              </table>
-            </div>
-            <div id="req-wrapper-anafit-bah" class="req-facility-wrapper" style="display:none; overflow-x:auto;">
-              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
-                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
-                <tbody id="req-body-anafit-bah"></tbody>
-              </table>
-            </div>
-            <div id="req-wrapper-tavor" class="req-facility-wrapper" style="display:none; overflow-x:auto;">
-              <table class="hadrag-table" dir="rtl" style="min-width:600px;">
-                <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
-                <tbody id="req-body-tavor"></tbody>
-              </table>
+            <div class="req-facility-row" style="display:flex; gap:16px; overflow-x:auto; padding-bottom:8px; zoom:75%;">
+              <div class="req-facility-wrapper" style="min-width:520px;">
+                <h3 style="text-align:center; color:#1e293b; margin-bottom:8px;">חדר"ג</h3>
+                <table class="hadrag-table" dir="rtl">
+                  <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                  <tbody id="req-body-chadrag"></tbody>
+                </table>
+              </div>
+              <div class="req-facility-wrapper" style="min-width:520px;">
+                <h3 style="text-align:center; color:#1e293b; margin-bottom:8px;">ענפית 1</h3>
+                <table class="hadrag-table" dir="rtl">
+                  <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                  <tbody id="req-body-anafit8"></tbody>
+                </table>
+              </div>
+              <div class="req-facility-wrapper" style="min-width:520px;">
+                <h3 style="text-align:center; color:#1e293b; margin-bottom:8px;">ענפית בא"ח</h3>
+                <table class="hadrag-table" dir="rtl">
+                  <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                  <tbody id="req-body-anafit-bah"></tbody>
+                </table>
+              </div>
+              <div class="req-facility-wrapper" style="min-width:520px;">
+                <h3 style="text-align:center; color:#1e293b; margin-bottom:8px;">פיקוד 1</h3>
+                <table class="hadrag-table" dir="rtl">
+                  <thead><tr><th class="time-col">שעה</th><th>ראשון</th><th>שני</th><th>שלישי</th><th>רביעי</th><th>חמישי</th><th>שישי</th><th>שבת</th></tr></thead>
+                  <tbody id="req-body-tavor"></tbody>
+                </table>
+              </div>
             </div>
 
             <div style="text-align:center; margin-top:10px;">
@@ -664,9 +663,9 @@
     });
   </script>
  
-  <script src="config.js?v=41"></script>
-  <script src="sharepointService.js?v=41"></script>
-  <script src="auth.js?v=41"></script>
-  <script src="script.js?v=41"></script>
+  <script src="config.js?v=42"></script>
+  <script src="sharepointService.js?v=42"></script>
+  <script src="auth.js?v=42"></script>
+  <script src="script.js?v=42"></script>
 </body>
 </html>

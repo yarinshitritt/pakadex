@@ -1089,10 +1089,14 @@ async function copyWeekToTarget(tableId) {
 
 /**
  * מדביקה את תוכן השבוע הנוכחי לכל השבועות הבאים באותה שנה (דורס נתונים קיימים).
- * בנוסף, שומרת ומייצאת (מפרסמת) אוטומטית את דרישות הפלוגות (טבלאות הבקשה היחידתיות
- * שמיובאות לטבלת המנהל - ראו SUB_TABLE_MAPS) עבור השבוע הנוכחי ועבור כל שבוע שאליו
- * מדביקים, כדי שלא יווצר פער בין תוכן טבלת המנהל שהודבק לבין מצב "הדרישה המפורסמת"
- * שהיחידות רואות (checkRequirementChanges קוראת רק מ-_published).
+ * בנוסף, שומרת ומייצאת (מפרסמת) אוטומטית את דרישות הפלוגות עבור השבוע הנוכחי ועבור כל
+ * שבוע שאליו מדביקים:
+ * - בטבלת מנהל משולבת (keshertable/optictable) - מפרסמת את טבלאות הבקשה היחידתיות
+ *   שמיובאות אליה (ראו SUB_TABLE_MAPS), כדי שלא יווצר פער בין תוכן טבלת המנהל שהודבק
+ *   לבין מצב "הדרישה המפורסמת" שהיחידות רואות (checkRequirementChanges קוראת רק מ-_published).
+ * - בטבלת בקשה יחידתית עצמה (למשל esukkeshertable, מהעמוד של אותה יחידה) - מפרסמת אותה
+ *   עצמה, אחרת טבלת המנהל לא תוכל לייבא ממנה (importFromSubTable קוראת גם היא רק מ-_published)
+ *   עבור השבועות שאליהם הודבק, גם אם הטיוטה כן הועתקה.
  */
 async function applyWeekToRestOfYear(tableId) {
   const category = getKesherOpticCategory(tableId);
@@ -1105,10 +1109,13 @@ async function applyWeekToRestOfYear(tableId) {
   const data = await fetchTableData(getStorageKey(tableId, currentWeek, currentYear));
   if (!data) { alert('אין נתונים להעתקה בשבוע הנוכחי.'); return; }
 
-  const subTableConfigs = SUB_TABLE_MAPS[tableId] || [];
+  const isMasterCombined = MASTER_COMBINED_TABLES.includes(tableId);
+  const subTableConfigs = isMasterCombined ? (SUB_TABLE_MAPS[tableId] || []) : [{ sourceTableId: tableId }];
   const subTableSnapshots = {};
   for (const cfg of subTableConfigs) {
-    subTableSnapshots[cfg.sourceTableId] = await fetchTableData(getStorageKey(cfg.sourceTableId, currentWeek, currentYear));
+    subTableSnapshots[cfg.sourceTableId] = (cfg.sourceTableId === tableId)
+      ? data
+      : await fetchTableData(getStorageKey(cfg.sourceTableId, currentWeek, currentYear));
   }
   for (const cfg of subTableConfigs) {
     const snap = subTableSnapshots[cfg.sourceTableId];
@@ -1125,7 +1132,9 @@ async function applyWeekToRestOfYear(tableId) {
       const snap = subTableSnapshots[cfg.sourceTableId];
       if (!snap) continue;
       const subKey = getStorageKey(cfg.sourceTableId, w, currentYear);
-      await DataService.setItem(subKey, snap);
+      if (cfg.sourceTableId !== tableId) {
+        await DataService.setItem(subKey, snap);
+      }
       await DataService.setItem(subKey + '_published', snap);
     }
 

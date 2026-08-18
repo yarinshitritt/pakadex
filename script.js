@@ -3764,6 +3764,15 @@ window.onload = function () {
 
   if (typeof DataService !== 'undefined') {
     DataService.startAutoSync(async () => {
+      // updateUIForWeek בונה מחדש את ה-HTML של הטבלאות מאפס (innerHTML), כולל התא הממוקד -
+      // כשזה קורה תוך כדי שהמשתמש מקליד (הריענון האוטומטי רץ כל כמה שניות, ראו
+      // CONFIG.SYNC_INTERVAL_MS), הפוקוס וההקלדה שלו "נתקעים"/נקטעים באמצע משפט, במיוחד
+      // בתאים שלוקח יותר זמן להקליד לתוכם (כמו "נושא שבוע"). לכן מדלגים על מחזור הריענון
+      // הזה כל עוד יש פוקוס בתוך שדה עריכה כלשהו - הריענון הבא (בעוד כמה שניות) ישלים את
+      // הסנכרון ברגע שהמשתמש יעזוב את השדה (אפיון QA).
+      const active = document.activeElement;
+      const isEditingField = active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName);
+      if (isEditingField) return;
       await updateUIForWeek();
     });
   }

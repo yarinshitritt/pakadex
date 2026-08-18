@@ -20,7 +20,7 @@ function escapeHtml(str) {
 ================================ */
 const tableConfigs = {
   keshertable: { startCol: 1, endCol: 29, totalUnitCol: 30, failCol: 31, totalRegulatedCol: 32, availableCol: 33, excessCol: 34 },
-  optictable:  { startCol: 1, endCol: 29, totalUnitCol: 30, failCol: 31, totalRegulatedCol: 32, availableCol: 33, excessCol: 34 }
+  optictable:  { startCol: 1, endCol: 29, totalUnitCol: 30, failCol: 31, totalRegulatedCol: 32, excessCol: 33 }
 };
 
 // טבלאות (מנהל + יחידה) שעליהן חל מעקב שינויים (הדגשה כתומה עד שמירה/הפצה) - אפיון 1.2 ו-1.9
@@ -1707,7 +1707,7 @@ const DEFAULT_OPTIC_ROWS = [
 ];
 
 const KESHER_TABLE_LIST = [
-  { id: 'keshertable', dataCols: 49 },
+  { id: 'keshertable', dataCols: 48 },
   { id: 'esukkeshertable', dataCols: 7 },
   { id: 'kkeshertable', dataCols: 6 },
   { id: 'pkeshertable', dataCols: 7 },
@@ -1716,7 +1716,7 @@ const KESHER_TABLE_LIST = [
 ];
 
 const OPTIC_TABLE_LIST = [
-  { id: 'optictable', dataCols: 34 },
+  { id: 'optictable', dataCols: 33 },
   { id: 'esukoptictable', dataCols: 7 },
   { id: 'koptictable', dataCols: 6 },
   { id: 'poptictable', dataCols: 7 },
@@ -2352,8 +2352,7 @@ function recalcKesherRow(row) {
   const totalUnitCol = 45;
   const failCol = 46;
   const totalRegulatedCol = 47;
-  const availableCol = 48;
-  const excessCol = 49;
+  const excessCol = 48;
 
   const totalUnitInput = row.cells[totalUnitCol]?.querySelector('.cell-input');
   const failInput = row.cells[failCol]?.querySelector('.cell-input');
@@ -2369,15 +2368,6 @@ function recalcKesherRow(row) {
   const totalRegInput = row.cells[totalRegulatedCol]?.querySelector('.cell-input');
   if (totalRegInput) {
     totalRegInput.value = hasAnyCompanyInputOverall ? totalRegulatedAll : '';
-  }
-
-  const availableInput = row.cells[availableCol]?.querySelector('.cell-input');
-  if (availableInput) {
-    if (totalUnitRaw !== '' || failRaw !== '') {
-      availableInput.value = totalUnit - fail;
-    } else {
-      availableInput.value = '';
-    }
   }
 
   const excessInput = row.cells[excessCol]?.querySelector('.cell-input');
@@ -2462,7 +2452,7 @@ function recalcAll(tableId, config) {
   for (let row of table.tBodies[0].rows) {
     if (row.sectionRowIndex === 0 || row.cells[0]?.querySelector('textarea')) continue;
     
-    if (tableId === 'keshertable' && row.cells.length >= 50) {
+    if (tableId === 'keshertable' && row.cells.length >= 49) {
       recalcKesherRow(row);
     } else if (config) {
       recalcRow(row, config);

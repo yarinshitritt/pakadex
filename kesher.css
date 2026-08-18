@@ -251,8 +251,8 @@
 }
 
 /* כותרות סה"כ כללי בסוף הטבלה */
-#keshertable thead tr:last-child th:nth-child(n+46):nth-child(-n+50),
-#optictable thead tr:last-child th:nth-child(n+31):nth-child(-n+35) {
+#keshertable thead tr:last-child th:nth-child(n+46):nth-child(-n+49),
+#optictable thead tr:last-child th:nth-child(n+31):nth-child(-n+34) {
   background-color: #00555e !important;
   color: #000000 !important;
   font-weight: bold;
@@ -274,7 +274,7 @@
 #optictable thead tr:last-child th:nth-child(30) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
 #optictable tbody tr td:nth-child(30) { background-color: #fff3e0 !important; }
 
-#optictable tbody tr td:nth-child(n+31):nth-child(-n+35) { background-color: #e0f7fa !important; }
+#optictable tbody tr td:nth-child(n+31):nth-child(-n+34) { background-color: #e0f7fa !important; }
 
 /* ================== צבעים - קשר (50 עמודות - פסטל בהיר) - #keshertable בלבד ================== */
 /* קבוצה 1: בא"ח איסו"ק (עמודות 2 עד 11) */

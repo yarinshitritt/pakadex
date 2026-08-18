@@ -2,12 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css?v=32">
-  <link rel="stylesheet" href="esuk.css?v=32">
-  <link rel="stylesheet" href="kesher.css?v=32">
-  <link rel="stylesheet" href="optic.css?v=32">
-  <link rel="stylesheet" href="modiein.css?v=32">
-  <link rel="stylesheet" href="hipokim.css?v=32">
+  <link rel="stylesheet" href="style.css?v=33">
+  <link rel="stylesheet" href="esuk.css?v=33">
+  <link rel="stylesheet" href="kesher.css?v=33">
+  <link rel="stylesheet" href="optic.css?v=33">
+  <link rel="stylesheet" href="modiein.css?v=33">
+  <link rel="stylesheet" href="hipokim.css?v=33">
   <title>PAKADEX - בא"ח איסו"ק</title>
 </head>
 <body>
@@ -355,8 +355,13 @@
         </div>
         
         <div class="form-group">
-          <label for="hipokTimeInput">טווח שעות:</label>
-          <input type="text" id="hipokTimeInput" placeholder="לדוגמה: 12:00 - 12:30" oninput="sanitizeHipokTimeInput(this)">
+          <label>טווח שעות:</label>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="hipokStartTime" style="font-weight: bold;">מ-</label>
+            <input type="time" id="hipokStartTime" step="1800">
+            <label for="hipokEndTime" style="font-weight: bold;">עד-</label>
+            <input type="time" id="hipokEndTime" step="1800">
+          </div>
         </div>
         
         <div class="modal-footer">
@@ -557,9 +562,11 @@
     function closeHipokModal() {
       document.getElementById('hipokModalOverlay').classList.remove('active');
       const textInput = document.getElementById('hipokTextInput');
-      const timeInput = document.getElementById('hipokTimeInput');
+      const startInput = document.getElementById('hipokStartTime');
+      const endInput = document.getElementById('hipokEndTime');
       if (textInput) textInput.value = '';
-      if (timeInput) timeInput.value = '';
+      if (startInput) startInput.value = '';
+      if (endInput) endInput.value = '';
     }
  
     /**
@@ -605,31 +612,30 @@
     function selectHipokDay(dayIndex) {
       hipokSelectedDay = dayIndex;
       document.getElementById('hipokTextInput').value = '';
-      document.getElementById('hipokTimeInput').value = '';
+      document.getElementById('hipokStartTime').value = '';
+      document.getElementById('hipokEndTime').value = '';
       hipokGoToStep(3);
-    }
- 
-    function sanitizeHipokTimeInput(el) {
-      el.value = el.value.replace(/[^0-9:\-\s]/g, '');
     }
 
     async function submitHipokEntry() {
       const text = document.getElementById('hipokTextInput').value.trim();
-      const time = document.getElementById('hipokTimeInput').value.trim();
+      const startTime = document.getElementById('hipokStartTime').value;
+      const endTime = document.getElementById('hipokEndTime').value;
 
-      if (!time) {
-        alert('יש להזין שעה');
+      if (!startTime || !endTime) {
+        alert('יש להזין שעת התחלה ושעת סיום');
         return;
       }
-      if (!/^([01]\d|2[0-3]):[0-5]\d\s*-\s*([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-        alert('יש להזין טווח שעות בפורמט תקין, לדוגמה: 12:00 - 12:30');
+      if (startTime >= endTime) {
+        alert('שעת הסיום צריכה להיות מאוחרת משעת ההתחלה.');
         return;
       }
       if (hipokSelectedType === null || hipokSelectedDay === null) {
-        alert('שגיאה - נסה שוב'); 
-        return; 
+        alert('שגיאה - נסה שוב');
+        return;
       }
- 
+
+      const time = `${startTime} - ${endTime}`;
       if (typeof addHipokEntry === 'function') {
         // שולחים עם הפרמטר של הצבע צהוב כדי שיצבע את הכל במכה למנהל!
         await addHipokEntry(hipokSelectedType, hipokSelectedDay, time, text, 'bg-esuk');
@@ -667,9 +673,9 @@
     });
   </script>
  
-  <script src="config.js?v=32"></script>
-  <script src="sharepointService.js?v=32"></script>
-  <script src="auth.js?v=32"></script>
-  <script src="script.js?v=32"></script>
+  <script src="config.js?v=33"></script>
+  <script src="sharepointService.js?v=33"></script>
+  <script src="auth.js?v=33"></script>
+  <script src="script.js?v=33"></script>
 </body>
 </html>

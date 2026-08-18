@@ -136,8 +136,10 @@
 #keshertable tbody tr.special-note-row textarea,
 #optictable tbody tr:first-child textarea,
 #optictable tbody tr.topic-row textarea {
+  /* לא קובעים height:auto!important כאן - זה היה מנצח תמיד את הגובה שה-JS
+     (autoResizeTopicTextarea) קובע inline לפי תוכן התיבה, ומצמצם טקסט ארוך
+     חזרה לגובה המינימלי בכל טעינה (אפיון QA: "שיראו את כל הטקסט שמכניסים"). */
   min-height: 40px !important;
-  height: auto !important;
   width: 100% !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;

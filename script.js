@@ -595,6 +595,13 @@ async function loadTableData(tableId, week, year) {
       const idx = parseInt(indexStr);
       if (inputs[idx]) {
         inputs[idx].value = data[indexStr];
+        // הצבת value ישירות לא מפעילה אירוע 'input' (רק הקלדה אמיתית/dispatchEvent מפעילים אותו) -
+        // בלי זה, תיבת "נושא שבוע"/"משיכה\זיכוי" נשארת בגובה המינימלי שנקבע כשרוקנו אותה קודם
+        // (שורה 546-551 למעלה), כך שטקסט ארוך שהוזן קודם נשאר קיים ב-value אך "נעלם" ויזואלית
+        // בכל טעינה/רענון מחדש (אפיון QA: "שיראו את כל הטקסט שמכניסים").
+        if (inputs[idx].classList.contains('topic-textarea')) {
+          autoResizeTopicTextarea(inputs[idx]);
+        }
 
         // Add conflict-overlap if this is a manager table and value differs from published.
         // בטבלאות המשולבות (קשר/אופטיקה) הסימון לא נקבע כאן (draft מול published) אלא לפי

@@ -400,3 +400,30 @@
   user-select: none;
 }
 .req-delete-icon:hover { color: #991b1b; }
+
+/* תפריט קליק-ימני על בלוק ממתין בגריד הבקשות של היחידה - עיצוב זהה ל-#custom-context-menu
+   של המנהל, אך כקלאס נפרד (תפריט/יעד שונה - ראו script.js). */
+.req-context-menu {
+  position: absolute;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  flex-direction: column;
+  padding: 4px 0;
+  z-index: 1000;
+  min-width: 140px;
+}
+.req-context-menu button {
+  background: transparent;
+  border: none;
+  padding: 10px 16px;
+  text-align: right;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  color: #dc2626;
+  width: 100%;
+}
+.req-context-menu button:hover { background: #fef2f2; }

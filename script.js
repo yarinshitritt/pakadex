@@ -2689,7 +2689,7 @@ function _timeRangesOverlap(s1, e1, s2, e2) {
 
 let hadragStagedBlocks = [];
 let shekemStagedBlocks = [];
-let reqGridDragMode = null; // null | 'create' | 'move'
+let reqGridDragMode = null; // null | 'create' | 'move' | 'resize'
 let reqGridDragCtx = null;
 
 /** בונה תא-שעה + 7 תאי גריד ריקים (ללא textarea כברירת מחדל) לכל 36 השורות. */
@@ -2741,6 +2741,11 @@ function paintPendingBlock(tbody, block, idx) {
   del.title = 'מחק בקשה';
   del.dataset.stagedIdx = String(idx);
 
+  const resizeHandle = document.createElement('span');
+  resizeHandle.className = 'resize-handle';
+  resizeHandle.title = 'שנה משך (גרור למעלה/למטה)';
+  resizeHandle.dataset.stagedIdx = String(idx);
+
   const ta = document.createElement('textarea');
   ta.placeholder = 'פרטי הבקשה...';
   ta.value = block.text || '';
@@ -2749,6 +2754,7 @@ function paintPendingBlock(tbody, block, idx) {
 
   cell.appendChild(handle);
   cell.appendChild(del);
+  cell.appendChild(resizeHandle);
   cell.appendChild(ta);
 
   for (let r = block.startRow + 1; r < block.startRow + block.span; r++) {
@@ -2877,10 +2883,26 @@ function clearReqPreview(tbody) {
   tbody.querySelectorAll('.req-preview-cell').forEach(c => c.classList.remove('req-preview-cell'));
 }
 
-// 1. תחילת גרירה: יצירת בלוק חדש (mousedown על תא ריק) או הזזת בלוק ממתין קיים (mousedown על הידית ⠿)
+// 1. תחילת גרירה: יצירת בלוק חדש (mousedown על תא ריק), הזזת בלוק ממתין קיים (מהידית ⠿, כולל
+//    בין טבלאות מתקנים שונות), או שינוי משך (מנקודת האחיזה resize-handle).
 document.addEventListener('mousedown', function(e) {
   if (e.button !== 0) return;
   if (isReadOnlyMode()) return;
+
+  const resizeHandle = e.target.closest('td.req-cell .resize-handle');
+  if (resizeHandle) {
+    e.preventDefault();
+    const tbody = resizeHandle.closest('tbody');
+    if (!tbody) return;
+    const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+    const idx = parseInt(resizeHandle.dataset.stagedIdx, 10);
+    const stagedArr = type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+    const block = stagedArr[idx];
+    if (!block) return;
+    reqGridDragMode = 'resize';
+    reqGridDragCtx = { type, tbody, resizingIdx: idx, currentEndRow: block.startRow + block.span - 1 };
+    return;
+  }
 
   const handle = e.target.closest('.req-drag-handle');
   if (handle) {
@@ -2906,29 +2928,46 @@ document.addEventListener('mousedown', function(e) {
   markReqPreview(tbody, reqGridDragCtx.day, row, 1);
 });
 
-// 2. מהלך הגרירה
+// 2. מהלך הגרירה - יצירה/שינוי-משך מוגבלים לאותה טבלת-מתקן (כמו במנהל); הזזה (move) יכולה
+//    לעבור בין טבלאות מתקנים שונות (חדר"ג/ענפית 1/ענפית בא"ח/פיקוד 1), בדיוק כמו אצל המנהל.
 document.addEventListener('mouseover', function(e) {
   if (!reqGridDragMode || !reqGridDragCtx) return;
   const cell = e.target.closest('td.req-cell');
   if (!cell) return;
   const tbody = cell.closest('tbody');
-  if (!tbody || tbody !== reqGridDragCtx.tbody) return;
+  if (!tbody) return;
 
   const hoverRow = parseInt(cell.dataset.row, 10);
   const hoverCol = parseInt(cell.dataset.col, 10);
 
   if (reqGridDragMode === 'create') {
+    if (tbody !== reqGridDragCtx.tbody) return;
     if (hoverCol !== reqGridDragCtx.day || hoverRow < reqGridDragCtx.startRow) return;
     clearReqPreview(tbody);
     reqGridDragCtx.currentRow = hoverRow;
     markReqPreview(tbody, reqGridDragCtx.day, reqGridDragCtx.startRow, hoverRow - reqGridDragCtx.startRow + 1);
+  } else if (reqGridDragMode === 'resize') {
+    if (tbody !== reqGridDragCtx.tbody) return;
+    const stagedArr = reqGridDragCtx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+    const block = stagedArr[reqGridDragCtx.resizingIdx];
+    if (!block) return;
+    if (hoverCol !== block.day || hoverRow < block.startRow) return;
+    clearReqPreview(tbody);
+    reqGridDragCtx.currentEndRow = hoverRow;
+    markReqPreview(tbody, block.day, block.startRow, hoverRow - block.startRow + 1);
   } else if (reqGridDragMode === 'move') {
+    if (!tbody.id.startsWith('req-body-')) return;
+    const hoverType = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+    if (hoverType !== reqGridDragCtx.type) return;
     const stagedArr = reqGridDragCtx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
     const block = stagedArr[reqGridDragCtx.movingIdx];
     if (!block) return;
+    const prevPreviewTbody = reqGridDragCtx.previewTbody;
+    if (prevPreviewTbody && prevPreviewTbody !== tbody) clearReqPreview(prevPreviewTbody);
     clearReqPreview(tbody);
     let previewStart = Math.min(hoverRow, 36 - block.span);
     if (previewStart < 0) previewStart = 0;
+    reqGridDragCtx.previewTbody = tbody;
     reqGridDragCtx.previewDay = hoverCol;
     reqGridDragCtx.previewStartRow = previewStart;
     markReqPreview(tbody, hoverCol, previewStart, block.span);
@@ -2943,6 +2982,7 @@ async function finishReqGridDrag() {
   reqGridDragMode = null;
   reqGridDragCtx = null;
   clearReqPreview(ctx.tbody);
+  if (ctx.previewTbody) clearReqPreview(ctx.previewTbody);
 
   const stagedArr = ctx.type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
   const facility = ctx.tbody.id.replace('req-body-', '');
@@ -2974,13 +3014,29 @@ async function finishReqGridDrag() {
       return;
     }
     await paintUnitRequestGrid(ctx.type);
+  } else if (mode === 'resize') {
+    const block = stagedArr[ctx.resizingIdx];
+    if (block) {
+      const newSpan = Math.max(1, ctx.currentEndRow - block.startRow + 1);
+      if (newSpan !== block.span) {
+        const conflict = await reqGridHasConflict(ctx.type, block.facility, block.day, block.startRow, block.startRow + newSpan - 1, stagedArr, ctx.resizingIdx);
+        if (conflict) {
+          alert('⛔ המשבצת תפוסה! לא ניתן לשנות לגודל הזה.');
+        } else {
+          block.span = newSpan;
+        }
+      }
+    }
+    await paintUnitRequestGrid(ctx.type);
   } else if (mode === 'move') {
     const block = stagedArr[ctx.movingIdx];
-    if (block && ctx.previewDay !== undefined) {
-      const conflict = await reqGridHasConflict(ctx.type, block.facility, ctx.previewDay, ctx.previewStartRow, ctx.previewStartRow + block.span - 1, stagedArr, ctx.movingIdx);
+    if (block && ctx.previewDay !== undefined && ctx.previewTbody) {
+      const newFacility = ctx.type === 'hadrag' ? ctx.previewTbody.id.replace('req-body-', '') : null;
+      const conflict = await reqGridHasConflict(ctx.type, newFacility, ctx.previewDay, ctx.previewStartRow, ctx.previewStartRow + block.span - 1, stagedArr, ctx.movingIdx);
       if (conflict) {
         alert('⛔ המשבצת תפוסה! יש לבחור מיקום פנוי.');
       } else {
+        block.facility = newFacility;
         block.day = ctx.previewDay;
         block.startRow = ctx.previewStartRow;
       }
@@ -2990,21 +3046,18 @@ async function finishReqGridDrag() {
 }
 document.addEventListener('mouseup', finishReqGridDrag);
 window.addEventListener('blur', () => {
-  if (reqGridDragCtx) clearReqPreview(reqGridDragCtx.tbody);
+  if (reqGridDragCtx) {
+    clearReqPreview(reqGridDragCtx.tbody);
+    if (reqGridDragCtx.previewTbody) clearReqPreview(reqGridDragCtx.previewTbody);
+  }
   reqGridDragMode = null;
   reqGridDragCtx = null;
 });
 
-// 4. מחיקת בלוק ממתין (אייקון ✕) - אם כבר נשמר כרשומה, מוחקת אותה מהאחסון (ומתרנדרת מחדש
-//    דרך renderHadragRequestsList/renderShekemRequestsList); אם עדיין לא נשמר, רק מסירה מהזיכרון.
-document.addEventListener('click', async function(e) {
-  const del = e.target.closest('.req-delete-icon');
-  if (!del) return;
-  if (isReadOnlyMode()) return;
-  const tbody = del.closest('tbody');
-  if (!tbody) return;
-  const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
-  const idx = parseInt(del.dataset.stagedIdx, 10);
+// 4. מחיקת בלוק ממתין - אם כבר נשמר כרשומה, מוחקת אותה מהאחסון (ומתרנדרת מחדש דרך
+//    renderHadragRequestsList/renderShekemRequestsList); אם עדיין לא נשמר, רק מסירה מהזיכרון.
+//    פונקציה משותפת לאייקון ה-✕ ולתפריט הקליק-הימני (ראו למטה).
+async function deletePendingReqBlock(type, idx) {
   const stagedArr = type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
   const block = stagedArr[idx];
   if (!block) return;
@@ -3016,6 +3069,53 @@ document.addEventListener('click', async function(e) {
     stagedArr.splice(idx, 1);
     await paintUnitRequestGrid(type);
   }
+}
+
+document.addEventListener('click', async function(e) {
+  const del = e.target.closest('.req-delete-icon');
+  if (!del) return;
+  if (isReadOnlyMode()) return;
+  const tbody = del.closest('tbody');
+  if (!tbody) return;
+  const type = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+  await deletePendingReqBlock(type, parseInt(del.dataset.stagedIdx, 10));
+});
+
+// 5. תפריט קליק-ימני על בלוק ממתין - מקביל לתפריט הקליק-הימני של המנהל (#custom-context-menu),
+//    אך תפריט נפרד ומצומצם (רק מחיקה) עבור הגריד של היחידה - אין למחזר את התפריט של המנהל
+//    כי הוא מוגדר ל-td.platoon-cell בלבד ומכיל פעולות שלא רלוונטיות כאן (הדבקה/צביעה מחדש
+//    ליחידה אחרת). ה-CSS (מיקום/עיצוב) ממוחזר מ-hadrag.css (#custom-context-menu).
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('req-context-menu')) return;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="req-context-menu" class="req-context-menu" style="display:none;">
+      <button id="req-ctx-btn-delete">מחק בקשה</button>
+    </div>
+  `);
+  const menu = document.getElementById('req-context-menu');
+  let ctxType = null;
+  let ctxIdx = null;
+
+  document.addEventListener('contextmenu', function(e) {
+    const cell = e.target.closest('td.req-cell.pending-block');
+    if (!cell || isReadOnlyMode()) return;
+    e.preventDefault();
+    const tbody = cell.closest('tbody');
+    ctxType = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+    ctxIdx = parseInt(cell.dataset.stagedIdx, 10);
+    menu.style.left = e.pageX + 'px';
+    menu.style.top = e.pageY + 'px';
+    menu.style.display = 'flex';
+  });
+
+  document.addEventListener('click', () => { menu.style.display = 'none'; });
+
+  document.getElementById('req-ctx-btn-delete').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    menu.style.display = 'none';
+    if (ctxType === null || ctxIdx === null) return;
+    await deletePendingReqBlock(ctxType, ctxIdx);
+  });
 });
 
 /** כפתור "שמור בקשות" (חדר"ג) - קובע day/startTime/endTime/text מהמיקום הנוכחי של כל בלוק ממתין. */
@@ -4055,7 +4155,9 @@ window.onload = function () {
       // לבנות מחדש את הגריד באמצע ולהשאיר את currentCtxCell/resizeStartCell/draggedSourceCell
       // מצביעים על תא שכבר לא קיים בפועל - הפעולה (מחיקה/צביעה/הדבקה) נכשלת בשקט (אפיון QA).
       const ctxMenu = document.getElementById('custom-context-menu');
-      const isContextMenuOpen = ctxMenu && ctxMenu.style.display !== 'none' && ctxMenu.style.display !== '';
+      const reqCtxMenu = document.getElementById('req-context-menu');
+      const isContextMenuOpen = (ctxMenu && ctxMenu.style.display !== 'none' && ctxMenu.style.display !== '')
+        || (reqCtxMenu && reqCtxMenu.style.display !== 'none' && reqCtxMenu.style.display !== '');
       // אותה בעיה קיימת גם בגריד הבקשות של היחידה (esuk/hirg/pikud/tazam/bahalag.html): בלוק
       // "ממתין לאישור" שנוצר/הוזז אבל עדיין לא נשמר קיים רק בזיכרון (hadragStagedBlocks/
       // shekemStagedBlocks) - רענון אוטומטי באמצע היה קורא מחדש מהאחסון (loadUnitRequestGridState)

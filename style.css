@@ -343,6 +343,12 @@ button, .sidebar, .sidebar-btn {
 }
 
 /* ================== קונטיינרים וטבלאות (Containers & Tables) ================== */
+/* max-height + overflow-y:auto - כדי שסרגל הגלילה האופקי (overflow-x) יישאר תמיד צמוד ממש
+   מתחת לטבלה עצמה, בתוך תיבה עם גובה מוגבל, ולא "יברח" לתחתית העמוד כשהטבלה ארוכה (הרבה
+   שורות) - כמו שכבר נעשה קודם רק בעמוד שק"ם (shekem.html). לטבלאות קצרות (רוב המסך הזה)
+   זה לא משנה כלום ויזואלית - התיבה פשוט מתאימה את עצמה לגובה התוכן כרגיל, כל עוד הוא לא
+   עובר את התקרה (אפיון QA: "סמן הגרירה ממש מתחת לטבלה ולא בתחתית העמוד").
+*/
 .table-container {
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
@@ -351,6 +357,8 @@ button, .sidebar, .sidebar-btn {
   padding: 8px;
   margin-bottom: 8px;
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
   max-width: 100%;
 }
 

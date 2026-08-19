@@ -5723,7 +5723,7 @@ let activeSelectedCell = null;
 let isResizing = false;
 let resizeStartCell = null;
 let resizeCurrentRow = -1;
-let resizePreviewElement = null;
+let _resizePreviewCells = [];
 
 function clearSelection() {
   if (activeSelectedCell) {
@@ -5766,18 +5766,10 @@ function startResize(e) {
   e.stopPropagation();
 
   if (!activeSelectedCell) return;
-  
+
   isResizing = true;
   resizeStartCell = activeSelectedCell;
-  
-  resizePreviewElement = document.createElement('div');
-  resizePreviewElement.style.position = 'absolute';
-  resizePreviewElement.style.border = '2px dashed #22c55e';
-  resizePreviewElement.style.pointerEvents = 'none';
-  resizePreviewElement.style.zIndex = '100';
-  resizePreviewElement.style.background = 'rgba(34, 197, 94, 0.1)';
-  document.body.appendChild(resizePreviewElement);
-  
+
   updateResizePreview(e);
 }
 
@@ -5806,43 +5798,49 @@ document.addEventListener('mousemove', function(e) {
   updateResizePreview(e);
 });
 
+/**
+ * מציגה תצוגה מקדימה של טווח שינוי-הגודל, ע"י סימון (outline) על תאי הטבלה האמיתיים
+ * בטווח - במקום אלמנט ריחוף (position:absolute) שממוקם ידנית לפי getBoundingClientRect().
+ * הגישה הקודמת חישבה מיקום/גודל פעם אחת בכל mousemove ע"פ קואורדינטות מסך, וכשהקונטיינר
+ * המכיל את הטבלאות זז (גלילה אופקית פנימית + zoom:70% יחד) המיקום המחושב לא תמיד הספיק
+ * להתעדכן בזמן, מה שגרם ל"תיבת תצוגה מקדימה רפאים" שנראתה כאילו שורה/עמודה נוספת נוצרה
+ * בטבלה סמוכה (דיווח משתמש + סרטון מסך). סימון ישיר על התאים האמיתיים דרך outline (לא
+ * border, כדי לא לשנות את מידות התא/הטבלה) חסין לחלוטין לבעיה הזו - אין חישוב מיקום ידני,
+ * רק CSS class על אלמנטים שכבר ממוקמים נכון ע"י מנוע הטבלה של הדפדפן.
+ */
 function updateResizePreview(e) {
-  if (!resizeStartCell || !resizePreviewElement) return;
-  
+  if (!resizeStartCell) return;
+
+  _resizePreviewCells.forEach(c => c.classList.remove('resize-preview-cell'));
+  _resizePreviewCells = [];
+
   const startRow = parseInt(resizeStartCell.dataset.row);
   let endRow = resizeCurrentRow !== -1 ? resizeCurrentRow : (startRow + resizeStartCell.rowSpan - 1);
   if (endRow < startRow) endRow = startRow;
-  
+
   const tbody = resizeStartCell.closest('tbody');
   const col = parseInt(resizeStartCell.dataset.col);
-  
-  const startDom = tbody.querySelector(`td.platoon-cell[data-row="${startRow}"][data-col="${col}"]`);
-  if (!startDom) return;
-  const startRect = startDom.getBoundingClientRect();
-  
-  const endTr = tbody.rows[endRow];
-  if (endTr) {
-    const timeCellEnd = endTr.firstElementChild;
-    if (timeCellEnd) {
-      const endRect = timeCellEnd.getBoundingClientRect();
-      resizePreviewElement.style.top = startRect.top + window.scrollY + 'px';
-      resizePreviewElement.style.left = startRect.left + window.scrollX + 'px';
-      resizePreviewElement.style.width = startRect.width + 'px';
-      resizePreviewElement.style.height = (endRect.bottom - startRect.top) + 'px';
-    }
+
+  for (let r = startRow; r <= endRow; r++) {
+    const cell = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
+    if (!cell) continue;
+    cell.classList.add('resize-preview-cell');
+    _resizePreviewCells.push(cell);
   }
+}
+
+function clearResizePreview() {
+  _resizePreviewCells.forEach(c => c.classList.remove('resize-preview-cell'));
+  _resizePreviewCells = [];
 }
 
 document.addEventListener('mouseup', function(e) {
   if (!isResizing || !resizeStartCell) return;
-  
-  if (resizePreviewElement) {
-    resizePreviewElement.remove();
-    resizePreviewElement = null;
-  }
-  
+
+  clearResizePreview();
+
   isResizing = false;
-  
+
   const startRow = parseInt(resizeStartCell.dataset.row);
   let newEndRow = resizeCurrentRow !== -1 ? resizeCurrentRow : (startRow + resizeStartCell.rowSpan - 1);
   if (newEndRow < startRow) newEndRow = startRow;

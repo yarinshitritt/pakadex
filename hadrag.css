@@ -63,6 +63,15 @@
   padding: 0 2px;
 }
 
+/* תצוגה מקדימה של טווח שינוי-גודל (ראו updateResizePreview ב-script.js) - מסומנת ישירות על
+   תאי הטבלה האמיתיים (outline, לא border, כדי לא לשנות את מידות התא/הטבלה), במקום אלמנט
+   ריחוף שממוקם ידנית לפי קואורדינטות מסך - זה מה שגרם לבאג ה"שורה/עמודה רפאים" הקודם. */
+.resize-preview-cell {
+  outline: 2px dashed #22c55e !important;
+  outline-offset: -2px;
+  background: rgba(34, 197, 94, 0.12) !important;
+}
+
 /* ================== אזור הטקסט בתוך המשבצות ================== */
 .platoon-cell textarea {
   width: 100%;

@@ -354,6 +354,14 @@ button, .sidebar, .sidebar-btn {
   max-width: 100%;
 }
 
+/* מוגבל רק לטבלאות קשר/אופטיקה הגדולות (kesher.html/optic.html) - max-height + overflow-y:auto
+   כדי שסרגל הגלילה האופקי יישאר צמוד ממש מתחת לטבלה, ולא "יברח" לתחתית העמוד. בכוונה לא על
+   .table-container הכללי - שאר הטבלאות באפליקציה נשארות בגלילת-עמוד רגילה (אפיון QA). */
+.table-container.wide-table-scroll {
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
 /* קיבוע כותרות טבלה בגלילה (Sticky Table Headers) */
 table thead th {
   position: sticky;

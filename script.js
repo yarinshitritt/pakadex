@@ -4318,36 +4318,62 @@ document.addEventListener('mousedown', function(e) {
   }
 });
 
-// 2. מהלך הגרירה (מעבר מעל משבצות אחרות)
-document.addEventListener('mouseover', function(e) {
-  if (!isDragging || !dragStartCell) return;
-  
-  const cell = e.target.closest('td.platoon-cell');
-  if (cell && cell !== dragStartCell) {
-    const currentRow = parseInt(cell.dataset.row);
-    const currentCol = parseInt(cell.dataset.col);
-    
-    if (currentCol === dragCol && currentRow > dragStartRow) {
-      const ta = cell.querySelector('textarea');
-      const hasContent = ta && ta.value.trim() !== '';
-      const hasColor = ALL_COLOR_CLASSES.some(cls => cell.classList.contains(cls));
+// 2. מהלך הגרירה (הרחבת/צמצום הבלוק לפי מיקום העכבר בפועל - getRowIndexAtY, ולא mouseover
+//    על תא ספציפי): mouseover לא נורה על כל שורה שהעכבר חולף מעליה בתזוזה מהירה אמיתית - הוא
+//    יורה רק על התא שהעכבר נמצא מעליו *באירוע האחרון שנקלט*, מדלג על כל מה שבין לבין. הקוד
+//    הישן הסתיר (display:none) רק את התא שקיבל את אירוע ה-mouseover האחרון וקבע rowSpan גדול
+//    על תא ההתחלה שמכסה גם שורות שמעולם לא עברו עיבוד משלהן - נשארות `<td>` נפרדות, גלויות,
+//    בתוך טווח שכבר "מכוסה" ע"י rowSpan של תא קודם, מבנה טבלה לא-חוקי שגורם לדפדפן לרנדר
+//    תא רפאים/עמודה נוספת (דיווח משתמש + סרטון מסך - נראה כ"עמודה/שורה מיותרת נוספה").
+//    getRowIndexAtY מודדת מול עמודת השעה (תמיד גלויה), ומעדכנת את כל טווח השורות בכל אירוע -
+//    בלי תלות בכמה שורות העכבר "דילג" ביניהן.
+function updateHadragDragExtent(clientY) {
+  const tbody = dragStartCell.closest('tbody');
+  let targetRow = getRowIndexAtY(tbody, clientY);
+  if (targetRow === -1) return;
+  if (targetRow < dragStartRow) targetRow = dragStartRow;
 
-      if (cell.style.display !== 'none' && !hasContent && !hasColor && cell.rowSpan === 1) {
-        cell.style.display = 'none';
-        const newSpan = currentRow - dragStartRow + 1;
-        
-        dragStartCell.rowSpan = newSpan;
-        dragStartCell.classList.add('merged');
-        
-        const startTa = dragStartCell.querySelector('textarea');
-        if (startTa) {
-          startTa.style.height = '100%'; 
-        }
-      } else {
-        stopDragging();
-      }
+  const prevSpan = dragStartCell.rowSpan || 1;
+  const prevEndRow = dragStartRow + prevSpan - 1;
+
+  // קביעת הטווח התקף בפועל: עוצרים בשורה הראשונה שכבר תפוסה (שיבוץ אחר עם rowSpan>1, טקסט
+  // או צבע) שעדיין לא הייתה חלק מהבלוק הזה בגרירה הנוכחית (r <= prevEndRow = כבר "שלנו").
+  let maxValidRow = dragStartRow;
+  for (let r = dragStartRow + 1; r <= targetRow; r++) {
+    const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${dragCol}"]`);
+    if (!c) break;
+    if (r > prevEndRow) {
+      const ta = c.querySelector('textarea');
+      const hasContent = ta && ta.value.trim() !== '';
+      const hasColor = ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls));
+      if (c.rowSpan > 1 || hasContent || hasColor) break;
     }
+    maxValidRow = r;
   }
+
+  // משחררים תאים שהיו חלק מהבלוק קודם בגרירה הזו אבל כבר לא בטווח החדש (למשל גררו למטה ואז חזרה למעלה)
+  for (let r = prevEndRow; r > maxValidRow; r--) {
+    const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${dragCol}"]`);
+    if (c) { c.style.display = ''; c.rowSpan = 1; }
+  }
+
+  // מסתירים את כל התאים בטווח הסופי (אידמפוטנטי - לא משנה כמה שורות דולגו באירוע האחרון)
+  for (let r = dragStartRow + 1; r <= maxValidRow; r++) {
+    const c = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${dragCol}"]`);
+    if (c) c.style.display = 'none';
+  }
+
+  const newSpan = maxValidRow - dragStartRow + 1;
+  dragStartCell.rowSpan = newSpan;
+  dragStartCell.classList.toggle('merged', newSpan > 1);
+
+  const startTa = dragStartCell.querySelector('textarea');
+  if (startTa) startTa.style.height = '100%';
+}
+
+document.addEventListener('mousemove', function(e) {
+  if (!isDragging || !dragStartCell) return;
+  updateHadragDragExtent(e.clientY);
 });
 
 // 3. סיום גרירה (עזיבת העכבר/פוקוס)

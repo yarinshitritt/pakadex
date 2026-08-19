@@ -1714,8 +1714,7 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
   if (pendingSet) savePendingImportIndexes(targetTableId, currentWeek, currentYear, [...pendingSet]);
   saveCurrentWeek();
   const ackKey = getAckStorageKey(targetTableId, currentWeek, currentYear);
-  const ackSavedRaw = localStorage.getItem(ackKey);
-  const ackData = ackSavedRaw ? JSON.parse(ackSavedRaw) : {};
+  const ackData = (await fetchTableData(ackKey)) || {};
   Object.entries(data).forEach(([indexStr, value]) => {
     const idx = parseInt(indexStr);
     const subVal = value !== undefined && value !== null ? String(value).trim() : '';
@@ -1805,6 +1804,20 @@ const OPTIC_TABLE_LIST = [
 
 function getRowsStorageKey(category, week, year) {
   return `rowList_${category}_week${week}_year${year}`;
+}
+
+/**
+ * מרעננת מהשרת (אם מוגדר) את רשימות השורות המותאמות-אישית (אמצעי קשר/אופטיקה שנוספו/נמחקו)
+ * לשבוע הנוכחי. getRowsForWeek נשארת סינכרונית בכוונה (נקראת גם בזמן בניית/רינדור טבלה, לא
+ * רק בפעולות מנהל נדירות), אז במקום להפוך אותה ל-async בכל מקום, שומרים אותה כמו שהיא
+ * וממלאים לה מטמון טרי מהשרת ברקע - אותה גישה בדיוק כמו refreshSubTablePublishedCache.
+ */
+async function refreshRowListsCache() {
+  if (typeof fetchTableData !== 'function') return;
+  await Promise.all([
+    fetchTableData(getRowsStorageKey('kesher', currentWeek, currentYear)),
+    fetchTableData(getRowsStorageKey('optic', currentWeek, currentYear))
+  ]);
 }
 
 function getRowsForWeek(category, week, year) {
@@ -2615,6 +2628,26 @@ const SUB_TABLE_MAPS = {
     { sourceTableId: 'boptictable', targetStartCol: 29, sourceCols: 1 }
   ]
 };
+
+/**
+ * מרעננת מהשרת (אם מוגדר) את הנתונים המפורסמים (_published) של כל טבלאות המשנה היחידתיות,
+ * וכן את מפתחות "אישור המנהל" (mgrAck) - אלה בדיוק המפתחות ש-checkRequirementChanges קוראת
+ * בקריאה מקומית-ישירה וסינכרונית (localStorage.getItem, לא DataService) כדי להישאר מהירה
+ * גם כשהיא רצה על כל הקשה בטבלת המנהל. בלי הרענון התקופתי הזה, מכשיר של מנהל שלא ביצע
+ * בעצמו ייבוא לאחרונה היה עלול לא לראות שיחידה עדכנה את הנתונים המפורסמים שלה במכשיר אחר,
+ * עד שהוא עצמו יבצע פעולת ייבוא (ראו הערה מפורטת ליד checkRequirementChanges/importFromSubTable).
+ */
+async function refreshSubTablePublishedCache() {
+  if (typeof fetchTableData !== 'function') return;
+  const keys = [];
+  Object.entries(SUB_TABLE_MAPS).forEach(([tableId, configs]) => {
+    keys.push(getAckStorageKey(tableId, currentWeek, currentYear));
+    configs.forEach(cfg => {
+      keys.push(getStorageKey(cfg.sourceTableId, currentWeek, currentYear) + '_published');
+    });
+  });
+  await Promise.all(keys.map(k => fetchTableData(k)));
+}
 
 /**
  * בודקת וצובעת משבצות בטבלאות קשר ואופטיקה שבהן דרישת היחידה השתנתה ביחס לשיוך/אישור המנהל.
@@ -4363,6 +4396,19 @@ window.onload = function () {
 
   if (typeof DataService !== 'undefined') {
     DataService.startAutoSync(async () => {
+      // מרכז ההתראות (🔔) לא נוגע בשדות עריכה בכלל, אז מרעננים אותו תמיד בכל מחזור - גם
+      // כשהמשתמש באמצע הקלדה בטבלה אחרת (בניגוד ל-updateUIForWeek למטה, שנדחית במקרה הזה).
+      if (typeof refreshNotifications === 'function') await refreshNotifications();
+
+      // מרעננים גם את מטמון הנתונים המפורסמים של טבלאות המשנה (ראו הערה ליד הפונקציה) - זה
+      // רק מעדכן ערכים במפתח localStorage, לא בונה מחדש DOM, אז בטוח לבצע גם תוך כדי הקלדה.
+      if (typeof refreshSubTablePublishedCache === 'function') {
+        await refreshSubTablePublishedCache();
+        if (document.getElementById('keshertable')) checkRequirementChanges('keshertable');
+        if (document.getElementById('optictable')) checkRequirementChanges('optictable');
+      }
+      if (typeof refreshRowListsCache === 'function') await refreshRowListsCache();
+
       // updateUIForWeek בונה מחדש את ה-HTML של הטבלאות מאפס (innerHTML), כולל התא הממוקד -
       // כשזה קורה תוך כדי שהמשתמש מקליד (הריענון האוטומטי רץ כל כמה שניות, ראו
       // CONFIG.SYNC_INTERVAL_MS), הפוקוס וההקלדה שלו "נתקעים"/נקטעים באמצע משפט, במיוחד
@@ -4398,6 +4444,9 @@ window.onload = function () {
 
       await updateUIForWeek();
     });
+    // קריאה מיידית אחת בטעינה - כדי שהתראות שנוצרו במכשיר אחר יופיעו כבר בטעינה הראשונה,
+    // ולא רק אחרי מחזור הרענון התקופתי הראשון (SYNC_INTERVAL_MS).
+    if (typeof refreshNotifications === 'function') refreshNotifications();
   }
 
   window.addEventListener('storage', () => {
@@ -5052,8 +5101,29 @@ function loadNotifications() {
   catch (e) { return []; }
 }
 
+// שמירה דרך persist() (DataService + סנכרון לשרת, ראו script.js:96) ולא localStorage ישיר -
+// מרכז ההתראות הוא רשימה משותפת (הודעות כמו "המנהל הפיץ שינויים"/"פלוגה שמרה נתונים מוכנה
+// לייבוא" מיועדות לכל המשתמשים, לא רק למכשיר שיצר אותן) ולכן חייבת להיות מסונכרנת בין
+// מכשירים במצב שרת מרוחק (SharePoint/רשת צבאית), בדיוק כמו כל שאר נתוני האפליקציה.
 function saveNotifications(list) {
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(list.slice(-100)));
+  const trimmed = list.slice(-100);
+  if (typeof persist === 'function') persist(NOTIF_KEY, trimmed);
+  else localStorage.setItem(NOTIF_KEY, JSON.stringify(trimmed));
+}
+
+/**
+ * מרעננת את מרכז ההתראות מהשרת (אם מוגדר) - כדי שהתראות שנוצרו במכשיר אחר (למשל "פלוגה
+ * שמרה נתונים מוכנים לייבוא" שנוצרה בעמוד היחידה) יופיעו גם כאן. נקראת מהמחזור התקופתי
+ * של DataService.startAutoSync (ראו window.onload), באותה תדירות שבה שאר הנתונים מתרעננים.
+ */
+async function refreshNotifications() {
+  if (typeof fetchTableData !== 'function') return;
+  const remote = await fetchTableData(NOTIF_KEY);
+  if (!Array.isArray(remote)) return;
+  try { localStorage.setItem(NOTIF_KEY, JSON.stringify(remote)); } catch (e) {}
+  updateNotifBadge();
+  const panel = document.getElementById('notif-panel');
+  if (panel && panel.style.display !== 'none') renderNotifPanel();
 }
 
 /**

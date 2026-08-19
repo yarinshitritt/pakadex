@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css?v=51">
+  <link rel="stylesheet" href="style.css?v=52">
   <title>PAKADEX - כניסה למערכת</title>
   <style>
     body {
@@ -103,9 +103,9 @@
     <div class="card-note">💳 ניתן להעביר כרטיס חוגר בקורא — הקריאה תתבצע אוטומטית</div>
   </div>
 
-  <script src="config.js?v=51"></script>
-  <script src="sharepointService.js?v=51"></script>
-  <script src="auth.js?v=51"></script>
+  <script src="config.js?v=52"></script>
+  <script src="sharepointService.js?v=52"></script>
+  <script src="auth.js?v=52"></script>
   <script>
     // אם כבר קיים סשן פעיל - מעבר ישיר למערכת
     if (AUTH.getSession()) window.location.replace('index.html');
@@ -129,13 +129,27 @@
       }
     }
 
-    function doLogin() {
+    let loginInFlight = false;
+    async function doLogin() {
+      if (loginInFlight) return;
       errEl.style.display = 'none';
-      const res = AUTH.login(pnInput.value);
-      if (res.ok) {
-        window.location.href = 'index.html';
-      } else {
+      loginInFlight = true;
+      pnInput.disabled = true;
+      try {
+        // AUTH.login מרעננת קודם את רשימת המשתמשים מהשרת (await) לפני שהיא בודקת אם המאגר
+        // ריק - חשוב לחכות לה במלואה כאן (לא לקרוא בלי await), אחרת מכשיר חדש שמתחבר
+        // מהר (למשל קורא כרטיסים) עלול "לאתחל את עצמו" כמנהל חדש לפני שהרשימה האמיתית
+        // מהשרת נטענה, ולדרוס את כל רשימת המשתמשים האמיתית (ראו הערה מפורטת ב-auth.js).
+        const res = await AUTH.login(pnInput.value);
+        if (res.ok) {
+          window.location.href = 'index.html';
+          return;
+        }
         showError(res.error || 'שגיאת התחברות.');
+      } finally {
+        loginInFlight = false;
+        pnInput.disabled = false;
+        pnInput.focus();
       }
     }
 

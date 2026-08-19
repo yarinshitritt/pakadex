@@ -165,13 +165,19 @@ const DataService = {
         if (response.ok) {
           const data = await response.json();
           this._cache[key] = data;
+          // כותבים גם ל-localStorage (לא רק ל-_cache בזיכרון) - קוד רב באפליקציה קורא נתונים
+          // דרך localStorage.getItem ישיר (לביצועים, למשל בזמן הקלדה) ולא דרך DataService/
+          // fetchTableData בכל מקום; בלי הכתיבה הזו, שליפה מוצלחת מ-SharePoint הייתה נשארת
+          // "תקועה" רק ב-_cache הזמני (נמחק ברענון עמוד) ואף פעם לא נראית לקוד שקורא ישירות
+          // מ-localStorage - כלומר נתונים ששמור מכשיר אחר היו "נעלמים" עד לכתיבה מקומית מפורשת.
+          try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {}
           return data;
         }
 
         if (response.status === 401) {
           if (!this._sharePointDisabled) {
             const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-            const msg = isLocal 
+            const msg = isLocal
               ? `[SharePoint] 401: הרצה מקומית ב-${location.hostname} (מעבר שקט ל-localStorage cache).`
               : `[SharePoint] 401 Unauthorized: שגיאת הרשאה מול SharePoint במיקום ${location.hostname} (מעבר שקט ל-localStorage cache).`;
             console.info(msg);
@@ -284,7 +290,13 @@ const DataService = {
       }
       const response = await fetch(url, { method: 'GET', headers });
       if (!response.ok) return null;
-      return await response.json();
+      const data = await response.json();
+      this._cache[key] = data;
+      // ראו הערה מקבילה ב-_loadFromSharePoint - חייבים לכתוב גם ל-localStorage, לא רק ל-_cache,
+      // כדי שקוד שקורא ישירות מ-localStorage.getItem (בלי דרך DataService) יראה נתונים ששמורים
+      // בשרת ברגע שמישהו כן שלף אותם, במקום להישאר תקוע על מטמון מקומי ריק/מיושן.
+      try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {}
+      return data;
     } catch (error) {
       console.error(`[MilitaryNet] GET error for ${key}:`, error);
       const val = localStorage.getItem(key);
@@ -340,5 +352,45 @@ const DataService = {
         await callback();                    // משיכה/רענון נתונים
       }
     }, CONFIG.SYNC_INTERVAL_MS);
+  },
+
+  /**
+   * העברה חד-פעמית של כל הנתונים שכבר קיימים ב-localStorage של המכשיר/דפדפן הזה לשרת המרוחק
+   * (SharePoint/רשת צבאית) שהוגדר כרגע ב-CONFIG.DATA_SOURCE.
+   *
+   * למה זה נחוץ: לפני שהמערכת עוברת ממצב 'local' לשרת מרכזי, כל הנתונים שנוצרו/נבדקו עד
+   * כה קיימים רק ב-localStorage של הדפדפן הנוכחי - הם *לא* עולים לשרת אוטומטית רק בגלל
+   * שינוי ההגדרה (DataService.setItem שולח לשרת רק בכתיבות *חדשות* שקורות מרגע המעבר
+   * והלאה). מריצים את הפונקציה הזו *פעם אחת*, מאותו הדפדפן שמכיל את הנתונים, מיד אחרי
+   * שמשנים את CONFIG.DATA_SOURCE ל-'sharepoint'/'military_net' ופורסים מחדש - למשל דרך
+   * קונסולת הדפדפן: DataService.migrateLocalDataToServer()
+   *
+   * הערה: הפעולה כותבת (overwrite) על השרת רק את המפתחות שקיימים במכשיר הזה - היא לא
+   * מוחקת שום דבר שכבר קיים בשרת תחת מפתחות אחרים. אם כמה דפדפנים/מכשירים שונים נוצלו
+   * לאורך הבדיקות (לפני המעבר לשרת), יש להריץ את הפונקציה מכל אחד מהם בנפרד כדי שכל
+   * הנתונים מכולם יעלו (לא רק מהמכשיר האחרון שהריץ אותה).
+   * @returns {Promise<{total:number, ok:number, failed:string[]}>}
+   */
+  async migrateLocalDataToServer() {
+    if (!this._isRemote()) {
+      console.warn('[DataService] migrateLocalDataToServer: CONFIG.DATA_SOURCE אינו sharepoint/military_net - אין מה להעביר.');
+      return { total: 0, ok: 0, failed: [] };
+    }
+    // מפתחות מקומיים-בלבד במובהק (העדפות תצוגה של המכשיר/הדפדפן הזה) - אין טעם/משמעות
+    // להעלות אותם לשרת המשותף.
+    const EXCLUDE_KEYS = new Set([this._syncQueueKey, 'sidebar_collapsed']);
+    const keys = Object.keys(localStorage).filter(k => !EXCLUDE_KEYS.has(k));
+
+    const failed = [];
+    let ok = 0;
+    for (const key of keys) {
+      let data;
+      try { data = JSON.parse(localStorage.getItem(key)); }
+      catch (e) { data = localStorage.getItem(key); }
+      const success = await this._remoteSave(key, data);
+      if (success) ok++; else failed.push(key);
+    }
+    console.info(`[DataService] migrateLocalDataToServer: ${ok}/${keys.length} מפתחות הועלו בהצלחה.`, failed.length ? { failed } : '');
+    return { total: keys.length, ok, failed };
   }
 };

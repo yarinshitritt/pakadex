@@ -162,13 +162,20 @@ const AUTH = {
   /**
    * התחברות לפי מספר אישי.
    * אתחול ראשוני: אם מאגר המשתמשים ריק, המשתמש הראשון שנכנס מוגדר כמנהל.
-   * @returns {{ok:boolean, error?:string, user?:object, bootstrapped?:boolean}}
+   *
+   * חשוב (מצב שרת מרוחק - SharePoint/רשת צבאית): הפונקציה תמיד מרעננת קודם את רשימת
+   * המשתמשים מהשרת (await refreshUsers) לפני שהיא מחליטה אם המאגר "ריק". בלי זה, במכשיר
+   * חדש שעדיין לא הספיק לסנכרן (למשל אם המשתמש מקליד/מעביר כרטיס מהר מאוד עם טעינת העמוד),
+   * loadUsers() המקומי-בלבד היה רואה מאגר ריק ו"מאתחל" את המכשיר הזה כמנהל חדש - מה שדורס
+   * בפועל את כל רשימת המשתמשים האמיתית על השרת (saveUsers עושה overwrite מלא). הפונקציה
+   * הפכה לאסינכרונית בגלל זה - כל קריאה ל-AUTH.login() חייבת עכשיו await.
+   * @returns {Promise<{ok:boolean, error?:string, user?:object, bootstrapped?:boolean}>}
    */
-  login(pn) {
+  async login(pn) {
     const clean = this.normalizePn(pn);
     if (!clean) return { ok: false, error: 'יש להזין מספר אישי.' };
 
-    const users = this.loadUsers();
+    const users = await this.refreshUsers();
 
     if (users.length === 0) {
       const admin = { pn: clean, name: 'מנהל ראשי', role: 'admin', unit: '' };

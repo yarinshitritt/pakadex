@@ -16,11 +16,14 @@
 }
 
 /* ================== ביטול פדינג בקונטיינר להצמדה מלאה לימין ================== */
+/* flex:1/overflow-y/max-height הוסרו מכאן בכוונה - היו קיימים כאן במקביל לכלל
+   .table-container.wide-table-scroll שב-style.css, וה-flex:1 גרם לקונטיינר להימתח
+   ולמלא את כל השטח האנכי הפנוי בעמוד (מעבר לגובה התוכן בפועל), מה שדחף את סרגל
+   הגלילה האופקי (שדפדפנים ממקמים בתחתית תיבת הגלילה, לא בתחתית התוכן שבתוכה) הרחק
+   מתחת לטבלה עצמה במסכים גדולים - בדיוק מה שהמשתמש דיווח (אפיון QA). גובה/גלילה
+   אנכית מנוהלים עכשיו אך ורק ע"י wide-table-scroll, בלי "מותחים" מתחרים. */
 .table-container {
-  flex: 1;
   overflow-x: auto;
-  overflow-y: auto;
-  max-height: calc(100vh - 145px);
   background-color: var(--card-bg, #ffffff);
   padding: 0 !important;
   border-radius: var(--radius-md, 8px);

@@ -11,6 +11,36 @@
    רשימת המשתמשים נשמרת דרך DataService (localStorage + סנכרון לשרת).
 ========================================================= */
 
+/**
+ * שולפת את פרופיל המשתמש המחובר מ-SharePoint דרך ה-CSOM JS (SP.js/SP.UserProfiles.js) -
+ * זהות ה-Windows/AD המאומתת של המשתמש (Smart Card Logon + Windows Integrated Authentication
+ * מול SharePoint), בלי הזנת סיסמה נוספת בדפדפן. משמשת את AUTH.tryAutoLoginFromSharePoint()
+ * לחילוץ המספר האישי משדה הפרופיל המוגדר ב-CONFIG.SHAREPOINT.PN_PROFILE_KEY.
+ * דורשת שהספריות SP.js/SP.Runtime.js/SP.UserProfiles.js/MicrosoftAjax.js (של SharePoint
+ * עצמו, נטענות מ-/_layouts/15/) כבר נטענו בעמוד לפני הקריאה - ראו תגי ה-script ב-login.html.
+ * @returns {Promise<Object>} מילון תכונות הפרופיל (get_userProfileProperties())
+ */
+function getCurrUser() {
+  return new Promise((resolve, reject) => {
+    let clientContext = new SP.ClientContext.get_current();
+    let peopleManager = new SP.UserProfiles.PeopleManager(clientContext);
+    let userProfileProperties = peopleManager.getMyProperties();
+    clientContext.load(userProfileProperties);
+
+    clientContext.executeQueryAsync(
+      function (sender, args) {
+        // הצלחה
+        let employee = userProfileProperties.get_userProfileProperties();
+        resolve(employee);
+      },
+      function (sender, args) {
+        // כשל
+        reject(args.get_message());
+      }
+    );
+  });
+}
+
 const AUTH = {
   USERS_KEY: 'pakadex_users',
   SESSION_KEY: 'pakadex_session',
@@ -220,21 +250,23 @@ const AUTH = {
       return { ok: false, error: 'no-profile-key-configured' };
     }
 
-    try {
-      const url = `${CONFIG.SHAREPOINT.SITE_URL}/_api/SP.UserProfiles.PeopleManager/GetMyProperties?$select=UserProfileProperties`;
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json;odata=verbose' },
-        credentials: 'same-origin'
-      });
-      if (!res.ok) {
-        return { ok: false, error: `http-${res.status}` };
-      }
+    if (typeof SP === 'undefined' || typeof SP.UserProfiles === 'undefined') {
+      console.warn('[AUTH] ספריות ה-CSOM של SharePoint (SP.js/SP.UserProfiles.js) לא נטענו בעמוד.');
+      return { ok: false, error: 'sp-csom-not-loaded' };
+    }
 
-      const data = await res.json();
-      const props = (data && data.d && data.d.UserProfileProperties && data.d.UserProfileProperties.results) || [];
-      const entry = props.find(p => p.Key === propKey);
-      const pn = this.normalizePn(entry ? entry.Value : '');
+    try {
+      // get_userProfileProperties() מחזירה מילון {שם-שדה: ערך} - לא מערך {Key,Value} כמו ב-REST
+      // API; שומרים תמיכה גם במערך למקרה שהצורה תשתנה בגרסת CSOM אחרת.
+      const employee = await getCurrUser();
+      let rawValue = '';
+      if (Array.isArray(employee)) {
+        const entry = employee.find(p => p.Key === propKey);
+        rawValue = entry ? entry.Value : '';
+      } else if (employee && typeof employee === 'object') {
+        rawValue = employee[propKey] || '';
+      }
+      const pn = this.normalizePn(rawValue);
       if (!pn) {
         return { ok: false, error: 'pn-not-found-in-profile' };
       }
@@ -248,7 +280,8 @@ const AUTH = {
       this.setSession(user);
       return { ok: true, user };
     } catch (e) {
-      return { ok: false, error: 'network-error' };
+      console.error('[AUTH] getCurrUser (SharePoint CSOM) נכשלה:', e);
+      return { ok: false, error: 'csom-error' };
     }
   },
 

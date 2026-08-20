@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css?v=60">
+  <link rel="stylesheet" href="style.css?v=61">
   <title>PAKADEX - כניסה למערכת</title>
   <style>
     body {
@@ -104,9 +104,9 @@
     <div class="card-note">💳 ניתן להעביר כרטיס חוגר בקורא — הקריאה תתבצע אוטומטית</div>
   </div>
 
-  <script src="config.js?v=60"></script>
-  <script src="sharepointService.js?v=60"></script>
-  <script src="auth.js?v=60"></script>
+  <script src="config.js?v=61"></script>
+  <script src="sharepointService.js?v=61"></script>
+  <script src="auth.js?v=61"></script>
   <script>
     // אם כבר קיים סשן פעיל - מעבר ישיר למערכת
     if (AUTH.getSession()) window.location.replace('index.html');
@@ -171,7 +171,43 @@
     document.addEventListener('click', () => pnInput.focus());
 
     /**
-     * ניסיון זיהוי אוטומטי דרך זהות ה-Windows/AD המאומתת (מפל"ז + SharePoint).
+     * טוענת סקריפט אחד ומחזירה Promise שנפתר כשהוא נטען (או נכשל).
+     */
+    function loadScriptOnce(src) {
+      return new Promise((resolve) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve(true);
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      });
+    }
+
+    /**
+     * טוענת את ספריות ה-CSOM של SharePoint (SP.js וכו', מוגשות תמיד מ-/_layouts/15/ באתר
+     * SharePoint עצמו) - ברצף, כי כל ספרייה תלויה בקודמת. נטענות רק כש-AUTO_LOGIN פעיל, כדי
+     * לא לגרום ל-404 מיותר בקונסולה בהרצה מקומית/פיתוח (DATA_SOURCE שאינו 'sharepoint').
+     */
+    async function loadSpCsomIfNeeded() {
+      const needsSpCsom = typeof CONFIG !== 'undefined'
+        && CONFIG.DATA_SOURCE === 'sharepoint'
+        && CONFIG.SHAREPOINT.AUTO_LOGIN;
+      if (!needsSpCsom) return;
+      const urls = [
+        '/_layouts/15/init.js',
+        '/_layouts/15/MicrosoftAjax.js',
+        '/_layouts/15/sp.runtime.js',
+        '/_layouts/15/sp.js',
+        '/_layouts/15/sp.userprofiles.js'
+      ];
+      for (const url of urls) {
+        await loadScriptOnce(url);
+      }
+    }
+
+    /**
+     * ניסיון זיהוי אוטומטי דרך זהות ה-Windows/AD המאומתת (מפל"ז + SharePoint, דרך getCurrUser
+     * ב-auth.js שמבוססת על ה-CSOM של SharePoint - ראו AUTH.tryAutoLoginFromSharePoint).
      * במקרה כשל (לא מוגדר / לא נמצא / שגיאת רשת) - נופל בחזרה בשקט למסך ההזנה הידנית/קורא הכרטיסים,
      * מבלי להציג שגיאה למשתמש (זו לא "טעות כניסה" אלא פשוט מעבר לזרימה הרגילה).
      */
@@ -179,6 +215,7 @@
       if (typeof AUTH.tryAutoLoginFromSharePoint !== 'function') return false;
       pnInput.disabled = true;
       pnInput.placeholder = 'מזהה משתמש...';
+      await loadSpCsomIfNeeded();
       const res = await AUTH.tryAutoLoginFromSharePoint();
       if (res.ok) {
         window.location.href = 'index.html';

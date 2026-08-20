@@ -75,14 +75,40 @@ const AUTH = {
      מאגר המשתמשים
   ========================================================= */
 
-  /** קריאה מיידית (סינכרונית) מהמטמון המקומי */
+  /** מנהל-על קבוע - חייב להתקיים תמיד במערכת בתור מנהל, גם אם רשימת המשתמשים מתאפסת/נמחקת
+      בטעות או בטרם הסתיים סנכרון ראשוני. ראו _ensurePermanentAdmin. */
+  PERMANENT_ADMIN: { pn: 's9385538', name: 'ירין שטרית', role: 'admin', unit: '' },
+
+  /**
+   * מוודאת שמנהל-העל הקבוע (PERMANENT_ADMIN) קיים ברשימה, בתפקיד מנהל ועם השם הנכון - ומתקנת
+   * זאת אם צריך (מוסיפה אם חסר, מתקנת תפקיד/שם אם שונו בטעות). לא כותבת בעצמה ל-localStorage/
+   * לשרת - זו אחריות הקורא, כדי שלא תתבצע שמירה "מפתיעה" מתוך פונקציית קריאה גרידא.
+   * @returns {{list: Array, changed: boolean}}
+   */
+  _ensurePermanentAdmin(list) {
+    const arr = Array.isArray(list) ? list.slice() : [];
+    const target = this.PERMANENT_ADMIN;
+    const idx = arr.findIndex(u => this.normalizePn(u.pn) === target.pn);
+    if (idx === -1) {
+      arr.push({ ...target });
+      return { list: arr, changed: true };
+    }
+    if (arr[idx].role !== 'admin' || arr[idx].name !== target.name) {
+      arr[idx] = { ...arr[idx], pn: target.pn, role: 'admin', name: target.name };
+      return { list: arr, changed: true };
+    }
+    return { list: arr, changed: false };
+  },
+
+  /** קריאה מיידית (סינכרונית) מהמטמון המקומי - תמיד כוללת את מנהל-העל הקבוע (ראו
+      _ensurePermanentAdmin), גם אם הוא עדיין לא הגיע למטמון המקומי מהשרת. */
   loadUsers() {
     try {
       const raw = localStorage.getItem(this.USERS_KEY);
       const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
+      return this._ensurePermanentAdmin(Array.isArray(list) ? list : []).list;
     } catch (e) {
-      return [];
+      return this._ensurePermanentAdmin([]).list;
     }
   },
 
@@ -97,22 +123,31 @@ const AUTH = {
     }
   },
 
-  /** רענון רשימת המשתמשים מהשרת (אם מוגדר) */
+  /** רענון רשימת המשתמשים מהשרת (אם מוגדר) - ומוודאת שמנהל-העל הקבוע קיים בה. אם הרשימה
+      התקבלה בפועל מהשרת (remote מאומת) והייתה חסרה/שגויה - התיקון גם נכתב חזרה (מקומית +
+      לשרת) כדי שיתפשט לכל המכשירים. אם הנפילה היא למטמון המקומי בלבד (השרת לא זמין כרגע) -
+      loadUsers() כבר מבטיחה את הרשימה בזיכרון, בלי לכתוב לשרת - כדי לא לדרוס בטעות רשימה
+      שלמה יותר שקיימת שם בפועל. */
   async refreshUsers() {
     if (typeof DataService === 'undefined') return this.loadUsers();
     const remote = await DataService.getItem(this.USERS_KEY);
     if (Array.isArray(remote)) {
-      try { localStorage.setItem(this.USERS_KEY, JSON.stringify(remote)); } catch (e) {
+      const { list: ensured, changed } = this._ensurePermanentAdmin(remote);
+      try { localStorage.setItem(this.USERS_KEY, JSON.stringify(ensured)); } catch (e) {
         if (typeof window !== 'undefined' && typeof window._handleStorageWriteFailure === 'function') window._handleStorageWriteFailure(e);
       }
-      return remote;
+      if (changed) DataService.setItem(this.USERS_KEY, ensured);
+      return ensured;
     }
     return this.loadUsers();
   },
 
-  /** נרמול מספר אישי (ספרות בלבד) - קורא הכרטיסים עלול להוסיף תווים */
+  /** נרמול מספר אישי - מתחיל תמיד באות s ואחריה ספרות (למשל s9385538). קורא הכרטיסים/הזנה
+      ידנית עשויים לספק רק ספרות (או s גדולה/קטנה) - האות מתווספת/מתוקנת אוטומטית כדי
+      שההשוואה תמיד עקבית בין מה שהוזן/נסרק לבין מה ששמור. */
   normalizePn(pn) {
-    return String(pn == null ? '' : pn).replace(/\D/g, '');
+    const digits = String(pn == null ? '' : pn).replace(/\D/g, '');
+    return digits ? 's' + digits : '';
   },
 
   findUser(pn) {
@@ -152,10 +187,14 @@ const AUTH = {
   },
 
   /**
-   * הסרת משתמש. לא ניתן להסיר את המנהל האחרון (כדי לא לנעול את המערכת).
+   * הסרת משתמש. לא ניתן להסיר את מנהל-העל הקבוע (PERMANENT_ADMIN), וגם לא את המנהל האחרון
+   * הנותר במערכת (כדי לא לנעול אותה).
    */
   removeUser(pn) {
     const clean = this.normalizePn(pn);
+    if (clean === this.PERMANENT_ADMIN.pn) {
+      return { ok: false, error: 'לא ניתן להסיר את מנהל-העל הקבוע של המערכת.' };
+    }
     const list = this.loadUsers();
     const target = list.find(u => this.normalizePn(u.pn) === clean);
     if (!target) return { ok: false, error: 'משתמש לא נמצא.' };

@@ -13,11 +13,10 @@ const CONFIG = {
   SHAREPOINT: {
     // הקישור לאתר ה-SharePoint שלכם - לפי הצילום מסך: /sites/more_nevochim
     SITE_URL: 'https://portal.army.idf/sites/more_nevochim',
-    // נתיב ספריית המסמכים לשמירת קבצי ה-.txt - לפי הצילום מסך: ספריית DocLib1, תיקיית
-    // בהל"ג, תת-תיקיית data. *** ודא/י שהמרכאות בשם "בהל"ג" תואמות בדיוק למה שמופיע
-    // בפועל ב-SharePoint (גרשיים עבריות ״ או גרש רגיל ") - אם ההעלאה נכשלת עם שגיאת
-    // 404, זה המקום הראשון לבדוק. ***
-    FOLDER_PATH: '/sites/more_nevochim/DocLib1/בהל"ג/data',
+    // נתיב ספריית המסמכים לשמירת קבצי ה-.txt - "בהל"ג" הוא רק שם התצוגה של ספריית
+    // DocLib1 (מוצג ככותרת בעמוד), לא תיקייה בנתיב עצמו - אומת ישירות מפרמטר ה-id
+    // בכתובת האתר (id=%2Fsites%2Fmore_nevochim%2FDocLib1%2Fdata אחרי פענוח ה-URL).
+    FOLDER_PATH: '/sites/more_nevochim/DocLib1/data',
 
     // התחברות אוטומטית דרך זהות ה-Windows/AD המאומתת (מפל"ז + Smart Card Logon + Windows
     // Integrated Authentication מול SharePoint) - במקום הזנת מספר אישי ידנית.

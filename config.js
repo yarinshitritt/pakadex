@@ -22,11 +22,11 @@ const CONFIG = {
     // Integrated Authentication מול SharePoint) - במקום הזנת מספר אישי ידנית.
     // AUTO_LOGIN: true/false - האם לנסות זיהוי אוטומטי בעת טעינת מסך הכניסה.
     AUTO_LOGIN: true,
-    // שם שדה הפרופיל (User Profile Property key) ב-SharePoint שמכיל את המספר האישי,
-    // כפי שמסונכרן מ-Active Directory דרך User Profile Sync.
-    // *** יש לוודא מול מנהל ה-SharePoint/AD מהו שם המאפיין המדויק לפני הפעלת AUTO_LOGIN ***
-    // (בד"כ מאפיין מותאם-אישית כמו 'employeeID' או 'CustomAttribute1' - תלוי כיצד הוגדר המיפוי מ-AD).
-    PN_PROFILE_KEY: ''
+    // שם שדה הפרופיל (User Profile Property key) ב-SharePoint שמכיל את המספר האישי -
+    // אומת ישירות מפלט GetMyProperties בפועל: <d:Key>UserName</d:Key><d:Value>s9385538</d:Value>
+    // (הערך שם נקי - בלי קידומת דומיין כמו ב-AccountName/SPS-SavedAccountName, ובלי
+    // סיומת @idf.il כמו ב-WorkEmail/SPS-UserPrincipalName).
+    PN_PROFILE_KEY: 'UserName'
   },
 
   // הגדרות רשת צבאית (ליום המעבר לרשת המסווגת - משנים רק את ה-BASE_URL)

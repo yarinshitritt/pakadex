@@ -19,6 +19,16 @@ const DataService = {
     return CONFIG.DATA_SOURCE === 'sharepoint' || CONFIG.DATA_SOURCE === 'military_net';
   },
 
+  /**
+   * מקודדת נתיב שרת (server-relative URL) לשימוש בטוח בתוך פונקציית OData כמו
+   * GetFileByServerRelativeUrl('...') - מקודדת כל מקטע בנפרד (לא את ה-'/' עצמו), כדי
+   * שתווים מיוחדים בשם תיקייה/קובץ (עברית, רווחים, גרשיים) לא ישברו את התחביר של קריאת
+   * ה-REST (במיוחד גרש בודד ' שהיה מסיים את המחרוזת המצוטטת של הפונקציה באמצע השם).
+   */
+  _encodeSpPath(path) {
+    return String(path).split('/').map(seg => encodeURIComponent(seg)).join('/');
+  },
+
   /** שמירה בפועל מול השרת המרכזי המתאים */
   async _remoteSave(key, data) {
     if (CONFIG.DATA_SOURCE === 'sharepoint') return await this._saveToSharePoint(key, data);
@@ -141,17 +151,13 @@ const DataService = {
     }
 
     const fileName = `${key}.txt`;
-    const pathsToTry = [
-      CONFIG.SHAREPOINT.FOLDER_PATH,
-      '/sites/PakadexData/PakadexData',
-      '/sites/PakadexData/Shared Documents/PakadexData'
-    ];
-
-    // הסרת כפילויות במערך
-    const uniquePaths = [...new Set(pathsToTry.filter(Boolean))];
+    // רשימת נתיבי-גיבוי לדוגמה (placeholder) הוסרה - הנתיב האמיתי מוגדר עכשיו ב-
+    // CONFIG.SHAREPOINT.FOLDER_PATH, ונתיבי הדוגמה הישנים ('PakadexData/PakadexData')
+    // תמיד היו נכשלים בכל מקרה מול השרת האמיתי (404 מיותר בכל טעינה).
+    const uniquePaths = [CONFIG.SHAREPOINT.FOLDER_PATH].filter(Boolean);
 
     for (const folderPath of uniquePaths) {
-      const url = `${CONFIG.SHAREPOINT.SITE_URL}/_api/web/GetFileByServerRelativeUrl('${folderPath}/${fileName}')/$value`;
+      const url = `${CONFIG.SHAREPOINT.SITE_URL}/_api/web/GetFileByServerRelativeUrl('${this._encodeSpPath(folderPath + '/' + fileName)}')/$value`;
 
       try {
         const headers = { 'Accept': 'application/json;odata=verbose' };
@@ -226,17 +232,11 @@ const DataService = {
     }
 
     const fileName = `${key}.txt`;
-    const pathsToTry = [
-      CONFIG.SHAREPOINT.FOLDER_PATH,
-      '/sites/PakadexData/PakadexData',
-      '/sites/PakadexData/Shared Documents/PakadexData'
-    ];
-
-    const uniquePaths = [...new Set(pathsToTry.filter(Boolean))];
+    const uniquePaths = [CONFIG.SHAREPOINT.FOLDER_PATH].filter(Boolean);
     const digest = await this.getFormDigest();
 
     for (const folderPath of uniquePaths) {
-      const url = `${CONFIG.SHAREPOINT.SITE_URL}/_api/web/GetFolderByServerRelativeUrl('${folderPath}')/Files/add(url='${fileName}',overwrite=true)`;
+      const url = `${CONFIG.SHAREPOINT.SITE_URL}/_api/web/GetFolderByServerRelativeUrl('${this._encodeSpPath(folderPath)}')/Files/add(url='${encodeURIComponent(fileName)}',overwrite=true)`;
 
       try {
         const headers = {

@@ -7,19 +7,22 @@ const CONFIG = {
   // 'sharepoint'   - שמירה בקבצי JSON ב-SharePoint Document Library בענן
   // 'military_net' - שמירה בשרת API צה"לי פנימי (למצב מבצעי/מסווג)
   // 'local'        - שמירה מקומית ב-localStorage של הדפדפן (לפיתוח/אופליין)
-  DATA_SOURCE: 'local',
+  DATA_SOURCE: 'sharepoint',
 
   // הגדרות SharePoint
   SHAREPOINT: {
-    // הקישור לאתר ה-SharePoint שלכם
-    SITE_URL: 'https://tikshuv.sharepoint.com/sites/PakadexData',
-    // נתיב ספריית המסמכים לשמירת קבצי ה-JSON
-    FOLDER_PATH: '/sites/PakadexData/PakadexData',
+    // הקישור לאתר ה-SharePoint שלכם - לפי הצילום מסך: /sites/more_nevochim
+    SITE_URL: 'https://portal.army.idf/sites/more_nevochim',
+    // נתיב ספריית המסמכים לשמירת קבצי ה-.txt - לפי הצילום מסך: ספריית DocLib1, תיקיית
+    // בהל"ג, תת-תיקיית data. *** ודא/י שהמרכאות בשם "בהל"ג" תואמות בדיוק למה שמופיע
+    // בפועל ב-SharePoint (גרשיים עבריות ״ או גרש רגיל ") - אם ההעלאה נכשלת עם שגיאת
+    // 404, זה המקום הראשון לבדוק. ***
+    FOLDER_PATH: '/sites/more_nevochim/DocLib1/בהל"ג/data',
 
     // התחברות אוטומטית דרך זהות ה-Windows/AD המאומתת (מפל"ז + Smart Card Logon + Windows
     // Integrated Authentication מול SharePoint) - במקום הזנת מספר אישי ידנית.
     // AUTO_LOGIN: true/false - האם לנסות זיהוי אוטומטי בעת טעינת מסך הכניסה.
-    AUTO_LOGIN: false,
+    AUTO_LOGIN: true,
     // שם שדה הפרופיל (User Profile Property key) ב-SharePoint שמכיל את המספר האישי,
     // כפי שמסונכרן מ-Active Directory דרך User Profile Sync.
     // *** יש לוודא מול מנהל ה-SharePoint/AD מהו שם המאפיין המדויק לפני הפעלת AUTO_LOGIN ***

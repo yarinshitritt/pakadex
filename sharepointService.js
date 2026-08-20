@@ -140,7 +140,7 @@ const DataService = {
       return val ? JSON.parse(val) : null;
     }
 
-    const fileName = `${key}.json`;
+    const fileName = `${key}.txt`;
     const pathsToTry = [
       CONFIG.SHAREPOINT.FOLDER_PATH,
       '/sites/PakadexData/PakadexData',
@@ -225,7 +225,7 @@ const DataService = {
       return false;
     }
 
-    const fileName = `${key}.json`;
+    const fileName = `${key}.txt`;
     const pathsToTry = [
       CONFIG.SHAREPOINT.FOLDER_PATH,
       '/sites/PakadexData/PakadexData',

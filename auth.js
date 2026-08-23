@@ -41,6 +41,42 @@ function getCurrUser() {
   });
 }
 
+/**
+ * טוענת סקריפט אחד ומחזירה Promise שנפתר כשהוא נטען (או נכשל).
+ */
+function loadScriptOnce(src) {
+  return new Promise((resolve) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+}
+
+/**
+ * טוענת את ספריות ה-CSOM של SharePoint (SP.js וכו', מוגשות תמיד מ-/_layouts/15/ באתר
+ * SharePoint עצמו) - ברצף, כי כל ספרייה תלויה בקודמת. נטענות רק כש-AUTO_LOGIN פעיל, כדי
+ * לא לגרום ל-404 מיותר בקונסולה בהרצה מקומית/פיתוח (DATA_SOURCE שאינו 'sharepoint').
+ * הועברה לכאן (מתוך login.html הישן) - נדרשת כעת בכל עמוד מוגן, לא רק במסך כניסה נפרד.
+ */
+async function loadSpCsomIfNeeded() {
+  const needsSpCsom = typeof CONFIG !== 'undefined'
+    && CONFIG.DATA_SOURCE === 'sharepoint'
+    && CONFIG.SHAREPOINT.AUTO_LOGIN;
+  if (!needsSpCsom) return;
+  const urls = [
+    '/_layouts/15/init.js',
+    '/_layouts/15/MicrosoftAjax.js',
+    '/_layouts/15/sp.runtime.js',
+    '/_layouts/15/sp.js',
+    '/_layouts/15/sp.userprofiles.js'
+  ];
+  for (const url of urls) {
+    await loadScriptOnce(url);
+  }
+}
+
 const AUTH = {
   USERS_KEY: 'pakadex_users',
   SESSION_KEY: 'pakadex_session',
@@ -262,9 +298,11 @@ const AUTH = {
     return { ok: true, user };
   },
 
+  /** אין יותר עמוד כניסה נפרד - חוזרים ל-index.html, ומסך הזיהוי (_renderAuthGate) יעלה
+      שם אוטומטית כי אין סשן פעיל (ראו requireAuth). */
   logout() {
     this.clearSession();
-    window.location.href = 'login.html';
+    window.location.href = 'index.html';
   },
 
   /**
@@ -394,17 +432,141 @@ const AUTH = {
   },
 
   /**
-   * שומר כניסה: מפנה למסך ההתחברות אם אין סשן פעיל.
-   * @returns {object|null} המשתמש המחובר, או null אם הופנה להתחברות
+   * שומר כניסה: אם אין סשן פעיל, מציגה את מסך הזיהוי *מעל העמוד הנוכחי* (ראו
+   * _renderAuthGate) במקום לנווט לעמוד כניסה נפרד - כדי שזיהוי (כרטיס חוגר בקורא/SSO)
+   * יקרה אוטומטית ברקע בלי שום פעולה של המשתמש, בלי תלות בעמוד ספציפי שנטען קודם.
+   * @returns {object|null} המשתמש המחובר, או null אם מסך הזיהוי מוצג
    */
   requireAuth() {
     const s = this.getSession();
     if (!s) {
-      if (this.currentPage() !== 'login.html') {
-        window.location.replace('login.html');
-      }
+      this._renderAuthGate();
       return null;
     }
     return s;
+  },
+
+  /**
+   * מציגה שכבה מלאה מעל העמוד הנוכחי (במקום עמוד login.html נפרד שהוסר) שמזהה את המשתמש
+   * בשתי דרכים, שתיהן רצות אוטומטית בלי שום קליק:
+   *   1. SSO/CSOM - זהות ה-Windows המאומתת (ראו tryAutoLoginFromSharePoint).
+   *   2. קורא כרטיסי חוגר - מכשיר שמדמה מקלדת; מספיק ששדה הקלט יהיה ממוקד (autofocus,
+   *      וממוקד-מחדש בכל קליק) כדי שהתווים שהוא "מקליד" בזמן שהכרטיס מוכנס יתקבלו וישלחו
+   *      אוטומטית ב-Enter - בלי שהמשתמש צריך ללחוץ על כלום בעצמו.
+   * שדה הקלט *לא* ננעל בזמן ניסיון ה-SSO (בניגוד למימוש הקודם) - כדי שקריאת כרטיס/הקלדה
+   * שמגיעה בול באותו הרגע לא תיבלע בשקט.
+   * @param {Function} [onSuccess] - נקראת אחרי כניסה מוצלחת; ברירת מחדל: רענון העמוד
+   */
+  _renderAuthGate(onSuccess) {
+    if (document.getElementById('pakadexAuthGate')) return; // כבר מוצג - לא כופלים
+
+    const style = document.createElement('style');
+    style.id = 'pakadexAuthGateStyle';
+    style.textContent = `
+      #pakadexAuthGate { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+      #pakadexAuthGate .login-card { width:380px; max-width:92vw; background:#ffffff; border-radius:16px;
+        box-shadow:0 25px 50px rgba(0,0,0,0.35); padding:34px 30px 28px; text-align:center; }
+      #pakadexAuthGate .login-logo { font-family:'Montserrat', sans-serif; font-weight:800; font-size:36px; color:#0f172a; letter-spacing:1px; }
+      #pakadexAuthGate .login-sub { color:#64748b; font-weight:600; margin:2px 0 24px; font-size:14px; }
+      #pakadexAuthGate .login-label { display:block; text-align:right; font-weight:700; margin-bottom:6px; color:#0f172a; font-size:14px; }
+      #pakadexAuthGate .login-input { width:100%; height:52px; font-size:24px; font-weight:800; text-align:center;
+        border:2px solid #e2e8f0; border-radius:10px; outline:none; letter-spacing:3px; font-family:inherit;
+        transition:border-color 0.15s; box-sizing:border-box; }
+      #pakadexAuthGate .login-input:focus { border-color:#0284c7; box-shadow:0 0 0 3px rgba(2,132,199,0.15); }
+      #pakadexAuthGate .login-btn { width:100%; height:48px; margin-top:16px; border:none; border-radius:10px;
+        background:linear-gradient(135deg, #0284c7, #0369a1); color:#fff; font-size:17px; font-weight:800;
+        font-family:inherit; cursor:pointer; transition:all 0.2s; }
+      #pakadexAuthGate .login-btn:hover { transform:translateY(-2px); box-shadow:0 10px 20px rgba(2,132,199,0.35); }
+      #pakadexAuthGate .login-error { color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; border-radius:8px;
+        font-weight:700; font-size:13.5px; margin-top:14px; padding:9px 12px; display:none; }
+      #pakadexAuthGate .login-hint { color:#92400e; background:#fef3c7; border:1px solid #fcd34d; border-radius:8px;
+        font-size:12.5px; font-weight:700; margin-top:16px; padding:9px 12px; display:none; }
+      #pakadexAuthGate .card-note { color:#94a3b8; font-size:12px; margin-top:18px; }
+    `;
+    document.head.appendChild(style);
+
+    const gate = document.createElement('div');
+    gate.id = 'pakadexAuthGate';
+    gate.setAttribute('dir', 'rtl');
+    gate.innerHTML = `
+      <div class="login-card">
+        <div class="login-logo">PAKADEX</div>
+        <div class="login-sub">מערכת ניהול משאבים ותיאומים</div>
+        <label class="login-label" for="pakadexGatePnInput">מספר אישי</label>
+        <input type="text" id="pakadexGatePnInput" class="login-input" inputmode="numeric" autocomplete="off"
+               placeholder="הזן מספר אישי" autofocus>
+        <button type="button" class="login-btn" id="pakadexGateBtn">כניסה למערכת ➔</button>
+        <div id="pakadexGateError" class="login-error"></div>
+        <div id="pakadexGateHint" class="login-hint"></div>
+        <div class="card-note">💳 ניתן להעביר כרטיס חוגר בקורא — הקריאה תתבצע אוטומטית</div>
+      </div>
+    `;
+    document.body.appendChild(gate);
+
+    const pnInput = document.getElementById('pakadexGatePnInput');
+    const errEl = document.getElementById('pakadexGateError');
+    const hintEl = document.getElementById('pakadexGateHint');
+
+    const finish = () => {
+      gate.remove();
+      style.remove();
+      if (typeof onSuccess === 'function') onSuccess(); else window.location.reload();
+    };
+
+    const showError = (msg) => {
+      errEl.textContent = msg;
+      errEl.style.display = 'block';
+      pnInput.select();
+    };
+
+    const refreshHint = () => {
+      if (this.loadUsers().length === 0) {
+        hintEl.textContent = 'התחברות ראשונה: המספר האישי הראשון שיוזן יוגדר אוטומטית כמנהל המערכת.';
+        hintEl.style.display = 'block';
+      } else {
+        hintEl.style.display = 'none';
+      }
+    };
+
+    let loginInFlight = false;
+    const attemptLogin = async () => {
+      if (loginInFlight) return;
+      errEl.style.display = 'none';
+      loginInFlight = true;
+      pnInput.disabled = true;
+      try {
+        const res = await this.login(pnInput.value);
+        if (res.ok) { finish(); return; }
+        showError(res.error || 'שגיאת התחברות.');
+      } finally {
+        loginInFlight = false;
+        pnInput.disabled = false;
+        pnInput.focus();
+      }
+    };
+
+    pnInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); attemptLogin(); }
+    });
+    document.getElementById('pakadexGateBtn').addEventListener('click', attemptLogin);
+    // ניקוי תווים שאינם ספרות (קורא הכרטיסים עלול לשלוח תווי בקרה)
+    pnInput.addEventListener('input', () => {
+      const clean = pnInput.value.replace(/\D/g, '');
+      if (clean !== pnInput.value) pnInput.value = clean;
+    });
+    // שמירה על הפוקוס בשדה כדי שקריאת כרטיס תיקלט תמיד
+    gate.addEventListener('click', () => pnInput.focus());
+    pnInput.focus();
+    refreshHint();
+
+    // ניסיון SSO ברקע - לא חוסם/נועל את השדה, כדי שקריאת כרטיס במקביל לא תיבלע
+    (async () => {
+      if (typeof this.tryAutoLoginFromSharePoint !== 'function') return;
+      try { if (typeof DataService !== 'undefined') await this.refreshUsers(); } catch (e) {}
+      await loadSpCsomIfNeeded();
+      const res = await this.tryAutoLoginFromSharePoint();
+      if (res.ok) finish();
+    })();
   }
 };

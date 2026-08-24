@@ -1,5 +1,6 @@
 /* ================== FONT & BASE STYLES FOR MODIEIN ================== */
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap');
+/* הפונט 'Assistant' כבר מוגדר גלובלית ב-fonts.css (מיובא מתוך style.css, שנטען בכל עמוד) -
+   הוסר כפל @import חיצוני ל-Google Fonts מכאן, שלא היה עובד ברשת מסווגת/מבודדת מהאינטרנט. */
 
 .modieintable,
 .modieintable th,

@@ -237,7 +237,6 @@ function renderNavbars() {
         ${AUTH.canManageUsers()
           ? '<button class="user-chip-btn" onclick="clearViewedWeek(); clearViewedCategory(); window.location.href=\'users.html\'" title="ניהול הרשאות">👥</button>'
           : ''}
-        <button class="user-chip-btn logout" onclick="AUTH.logout()" title="יציאה מהמערכת">⏻</button>
       </div>
     ` : '';
 
@@ -282,7 +281,7 @@ function renderNavbars() {
     const toolbarRowBlock = !isMain ? `
       <div class="toolbar-row">
         <div class="nav-tabs ${!isUnitPage ? 'nav-tabs-master' : ''}">
-          <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">קשר</button>
+          <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">תקשוב</button>
           <button class="topnav-btn ${isOptic ? 'active' : ''}" id="btn-optic" onclick="${isUnitPage ? "showTopSection('optic')" : "window.location.href='optic.html'"}">אופטיקה</button>
           <button class="topnav-btn ${isModiein ? 'active' : ''}" id="btn-modiein" onclick="${isUnitPage ? "showTopSection('modiein')" : "window.location.href='modiein.html'"}">מודיעין</button>
           <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
@@ -418,14 +417,13 @@ function getISOWeekInfo(date) {
 }
 
 /**
- * מספר שבועות ה-ISO בשנה נתונה (52 או 53) - לפי תקן ISO-8601 (28 בדצמבר תמיד נמצא
- * בשבוע ה-ISO האחרון של השנה). חשוב להשתמש בזה במקום קבוע קשיח - שנה עם 53 שבועות
- * שמטופלת כאילו יש בה רק 52 גורמת לשבוע ה-53 האמיתי להתמזג בטעות עם נתוני שבוע 52.
+ * מספר השבועות בשנה - קבוע תמיד על 52 (לא לפי תקן ISO-8601, שבחלק מהשנים היה מחשב 53
+ * ומייצר שבוע נוסף שלא מתאים למבנה הטבלאות/ניווט הקבוע של המערכת).
  * @param {number} year
- * @returns {number} 52 או 53
+ * @returns {number} 52 תמיד
  */
 function getWeeksInYear(year) {
-  return getISOWeekInfo(new Date(year, 11, 28)).week;
+  return 52;
 }
 
 /**
@@ -536,20 +534,6 @@ async function loadTableData(tableId, week, year) {
   ];
   const isDynamic = dynamicTables.includes(tableId);
 
-  if (isDynamic) {
-    const tbody = table.tBodies[0];
-    while (tbody.rows.length > 2) {
-      tbody.deleteRow(-1);
-    }
-  }
-
-  table.querySelectorAll('.cell-input').forEach(input => {
-    input.value = '';
-    if (input.classList.contains('topic-textarea')) {
-      autoResizeTopicTextarea(input);
-    }
-  });
-
   const key = getStorageKey(tableId, week, year);
   // בטבלאות המשולבות (קשר/אופטיקה) משתמש שאינו מורשה לערוך את העמוד הזה (יחידתי/צפייה בלבד)
   // חייב לראות את הגרסה המופצת בפועל, לא את הטיוטה החיה של המנהל - אחרת הוא רואה שינויים
@@ -559,88 +543,97 @@ async function loadTableData(tableId, week, year) {
   const effectiveKey = canViewDraft ? key : (key + '_published');
   const data = await fetchTableData(effectiveKey);
 
-  if (data) {
-    if (isDynamic) {
+  // אם המשתמש כבר עבר לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר (תשובה איטית מרשת
+  // אמיתית, או מחזור רענון אוטומטי ישן שהתעכב) - זורקים את התוצאה הזו ולא נוגעים ב-DOM בכלל.
+  // בלי הבדיקה הזו, תשובה איטית לשבוע ישן שמגיעה *אחרי* שכבר עברו לשבוע חדש "מדביקה" בטעות
+  // את הנתונים הישנים על התצוגה של השבוע החדש - זה בדיוק הבאג שדווח ("שבוע מסוים מועתק
+  // לשבוע אחר" בזמן מעבר בין שבועות, אומת ישירות עם מעקב רציף אחרי ה-DOM תחת השהיית רשת
+  // מלאכותית - אפיון QA).
+  if (week !== currentWeek || year !== currentYear) return;
+
+  // מתאימים את מספר השורות (טבלאות דינמיות) *רק אם צריך בפועל* - בעבר הקוד תמיד כיווץ
+  // ל-2 שורות ואז בנה מחדש, בכל מחזור רענון אוטומטי (כל כמה שניות) - גם כשמספר השורות בפועל
+  // לא השתנה כלל, מה שגרם לשורות "להיעלם" לרגע (אותה תבנית באג כמו ב-renderDynamicTableStructure,
+  // ראו שם - אפיון QA: "הנתונים נעלמים לרגע כל כמה שניות").
+  if (isDynamic) {
+    const tbody = table.tBodies[0];
+    let requiredRows = 2; // מינימום: שורת נושא + שורה ריקה אחת
+    if (data) {
       const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
       if (keysWithData.length > 0) {
         const maxIndex = Math.max(...keysWithData.map(Number));
         let inputsPerRow = 7;
-        if (table.tBodies[0].rows[1]) {
-          inputsPerRow = table.tBodies[0].rows[1].querySelectorAll('.cell-input').length;
+        if (tbody.rows[1]) {
+          inputsPerRow = tbody.rows[1].querySelectorAll('.cell-input').length;
         }
-
         if (inputsPerRow > 0 && maxIndex >= 0) {
-          const requiredRows = Math.floor(maxIndex / inputsPerRow) + 1;
-          while (table.tBodies[0].rows.length < requiredRows) {
-            addNewRow(tableId, false);
-          }
+          requiredRows = Math.max(requiredRows, Math.floor(maxIndex / inputsPerRow) + 1);
         }
       }
     }
+    while (tbody.rows.length > requiredRows) {
+      tbody.deleteRow(-1);
+    }
+    while (tbody.rows.length < requiredRows) {
+      addNewRow(tableId, false);
+    }
+  }
 
-    const inputs = table.querySelectorAll('.cell-input');
-    
-    // Check for manager published data to highlight changes in orange
-    let managerPublishedData = {};
-    if (MANAGER_TRACKED_TABLES.includes(tableId)) {
-      const managerPublishedKey = getStorageKey(tableId, week, year) + '_published';
-      if (typeof fetchTableData === 'function') {
-        managerPublishedData = await fetchTableData(managerPublishedKey) || {};
-      } else {
-        managerPublishedData = JSON.parse(localStorage.getItem(managerPublishedKey) || '{}');
+  const inputs = table.querySelectorAll('.cell-input');
+
+  // Check for manager published data to highlight changes in orange
+  let managerPublishedData = {};
+  if (data && MANAGER_TRACKED_TABLES.includes(tableId)) {
+    const managerPublishedKey = getStorageKey(tableId, week, year) + '_published';
+    managerPublishedData = (typeof fetchTableData === 'function')
+      ? (await fetchTableData(managerPublishedKey) || {})
+      : JSON.parse(localStorage.getItem(managerPublishedKey) || '{}');
+  }
+
+  // סימוני "ממתין לייבוא" רלוונטיים רק למי שבכלל רואה את הטיוטה (מנהל/עורך) - צופה
+  // שמוגבל לגרסה המופצת רואה ערכים שכבר זהים לפרסום מטבעם, ואין טעם/משמעות לסמן אותם.
+  const pendingIndexes = (data && isMasterCombined && canViewDraft)
+    ? await loadPendingImportIndexes(tableId, week, year)
+    : [];
+  const pendingSet = new Set(pendingIndexes);
+
+  // ממלאים כל תא ישירות לערך הסופי שלו (מהנתון השמור אם קיים, אחרת ריק) - במעבר אחד על
+  // פני כל התאים, בלי שלב-ביניים שמרוקן את כולם קודם ורק אחר כך ממלא מחדש. הריקון-ואז-מילוי
+  // הישן יצר חלון זמן אמיתי (בזמן ה-await לשרת) שבו כל התאים נראים ריקים - בדיוק זה גרם
+  // לנתונים "להיעלם לרגע" בכל מחזור רענון אוטומטי (כל כמה שניות, אפיון QA).
+  inputs.forEach((input, idx) => {
+    const hasVal = !!(data && data[idx] !== undefined);
+    input.value = hasVal ? data[idx] : '';
+    // הצבת value ישירות לא מפעילה אירוע 'input' (רק הקלדה אמיתית/dispatchEvent מפעילים אותו) -
+    // בלי הקריאה הזו, תיבת "נושא שבוע"/"הערות משיכה\זיכוי" נשארת בגובה המינימלי שנקבע כשהתא
+    // היה ריק, כך שטקסט ארוך שהוזן קודם נשאר קיים ב-value אך "נעלם" ויזואלית (אפיון QA:
+    // "שיראו את כל הטקסט שמכניסים").
+    if (input.classList.contains('topic-textarea')) autoResizeTopicTextarea(input);
+
+    if (!hasVal) return;
+
+    // Add conflict-overlap if this is a manager table and value differs from published.
+    // בטבלאות המשולבות (קשר/אופטיקה) הסימון לא נקבע כאן (draft מול published) אלא לפי
+    // רשימת האינדקסים הממתינים (pendingSet) - כדי לא לתלות אותו בעריכה ישירה של המנהל.
+    if (MANAGER_TRACKED_TABLES.includes(tableId) && !isMasterCombined) {
+      const publishedVal = managerPublishedData[idx] || '';
+      if (data[idx] !== publishedVal) {
+        const td = input.closest('td');
+        if (td) td.classList.add('conflict-overlap');
       }
     }
-
-    Object.keys(data).forEach(indexStr => {
-      const idx = parseInt(indexStr);
-      if (inputs[idx]) {
-        inputs[idx].value = data[indexStr];
-        // הצבת value ישירות לא מפעילה אירוע 'input' (רק הקלדה אמיתית/dispatchEvent מפעילים אותו) -
-        // בלי זה, תיבת "נושא שבוע"/"הערות משיכה\זיכוי" נשארת בגובה המינימלי שנקבע כשרוקנו אותה קודם
-        // (שורה 546-551 למעלה), כך שטקסט ארוך שהוזן קודם נשאר קיים ב-value אך "נעלם" ויזואלית
-        // בכל טעינה/רענון מחדש (אפיון QA: "שיראו את כל הטקסט שמכניסים").
-        if (inputs[idx].classList.contains('topic-textarea')) {
-          autoResizeTopicTextarea(inputs[idx]);
-        }
-
-        // Add conflict-overlap if this is a manager table and value differs from published.
-        // בטבלאות המשולבות (קשר/אופטיקה) הסימון לא נקבע כאן (draft מול published) אלא לפי
-        // רשימת האינדקסים הממתינים (ראו למטה) - כדי לא לתלות אותו בעריכה ישירה של המנהל.
-        if (MANAGER_TRACKED_TABLES.includes(tableId) && !isMasterCombined) {
-          const publishedVal = managerPublishedData[indexStr] || '';
-          if (data[indexStr] !== publishedVal) {
-            const td = inputs[idx].closest('td');
-            if (td) td.classList.add('conflict-overlap');
-          }
-        }
-      }
-    });
-
-    // סימוני "ממתין לייבוא" רלוונטיים רק למי שבכלל רואה את הטיוטה (מנהל/עורך) - צופה
-    // שמוגבל לגרסה המופצת רואה ערכים שכבר זהים לפרסום מטבעם, ואין טעם/משמעות לסמן אותם.
-    if (isMasterCombined && canViewDraft) {
-      const pendingIndexes = await loadPendingImportIndexes(tableId, week, year);
-      pendingIndexes.forEach(idx => {
-        if (inputs[idx]) {
-          const td = inputs[idx].closest('td');
-          if (td) td.classList.add('conflict-overlap');
-        }
-      });
+    if (isMasterCombined && canViewDraft && pendingSet.has(idx)) {
+      const td = input.closest('td');
+      if (td) td.classList.add('conflict-overlap');
     }
+  });
 
-    inputs.forEach(input => {
-      if (input.classList.contains('topic-textarea')) {
-        autoResizeTopicTextarea(input);
-      }
-    });
-
-    if (isDynamic) {
-      const tbody = table.tBodies[0];
-      const lastRow = tbody.lastElementChild;
-      if (lastRow) {
-        const isLastRowEmpty = Array.from(lastRow.querySelectorAll('.cell-input')).every(input => input.value.trim() === '');
-        if (!isLastRowEmpty) addNewRow(tableId, false);
-      }
+  if (data && isDynamic) {
+    const tbody = table.tBodies[0];
+    const lastRow = tbody.lastElementChild;
+    if (lastRow) {
+      const isLastRowEmpty = Array.from(lastRow.querySelectorAll('.cell-input')).every(input => input.value.trim() === '');
+      if (!isLastRowEmpty) addNewRow(tableId, false);
     }
   }
 
@@ -795,16 +788,25 @@ let _publishIndicatorObserver = null;
  * מפעילה בדיקה שצובעת את כפתור "הפץ שינויים"/"שמור ומוכן לייבוא" (אדום/ירוק) -
  * ראו updateGlobalExportButtonStatus.
  */
+// ההגנה מפני הרצות חופפות נמצאת בפועל בתוך updateGlobalExportButtonStatus עצמה (כדי לחול
+// גם על מקומות בקוד שקוראים לה ישירות, לא רק דרך הפונקציה הזו) - ראו ההערה שם.
 async function updatePublishIndicator() {
   await updateGlobalExportButtonStatus();
 }
 
 /**
  * מפעילה מעקב (MutationObserver) שמעדכן את סממן ההפצה בכל שינוי בסימוני הכתום בעמוד.
+ * מקבצת (debounce) פרצי שינויים סמוכים למחזור בדיקה אחד - בטבלאות האינטראקטיביות
+ * (חדר"ג/שק"ם/צביעת תאים/גרירה) שינויי class יכולים לקרות עשרות פעמים בשנייה; בלי הקיבוץ
+ * הזה כל שינוי כזה פתח סבב בדיקות רשת נפרד לגמרי (אפיון QA).
  */
+let _publishIndicatorDebounceTimer = null;
 function initPublishIndicatorObserver() {
   if (_publishIndicatorObserver) return;
-  _publishIndicatorObserver = new MutationObserver(() => updatePublishIndicator());
+  _publishIndicatorObserver = new MutationObserver(() => {
+    clearTimeout(_publishIndicatorDebounceTimer);
+    _publishIndicatorDebounceTimer = setTimeout(() => updatePublishIndicator(), 300);
+  });
   _publishIndicatorObserver.observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true });
 }
 
@@ -845,46 +847,58 @@ async function _hasUnpublishedDraft(key) {
 }
 
 async function hasAnySystemPendingChanges(week, year) {
+  // כל הבדיקות כאן קריאה-בלבד ועצמאיות זו מזו (אין תלות סדר) - מריצים את כולן **במקביל**
+  // (Promise.all) במקום ברצף עם await בלולאה. במצב שרת מרכזי (SharePoint) כל בדיקה היא
+  // בקשת רשת אמיתית עם השהיה משלה - הרצה ברצף של עשרות בדיקות (טבלאות מנהל + חדר"ג + שק"ם +
+  // חיפוקים + כל הרשימות) הצטברה להשהיה של כמה שניות עד שכפתור "הפץ שינויים" מתעדכן, מה
+  // שנראה כאילו הוא "לא מתעדכן בזמן" ודורש כמה לחיצות (אפיון QA).
+  const checks = [];
+
   // קשר/אופטיקה - כפתור "הפץ שינויים" הוא סממן גלובלי ("האם יש בכלל משהו שלא הופץ"), ולכן
   // בודק את הטיוטה מול הפרסום של הטבלה כולה - כולל עריכה ישירה של המנהל בטבלה הגדולה, לא רק
   // ייבוא (בשונה מהסימון הכתום על תא ספציפי, שנשאר מוגבל לייבוא בלבד כדי לא "ללכלך" תאים
   // שהמנהל פשוט מילא/תיקן בעצמו - ראו MASTER_COMBINED_TABLES והסימון ב-loadTableData).
   for (const tableId of MASTER_COMBINED_TABLES) {
-    if (await _hasUnpublishedDraft(getStorageKey(tableId, week, year))) return true;
+    checks.push(_hasUnpublishedDraft(getStorageKey(tableId, week, year)));
   }
 
   // מודיעין, דרישות יחידה, ותת-טבלאות קשר/אופטיקה
   const otherTrackedTables = MANAGER_TRACKED_TABLES.filter(id => !MASTER_COMBINED_TABLES.includes(id));
   for (const tableId of otherTrackedTables) {
-    if (await _hasUnpublishedDraft(getStorageKey(tableId, week, year))) return true;
+    checks.push(_hasUnpublishedDraft(getStorageKey(tableId, week, year)));
   }
 
   // חדר"ג
   for (const tableId of Object.keys(HADRAG_TABLES_MAP)) {
-    if (await _hasUnpublishedDraft(`hadragData_${tableId}_week${week}_year${year}`)) return true;
+    checks.push(_hasUnpublishedDraft(`hadragData_${tableId}_week${week}_year${year}`));
   }
 
   // שק"ם
-  if (await _hasUnpublishedDraft(`shekemData_body-shekem_week${week}_year${year}`)) return true;
+  checks.push(_hasUnpublishedDraft(`shekemData_body-shekem_week${week}_year${year}`));
 
   // חיפוקים - טבלת המנהל עצמה
-  if (await _hasUnpublishedDraft(getStorageKey('hipoktable', week, year))) return true;
+  checks.push(_hasUnpublishedDraft(getStorageKey('hipoktable', week, year)));
 
   // בקשות חיפוקים שיחידה פרסמה וטרם יובאו לטבלת המנהל
-  const publishedHipokEntries = (await fetchTableData(getHipokEntriesKey(week, year) + '_published')) || [];
-  if (publishedHipokEntries.length > 0) {
+  checks.push((async () => {
+    const publishedHipokEntries = (await fetchTableData(getHipokEntriesKey(week, year) + '_published')) || [];
+    if (publishedHipokEntries.length === 0) return false;
     const importedIds = new Set(await loadHipokImportedIds(week, year));
-    if (publishedHipokEntries.some(e => !importedIds.has(e.id))) return true;
-  }
+    return publishedHipokEntries.some(e => !importedIds.has(e.id));
+  })());
 
   // בקשות חדר"ג/שק"ם שיחידה פרסמה וטרם אושרו על ידי המנהל
-  const publishedHadragRequests = (await fetchTableData(getHadragRequestsKey(week, year) + '_published')) || [];
-  if (publishedHadragRequests.some(r => r.status !== 'approved')) return true;
+  checks.push(
+    fetchTableData(getHadragRequestsKey(week, year) + '_published')
+      .then(list => (list || []).some(r => r.status !== 'approved'))
+  );
+  checks.push(
+    fetchTableData(getShekemRequestsKey(week, year) + '_published')
+      .then(list => (list || []).some(r => r.status !== 'approved'))
+  );
 
-  const publishedShekemRequests = (await fetchTableData(getShekemRequestsKey(week, year) + '_published')) || [];
-  if (publishedShekemRequests.some(r => r.status !== 'approved')) return true;
-
-  return false;
+  const results = await Promise.all(checks);
+  return results.some(Boolean);
 }
 
 // טבלאות הדרישה של כל יחידה (קשר, אופטיקה, מודיעין) - "שמור ומוכן לייבוא" הוא כפתור כללי
@@ -916,27 +930,28 @@ async function _hasUnitOwnEntryListPending(key, filterFn) {
 }
 
 async function hasUnitPendingChanges(currentPage, week, year) {
+  // בלוקים שממתינים בזיכרון בלבד נבדקים מיד וללא רשת - אין טעם להמתין לבדיקות הרשת אם כבר
+  // ידוע שיש שינוי לא-שמור (אפיון QA - ראו הערה על ה-Promise.all למטה).
+  if (typeof hadragStagedBlocks !== 'undefined' && hadragStagedBlocks.some(b => !b.reqId || b.dirty)) return true;
+  if (typeof shekemStagedBlocks !== 'undefined' && shekemStagedBlocks.some(b => !b.reqId || b.dirty)) return true;
+
+  // שאר הבדיקות קריאה-בלבד ועצמאיות זו מזו - מריצים את כולן במקביל (Promise.all) כדי לא
+  // לצבור השהיית רשת אמיתית של כל בדיקה בנפרד ברצף (אותה בעיה בדיוק כמו ב-
+  // hasAnySystemPendingChanges - ראו ההערה שם).
   const tables = UNIT_OWN_TABLES[currentPage] || [];
-  for (const tableId of tables) {
-    if (await _hasUnpublishedDraft(getStorageKey(tableId, week, year))) return true;
-  }
+  const checks = tables.map(tableId => _hasUnpublishedDraft(getStorageKey(tableId, week, year)));
 
   // "שמור ומוכן לייבוא" הוא כפתור כללי - חל גם על בקשות חיפוקים/חדר"ג/שק"ם שהיחידה הגישה
   // (רשימות משותפות לכל היחידות, מסוננות כאן לפי הצבע של היחידה הנוכחית בלבד).
   const unitColor = PAGE_UNIT_MAP[currentPage];
   if (unitColor) {
-    if (await _hasUnitOwnEntryListPending(getHipokEntriesKey(week, year), e => e.color === unitColor)) return true;
-    if (await _hasUnitOwnEntryListPending(getHadragRequestsKey(week, year), r => r.unit === unitColor)) return true;
-    if (await _hasUnitOwnEntryListPending(getShekemRequestsKey(week, year), r => r.unit === unitColor)) return true;
+    checks.push(_hasUnitOwnEntryListPending(getHipokEntriesKey(week, year), e => e.color === unitColor));
+    checks.push(_hasUnitOwnEntryListPending(getHadragRequestsKey(week, year), r => r.unit === unitColor));
+    checks.push(_hasUnitOwnEntryListPending(getShekemRequestsKey(week, year), r => r.unit === unitColor));
   }
 
-  // בלוקים שנוצרו/הוזזו/שונה גודלם/נערך הטקסט שלהם בגריד הבקשות (חדר"ג/שק"ם) אך עדיין לא
-  // הפכו לרשומת בקשה בפועל - קיימים רק בזיכרון (hadragStagedBlocks/shekemStagedBlocks), כך
-  // שההשוואה draft-מול-published למעלה לא תופסת אותם. אין כפתור "שמור בקשות" נפרד - גם הם
-  // נכללים ב"יש שינויים שטרם נשמרו" של "שמור ומוכן לייבוא" (commitHadragStagedBlocks/
-  // commitShekemStagedBlocks נקראות משם וממירות אותם לרשומה בפועל).
-  if (typeof hadragStagedBlocks !== 'undefined' && hadragStagedBlocks.some(b => !b.reqId || b.dirty)) return true;
-  if (typeof shekemStagedBlocks !== 'undefined' && shekemStagedBlocks.some(b => !b.reqId || b.dirty)) return true;
+  const results = await Promise.all(checks);
+  if (results.some(Boolean)) return true;
 
   return false;
 }
@@ -948,18 +963,38 @@ async function hasUnitPendingChanges(currentPage, week, year) {
  * - "שמור ומוכן לייבוא" (עמוד יחידה, מזוהה לפי מחלקת unit-ready) - כפתור כללי לכל טבלאות
  *   הדרישה של אותה קבוצה (קשר+אופטיקה+מודיעין), לא רק לכרטיסייה הפתוחה כרגע.
  */
+// מגינים כאן, בפונקציית העבודה עצמה - לא רק ב-updatePublishIndicator - כי יש עוד כמה
+// מקומות בקוד שקוראים לפונקציה הזו ישירות (לא דרך updatePublishIndicator), ובלי ההגנה כאן
+// כל אחד מהם היה פותח סבב בקשות רשת מקביל משלו, עם אותה בעיית "תוצאה ישנה דורסת תוצאה
+// חדשה" (אפיון QA: "לפעמים לוקח זמן או צריך ללחוץ כמה פעמים").
+let _exportStatusInFlight = false;
+let _exportStatusRerunQueued = false;
+
 async function updateGlobalExportButtonStatus() {
   const btn = document.getElementById('global-export-btn');
   if (!btn) return;
   if (typeof currentWeek === 'undefined' || typeof currentYear === 'undefined') return;
 
-  const isUnitBtn = btn.classList.contains('unit-ready');
-  const hasPending = isUnitBtn
-    ? await hasUnitPendingChanges(AUTH.currentPage(), currentWeek, currentYear)
-    : await hasAnySystemPendingChanges(currentWeek, currentYear);
+  if (_exportStatusInFlight) {
+    _exportStatusRerunQueued = true;
+    return;
+  }
+  _exportStatusInFlight = true;
+  try {
+    const isUnitBtn = btn.classList.contains('unit-ready');
+    const hasPending = isUnitBtn
+      ? await hasUnitPendingChanges(AUTH.currentPage(), currentWeek, currentYear)
+      : await hasAnySystemPendingChanges(currentWeek, currentYear);
 
-  btn.classList.toggle('has-pending', hasPending);
-  btn.classList.toggle('all-published', !hasPending);
+    btn.classList.toggle('has-pending', hasPending);
+    btn.classList.toggle('all-published', !hasPending);
+  } finally {
+    _exportStatusInFlight = false;
+    if (_exportStatusRerunQueued) {
+      _exportStatusRerunQueued = false;
+      updateGlobalExportButtonStatus();
+    }
+  }
 }
 
 /**
@@ -1113,7 +1148,7 @@ function getKesherOpticCategory(tableId) {
  */
 async function copyWeekToTarget(tableId) {
   const category = getKesherOpticCategory(tableId);
-  const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
+  const catName = category === 'kesher' ? 'תקשוב' : 'אופטיקה';
   const weeksInYear = getWeeksInYear(currentYear);
   const targetStr = prompt(`העתקת נתוני ${catName} משבוע ${currentWeek} (${currentYear}) לשבוע יעד.\nהזן מספר שבוע יעד (1-${weeksInYear}):`);
   if (targetStr === null) return;
@@ -1143,7 +1178,7 @@ async function copyWeekToTarget(tableId) {
  */
 async function applyWeekToRestOfYear(tableId) {
   const category = getKesherOpticCategory(tableId);
-  const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
+  const catName = category === 'kesher' ? 'תקשוב' : 'אופטיקה';
   const weeksInYear = getWeeksInYear(currentYear);
   if (currentWeek >= weeksInYear) { alert('זהו השבוע האחרון בשנה - אין שבועות הבאים להדבקה.'); return; }
   if (!confirm(`פעולה זו תעתיק את תוכן טבלת ${catName} משבוע ${currentWeek} לכל השבועות ${currentWeek + 1}-${weeksInYear} בשנת ${currentYear}, ותדרוס את הנתונים הקיימים בהם.\nבנוסף, דרישות הפלוגות של השבוע הנוכחי יישמרו ויוצאו אוטומטית לכל אותם שבועות.\n\nלהמשיך?`)) return;
@@ -1277,10 +1312,6 @@ async function loadHipokData(week, year) {
   const table = document.getElementById('hipoktable');
   if (!table) return;
 
-  document.querySelectorAll('#hipoktable .task-input').forEach(el => el.value = '');
-  document.querySelectorAll('#hipoktable .time-input').forEach(el => el.value = '');
-  document.querySelectorAll('#hipoktable .cell-wrapper').forEach(wrapper => { wrapper.className = 'cell-wrapper'; });
-
   const key = getStorageKey('hipoktable', week, year);
   let data = null;
   if (typeof DataService !== 'undefined') {
@@ -1289,34 +1320,33 @@ async function loadHipokData(week, year) {
     const saved = localStorage.getItem(key);
     if (saved) data = JSON.parse(saved);
   }
-  if (!data) return;
 
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר - זורקים את התוצאה (ראו הערה
+  // מקבילה ומפורטת ב-loadTableData).
+  if (week !== currentWeek || year !== currentYear) return;
+
+  // ממלאים כל תא ישירות לערך הסופי שלו (מהנתון השמור אם קיים, אחרת ריק) - במעבר אחד, בלי
+  // שלב-ביניים שמרוקן הכל קודם (אותה תבנית באג בדיוק כמו ב-loadTableData - ראו שם: "הנתונים
+  // נעלמים לרגע כל כמה שניות"). בנוסף - קודם ריקון-ואז-בדיקת-!data היה מוחק לצמיתות את
+  // התוכן על המסך אם הבאת הנתונים נכשלה זמנית (למשל הפסקת רשת קצרה), בלי לשחזר כלום.
   document.querySelectorAll('#hipoktable .task-input').forEach((el, i) => {
-    if (data['task_' + i] !== undefined) {
-      el.value = data['task_' + i];
-      if (data['task_' + i].trim() !== '') {
-        const wrapper = el.closest('.cell-wrapper');
-        if (wrapper) wrapper.classList.add('imported');
-      }
-    }
+    el.value = (data && data['task_' + i] !== undefined) ? data['task_' + i] : '';
   });
   document.querySelectorAll('#hipoktable .time-input').forEach((el, i) => {
-    if (data['time_' + i] !== undefined) {
-      el.value = data['time_' + i];
-      if (data['time_' + i].trim() !== '') {
-        const wrapper = el.closest('.cell-wrapper');
-        if (wrapper) wrapper.classList.add('imported');
-      }
+    el.value = (data && data['time_' + i] !== undefined) ? data['time_' + i] : '';
+  });
+  document.querySelectorAll('#hipoktable .cell-wrapper').forEach((wrapper, i) => {
+    wrapper.className = 'cell-wrapper';
+    if (!data) return;
+    const taskVal = data['task_' + i];
+    const timeVal = data['time_' + i];
+    if ((taskVal && taskVal.trim() !== '') || (timeVal && timeVal.trim() !== '')) {
+      wrapper.classList.add('imported');
+    }
+    if (typeof ALL_HIPOK_COLORS !== 'undefined' && data['color_' + i]) {
+      wrapper.classList.add(data['color_' + i]);
     }
   });
-
-  if (typeof ALL_HIPOK_COLORS !== 'undefined') {
-    document.querySelectorAll('#hipoktable .cell-wrapper').forEach((wrapper, i) => {
-       if (data['color_' + i]) {
-           wrapper.classList.add(data['color_' + i]);
-       }
-    });
-  }
 }
 
 const HIPOK_DAY_LABELS = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "שבת"];
@@ -1940,6 +1970,16 @@ function renderDynamicTableStructure(tableId, week, year) {
   const tbody = table.tBodies[0];
   if (!tbody) return;
 
+  // אם רשימת שמות האמצעים לא השתנתה מאז הבנייה הקודמת של הטבלה הזו - מדלגים על בנייה מחדש
+  // של כל ה-HTML (tbody.innerHTML). בעבר זה נבנה מחדש בכל קריאה - כולל בכל מחזור רענון
+  // אוטומטי (כל כמה שניות, ראו CONFIG.SYNC_INTERVAL_MS) גם כשדבר לא השתנה בפועל - מה שגרם
+  // לכל הטבלה (קלטים כולל) "להיעלם" לרגע ולהיבנות מחדש שוב ושוב (אפיון QA: "הנתונים נעלמים
+  // לרגע כל כמה שניות"). מילוי הערכים עצמם ממשיך לקרות תמיד ב-loadTableData אחרי הפונקציה
+  // הזו, גם כשהמבנה לא נבנה מחדש.
+  const rowsSignature = JSON.stringify(rowsList);
+  if (tbody.dataset.rowsSignature === rowsSignature) return;
+  tbody.dataset.rowsSignature = rowsSignature;
+
   let tbodyHtml = '';
   const totalCols = dataCols + 1;
 
@@ -2092,7 +2132,7 @@ async function reorderCategoryRow(category, fromIndex, toIndex) {
 }
 
 function promptAddItemRow(category) {
-  const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
+  const catName = category === 'kesher' ? 'תקשוב' : 'אופטיקה';
   const itemName = prompt(`הכנס שם אמצעי חדש לטבלאות ${catName} (משבוע ${currentWeek} והלאה):`);
   if (!itemName || !itemName.trim()) return;
   addItemRow(category, itemName.trim());
@@ -2173,7 +2213,7 @@ function deleteRowItem(category, rowIndex) {
     return;
   }
 
-  const catName = category === 'kesher' ? 'קשר' : 'אופטיקה';
+  const catName = category === 'kesher' ? 'תקשוב' : 'אופטיקה';
   if (!confirm(`האם למחוק את האמצעי "${itemName}" מטבלאות ${catName} משבוע ${currentWeek} והלאה?`)) {
     return;
   }
@@ -3883,15 +3923,27 @@ async function loadHadragTables(week, year) {
   for (const tableId of TABLE_IDS) {
     const tbody = document.getElementById(tableId);
     if (!tbody) continue;
-    
-    tbody.innerHTML = '';
-    generateTimeSlots(tableId); 
-    resetHadragOrShekemTable(tbody);
+
+    // generateTimeSlots לא בונה מחדש אם השורות כבר קיימות (יש לה שמירה פנימית) - לכן *לא*
+    // מרוקנים את ה-tbody קודם כמו שהיה (tbody.innerHTML = '') - זה בדיוק מה שביטל את השמירה
+    // הזו וגרם לכל הגריד האינטראקטיבי (תאים ממוזגים, צבעים, ידיות) להיבנות מחדש מאפס בכל
+    // מחזור רענון אוטומטי (כל כמה שניות, אפיון QA: "הנתונים נעלמים לרגע כל כמה שניות").
+    generateTimeSlots(tableId);
 
     const hKey = `hadragData_${tableId}_week${week}_year${year}`;
     const tableData = (typeof DataService !== 'undefined')
       ? await DataService.getItem(hKey)
       : JSON.parse(localStorage.getItem(hKey) || 'null');
+
+    // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר - זורקים את התוצאה (ראו הערה
+    // מקבילה ומפורטת ב-loadTableData). ממשיכים ללולאה הבאה, לא ל-tableId הבא בלבד - כי אם
+    // שבוע אחד כבר לא רלוונטי, כל שאר הטבלאות בלולאה הזו גם לא יהיו רלוונטיות.
+    if (week !== currentWeek || year !== currentYear) return;
+
+    // מאפסים ומאכלסים מחדש **באותו מעבר סינכרוני** (בלי await בין השלבים) - כדי שלא יהיה
+    // חלון זמן שבו כל התאים נראים ריקים בזמן ה-await לשרת (אותה תבנית באג בדיוק כמו
+    // ב-loadTableData/loadHipokData - ראו שם).
+    resetHadragOrShekemTable(tbody);
     if (!tableData) continue;
 
     for (let r = 0; r < 36; r++) {
@@ -4169,15 +4221,23 @@ async function loadShekemTables(week, year) {
   if (typeof generateTimeSlots !== 'function') return;
   const tbody = document.getElementById('body-shekem');
   if (!tbody) return;
-  
-  tbody.innerHTML = '';
-  generateTimeSlots('body-shekem'); 
-  resetHadragOrShekemTable(tbody);
+
+  // ראו הערה מקבילה ב-loadHadragTables: generateTimeSlots כבר לא בונה מחדש אם השורות קיימות,
+  // ולכן לא מרוקנים את ה-tbody קודם (זה בדיוק מה שביטל את השמירה הזו וגרם לגריד להיבנות
+  // מחדש מאפס בכל מחזור רענון - אפיון QA: "טבלת השק"ם נראית מוזר"/"נעלם לרגע כל כמה שניות").
+  generateTimeSlots('body-shekem');
 
   const sKey = `shekemData_body-shekem_week${week}_year${year}`;
   const tableData = (typeof DataService !== 'undefined')
     ? await DataService.getItem(sKey)
     : JSON.parse(localStorage.getItem(sKey) || 'null');
+
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר - זורקים את התוצאה (ראו הערה
+  // מקבילה ומפורטת ב-loadTableData).
+  if (week !== currentWeek || year !== currentYear) return;
+
+  // מאפסים ומאכלסים מחדש באותו מעבר סינכרוני - בלי await בין השלבים (ראו הערה ב-loadHadragTables).
+  resetHadragOrShekemTable(tbody);
   if (!tableData) { await updatePlatoonGridConflictHighlight(['body-shekem'], 'shekemData'); return; }
 
   for (let r = 0; r < 36; r++) {
@@ -5383,7 +5443,6 @@ async function getHipokimAllocationsForUnit(unitColor, week, year) {
 async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
-  tbody.innerHTML = '';
 
   // צבע כותרת הטבלה לפי הקבוצה
   const colorInfo = (typeof UNIT_BG_MAP !== 'undefined' && UNIT_BG_MAP[unitColor]) || null;
@@ -5396,49 +5455,44 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
     });
   }
 
+  let html = '';
   if (type === 'hadrag') {
     const allocations = await getHadragAllocationsForUnit(unitColor, currentWeek, currentYear);
-    if (allocations.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
-      return;
-    }
-    allocations.forEach(a => {
-      tbody.innerHTML += `<tr>
-        <td style="text-align:center; font-weight:bold;">${a.day}</td>
-        <td style="text-align:center; font-weight:bold;">${a.facility}</td>
-        <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
-        <td style="text-align:center;">${escapeHtml(a.text).replace(/\\n/g, '<br>')}</td>
-      </tr>`;
-    });
-  } 
+    html = allocations.length === 0
+      ? '<tr><td colspan="4" style="text-align:center;">אין נתונים לשבוע זה</td></tr>'
+      : allocations.map(a => `<tr>
+          <td style="text-align:center; font-weight:bold;">${a.day}</td>
+          <td style="text-align:center; font-weight:bold;">${a.facility}</td>
+          <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
+          <td style="text-align:center;">${escapeHtml(a.text).replace(/\\n/g, '<br>')}</td>
+        </tr>`).join('');
+  }
   else if (type === 'shekem') {
     const allocations = await getShekemAllocationsForUnit(unitColor, currentWeek, currentYear);
-    if (allocations.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
-      return;
-    }
-    allocations.forEach(a => {
-      tbody.innerHTML += `<tr>
-        <td style="text-align:center; font-weight:bold;">${a.day}</td>
-        <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
-        <td style="text-align:center;">${escapeHtml(a.text).replace(/\\n/g, '<br>')}</td>
-      </tr>`;
-    });
+    html = allocations.length === 0
+      ? '<tr><td colspan="3" style="text-align:center;">אין נתונים לשבוע זה</td></tr>'
+      : allocations.map(a => `<tr>
+          <td style="text-align:center; font-weight:bold;">${a.day}</td>
+          <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
+          <td style="text-align:center;">${escapeHtml(a.text).replace(/\\n/g, '<br>')}</td>
+        </tr>`).join('');
   }
   else if (type === 'hipokim') {
     const allocations = await getHipokimAllocationsForUnit(unitColor, currentWeek, currentYear);
-    if (allocations.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">אין נתונים לשבוע זה</td></tr>';
-      return;
-    }
-    allocations.forEach(a => {
-      tbody.innerHTML += `<tr>
-        <td style="text-align:center; font-weight:bold;">${a.day}</td>
-        <td style="text-align:center; font-weight:bold;">${escapeHtml(a.task)}</td>
-        <td style="text-align:center; font-weight:bold;">${escapeHtml(a.time)}</td>
-      </tr>`;
-    });
+    html = allocations.length === 0
+      ? '<tr><td colspan="3" style="text-align:center;">אין נתונים לשבוע זה</td></tr>'
+      : allocations.map(a => `<tr>
+          <td style="text-align:center; font-weight:bold;">${a.day}</td>
+          <td style="text-align:center; font-weight:bold;">${escapeHtml(a.task)}</td>
+          <td style="text-align:center; font-weight:bold;">${escapeHtml(a.time)}</td>
+        </tr>`).join('');
   }
+
+  // מציבים את כל ה-HTML במעבר אחד, אחרי שהנתונים כבר התקבלו מהשרת - לא מרוקנים קודם ורק
+  // אחר כך ממתינים ל-await (אותה תבנית באג בדיוק כמו בשאר הטבלאות - ראו loadTableData). זה
+  // בדיוק מה שגרם לטבלאות ההקצאות של חיפוקים/פלוגתי/שק"ם להמשיך "לרצד" גם אחרי התיקון
+  // בטבלאות הניתנות לעריכה (אפיון QA).
+  tbody.innerHTML = html;
 }
 
 /* =========================================================

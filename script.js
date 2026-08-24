@@ -1441,8 +1441,13 @@ const PAGE_UNIT_MAP = {
 async function renderHipokEntriesList() {
   const container = document.getElementById('hipokEntriesList');
   if (!container) return;
+  const reqWeek = currentWeek, reqYear = currentYear;
 
-  const entries = await loadHipokEntries(currentWeek, currentYear);
+  const entries = await loadHipokEntries(reqWeek, reqYear);
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר - זורקים את התוצאה (ראו הערה
+  // מפורטת ב-loadTableData).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
+
   const currentPage = window.location.pathname.split('/').pop();
   const targetColor = PAGE_UNIT_MAP[currentPage];
 
@@ -2343,8 +2348,12 @@ async function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 
   // חשוב: fetchTableData (לא localStorage.getItem ישיר) - כדי שגם במצב שרת מרוחק (SharePoint/
   // רשת צבאית) הנתונים ייטענו דרך DataService.getItem בפועל, ולא רק מתוך מטמון מקומי שעלול
   // להיות ריק/מיושן במכשיר שלא ביצע בעצמו את הפעולה האחרונה שכתבה למפתח הזה.
-  const key = getStorageKey(sourceTableId, currentWeek, currentYear) + '_published';
+  const reqWeek = currentWeek, reqYear = currentYear;
+  const key = getStorageKey(sourceTableId, reqWeek, reqYear) + '_published';
   const data = await fetchTableData(key);
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר - זורקים את התוצאה (ראו הערה
+  // מפורטת ב-loadTableData).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
 
@@ -2958,10 +2967,16 @@ async function loadUnitRequestGridState(type) {
   const currentPage = window.location.pathname.split('/').pop();
   const unitClass = PAGE_UNIT_MAP[currentPage] || 'bg-esuk';
   const unitName = PAGE_UNIT_NAMES[currentPage] || 'בא"ח איסו"ק';
+  const reqWeek = currentWeek, reqYear = currentYear;
 
   const allRequests = isHadrag
-    ? await loadHadragRequests(currentWeek, currentYear)
-    : await loadShekemRequests(currentWeek, currentYear);
+    ? await loadHadragRequests(reqWeek, reqYear)
+    : await loadShekemRequests(reqWeek, reqYear);
+
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר - זורקים את התוצאה, בלי לדרוס
+  // את hadragStagedBlocks/shekemStagedBlocks בנתונים של שבוע לא-רלוונטי (ראו הערה מפורטת
+  // ב-loadTableData).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
 
   const own = allRequests.filter(r => r.status === 'pending' && (r.unit || 'bg-esuk') === unitClass);
   const staged = own.map(r => {
@@ -3591,10 +3606,15 @@ async function deleteHadragRequest(id) {
 async function renderHadragRequestsList() {
   const container = document.getElementById('hadragRequestsList');
   if (!container) return;
+  const reqWeek = currentWeek, reqYear = currentYear;
 
   await loadUnitRequestGridState('hadrag');
 
-  const requests = await loadHadragRequests(currentWeek, currentYear);
+  const requests = await loadHadragRequests(reqWeek, reqYear);
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשות האלה היו באוויר - זורקים את התוצאה (ראו הערה
+  // מפורטת ב-loadTableData).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
+
   const currentPage = window.location.pathname.split('/').pop();
   const targetColor = PAGE_UNIT_MAP[currentPage];
 
@@ -3691,12 +3711,16 @@ const UNIT_BG_MAP = {
 async function renderHadragPendingRequests() {
   const container = document.getElementById('hadragPendingList');
   if (!container) return;
+  const reqWeek = currentWeek, reqYear = currentYear;
 
-  const allRequests = await loadHadragRequests(currentWeek, currentYear);
+  const allRequests = await loadHadragRequests(reqWeek, reqYear);
   // רק בקשות שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") מוצגות למנהל - לא בקשה שהוקלדה
   // ועדיין לא נשמרה על ידי היחידה (אפיון QA).
-  const publishedKey = getHadragRequestsKey(currentWeek, currentYear) + '_published';
+  const publishedKey = getHadragRequestsKey(reqWeek, reqYear) + '_published';
   const publishedRequests = (await fetchTableData(publishedKey)) || [];
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשות האלה היו באוויר - זורקים את התוצאה (ראו הערה
+  // מפורטת ב-loadTableData).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
   const publishedIds = new Set(publishedRequests.map(r => r.id));
   const pendingRequests = allRequests.filter(req => req.status !== 'approved' && publishedIds.has(req.id));
 
@@ -4014,10 +4038,15 @@ async function deleteShekemRequest(id) {
 async function renderShekemRequestsList() {
   const container = document.getElementById('shekemRequestsList');
   if (!container) return;
+  const reqWeek = currentWeek, reqYear = currentYear;
 
   await loadUnitRequestGridState('shekem');
 
-  const requests = await loadShekemRequests(currentWeek, currentYear);
+  const requests = await loadShekemRequests(reqWeek, reqYear);
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשות האלה היו באוויר - זורקים את התוצאה (ראו הערה
+  // מפורטת ב-loadTableData).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
+
   const currentPage = window.location.pathname.split('/').pop();
   const targetColor = PAGE_UNIT_MAP[currentPage];
 
@@ -4051,12 +4080,16 @@ async function renderShekemRequestsList() {
 async function renderShekemPendingRequests() {
   const container = document.getElementById('shekemPendingList');
   if (!container) return;
+  const reqWeek = currentWeek, reqYear = currentYear;
 
-  const allRequests = await loadShekemRequests(currentWeek, currentYear);
+  const allRequests = await loadShekemRequests(reqWeek, reqYear);
   // רק בקשות שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") מוצגות למנהל - לא בקשה שהוקלדה
   // ועדיין לא נשמרה על ידי היחידה (אפיון QA).
-  const publishedKey = getShekemRequestsKey(currentWeek, currentYear) + '_published';
+  const publishedKey = getShekemRequestsKey(reqWeek, reqYear) + '_published';
   const publishedRequests = (await fetchTableData(publishedKey)) || [];
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשות האלה היו באוויר - זורקים את התוצאה (ראו הערה
+  // מפורטת ב-loadTableData).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
   const publishedIds = new Set(publishedRequests.map(r => r.id));
   const pendingRequests = allRequests.filter(req => req.status !== 'approved' && publishedIds.has(req.id));
 
@@ -5443,6 +5476,7 @@ async function getHipokimAllocationsForUnit(unitColor, week, year) {
 async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
+  const reqWeek = currentWeek, reqYear = currentYear;
 
   // צבע כותרת הטבלה לפי הקבוצה
   const colorInfo = (typeof UNIT_BG_MAP !== 'undefined' && UNIT_BG_MAP[unitColor]) || null;
@@ -5488,10 +5522,12 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
         </tr>`).join('');
   }
 
-  // מציבים את כל ה-HTML במעבר אחד, אחרי שהנתונים כבר התקבלו מהשרת - לא מרוקנים קודם ורק
-  // אחר כך ממתינים ל-await (אותה תבנית באג בדיוק כמו בשאר הטבלאות - ראו loadTableData). זה
-  // בדיוק מה שגרם לטבלאות ההקצאות של חיפוקים/פלוגתי/שק"ם להמשיך "לרצד" גם אחרי התיקון
-  // בטבלאות הניתנות לעריכה (אפיון QA).
+  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר - זורקים את התוצאה (ראו הערה
+  // מפורטת ב-loadTableData) - לפני שמציבים את כל ה-HTML במעבר אחד. לא מרוקנים קודם ורק אחר
+  // כך ממתינים ל-await (אותה תבנית באג בדיוק כמו בשאר הטבלאות - ראו loadTableData). זה בדיוק
+  // מה שגרם לטבלאות ההקצאות של חיפוקים/פלוגתי/שק"ם להמשיך "לרצד" גם אחרי התיקון בטבלאות
+  // הניתנות לעריכה (אפיון QA).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
   tbody.innerHTML = html;
 }
 

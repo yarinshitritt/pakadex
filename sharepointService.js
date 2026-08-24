@@ -5,8 +5,18 @@
 const DataService = {
   // מטמון מקומי בזיכרון לגישה מהירה
   _cache: {},
-  // דגל לביטול ניסיונות SharePoint חוזרים בריצה מקומית שאינה מאומתת
-  _sharePointDisabled: false,
+  // חסימה זמנית (לא לצמיתות!) של ניסיונות SharePoint אחרי 401 - שומרת חותמת זמן שעד אליה
+  // נופלים בשקט ל-localStorage, ולא דגל בוליאני קבוע. 401 יכול לקרות מסיבה חולפת (חידוש
+  // טוקן, הפרעת רשת רגעית) - דגל קבוע היה משתיק את הסנכרון (גם קריאה וגם כתיבה!) לגמרי
+  // עד רענון ידני של הדף, בלי שהמשתמש בהכרח שם לב שזה קרה (אפיון QA: "האתר יעבוד מושלם").
+  _sharePointDisabledUntil: 0,
+  SP_DISABLE_COOLDOWN_MS: 60000,
+  _isSharePointDisabled() {
+    return Date.now() < this._sharePointDisabledUntil;
+  },
+  _disableSharePointTemporarily() {
+    this._sharePointDisabledUntil = Date.now() + this.SP_DISABLE_COOLDOWN_MS;
+  },
 
   // --- מנגנון סנכרון היברידי (אפיון חלק 2) ---
   _syncQueue: {},                       // מפתח -> נתונים שממתינים לסנכרון לשרת
@@ -109,7 +119,7 @@ const DataService = {
 
   /** מנסה לשלוח את כל הפריטים הממתינים בתור לשרת */
   async flushQueue() {
-    if (this._syncing || !this._isRemote() || !navigator.onLine || this._sharePointDisabled) return;
+    if (this._syncing || !this._isRemote() || !navigator.onLine || this._isSharePointDisabled()) return;
     this._syncing = true;
     try {
       const keys = Object.keys(this._syncQueue);
@@ -131,7 +141,7 @@ const DataService = {
       online: navigator.onLine,
       pending: this.pendingCount(),
       lastSync: this._lastSyncTs,
-      disabled: this._sharePointDisabled
+      disabled: this._isSharePointDisabled()
     };
   },
 
@@ -145,7 +155,7 @@ const DataService = {
    * טעינה מ-SharePoint REST API
    */
   async _loadFromSharePoint(key) {
-    if (this._sharePointDisabled) {
+    if (this._isSharePointDisabled()) {
       const val = localStorage.getItem(key);
       return val ? JSON.parse(val) : null;
     }
@@ -181,13 +191,13 @@ const DataService = {
         }
 
         if (response.status === 401) {
-          if (!this._sharePointDisabled) {
+          if (!this._isSharePointDisabled()) {
             const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
             const msg = isLocal
-              ? `[SharePoint] 401: הרצה מקומית ב-${location.hostname} (מעבר שקט ל-localStorage cache).`
-              : `[SharePoint] 401 Unauthorized: שגיאת הרשאה מול SharePoint במיקום ${location.hostname} (מעבר שקט ל-localStorage cache).`;
+              ? `[SharePoint] 401: הרצה מקומית ב-${location.hostname} (מעבר שקט ל-localStorage cache למשך דקה).`
+              : `[SharePoint] 401 Unauthorized: שגיאת הרשאה מול SharePoint במיקום ${location.hostname} (מעבר שקט ל-localStorage cache למשך דקה).`;
             console.info(msg);
-            this._sharePointDisabled = true;
+            this._disableSharePointTemporarily();
           }
           break;
         }
@@ -227,7 +237,7 @@ const DataService = {
    * שמירה ל-SharePoint REST API (File Upload / Overwrite)
    */
   async _saveToSharePoint(key, data) {
-    if (this._sharePointDisabled) {
+    if (this._isSharePointDisabled()) {
       return false;
     }
 
@@ -259,13 +269,13 @@ const DataService = {
         }
 
         if (response.status === 401) {
-          if (!this._sharePointDisabled) {
+          if (!this._isSharePointDisabled()) {
             const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-            const msg = isLocal 
-              ? `[SharePoint] 401: הרצה מקומית ב-${location.hostname} (שמירה ב-localStorage).`
-              : `[SharePoint] 401 Unauthorized: שגיאת הרשאה מול SharePoint במיקום ${location.hostname} (שמירה ב-localStorage).`;
+            const msg = isLocal
+              ? `[SharePoint] 401: הרצה מקומית ב-${location.hostname} (שמירה ב-localStorage למשך דקה).`
+              : `[SharePoint] 401 Unauthorized: שגיאת הרשאה מול SharePoint במיקום ${location.hostname} (שמירה ב-localStorage למשך דקה).`;
             console.info(msg);
-            this._sharePointDisabled = true;
+            this._disableSharePointTemporarily();
           }
           break;
         }

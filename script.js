@@ -5498,7 +5498,7 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
           <td style="text-align:center; font-weight:bold;">${a.day}</td>
           <td style="text-align:center; font-weight:bold;">${a.facility}</td>
           <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
-          <td style="text-align:center;">${escapeHtml(a.text).replace(/\\n/g, '<br>')}</td>
+          <td style="text-align:center;">${escapeHtml(a.text).replace(/\n/g, '<br>')}</td>
         </tr>`).join('');
   }
   else if (type === 'shekem') {
@@ -5508,7 +5508,7 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
       : allocations.map(a => `<tr>
           <td style="text-align:center; font-weight:bold;">${a.day}</td>
           <td style="text-align:center; font-weight:bold; direction:ltr;">${a.startTime} - ${a.endTime}</td>
-          <td style="text-align:center;">${escapeHtml(a.text).replace(/\\n/g, '<br>')}</td>
+          <td style="text-align:center;">${escapeHtml(a.text).replace(/\n/g, '<br>')}</td>
         </tr>`).join('');
   }
   else if (type === 'hipokim') {

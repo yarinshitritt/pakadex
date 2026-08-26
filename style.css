@@ -645,6 +645,17 @@ body.hide-conflict-overlap .conflict-overlap {
   background-color: #fef2f2 !important;
 }
 
+/* מסמנת בתוכן אדום כל תא "סה"כ" מחושב (עודף/עודף כללי/זמין) שיצא שלילי - כלומר יש יותר
+   דרישה מכמות האמצעים בפועל (בקשת המפקדים) - ראו recalcKesherRow/recalcRow. סלקטור עם
+   specificity גבוה מ-kesher.css/optic.css' input.cell-input כדי לנצח את ה-color:#000
+   !important שלו. */
+.negative-value,
+.keshertable input.cell-input.negative-value,
+.optictable input.cell-input.negative-value {
+  color: #dc2626 !important;
+  font-weight: 800 !important;
+}
+
 /* עמודת "סה"כ" בטבלאות הדרישה היחידתיות (אפיון 1.7) - המספר באותו פונט/גודל כמו שאר תאי הטבלה,
    וכותרת "סה"כ" נשארת בצבע הפלוגה (לא נדרסת) - ראו #<table> thead tr th בקשר.css */
 .row-total-cell {

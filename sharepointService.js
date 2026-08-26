@@ -234,6 +234,136 @@ const DataService = {
   },
 
   /**
+   * מחפשת משתמש ב-SharePoint (People Picker - אותו מנגנון בדיוק שמפעילה תיבת "הוסף
+   * חברים" הרגילה בממשק הרשאות האתר) לפי מספר אישי/שם, ומוסיפה אותו לקבוצת הרשאות
+   * העריכה של האתר. נועדה לפתור בעיה חוזרת: הוספת משתמש ברשימה הפנימית של PAKADEX
+   * (users.html) לא מעניקה בפועל גישה ל-SharePoint עצמו - אלה שתי מערכות הרשאה
+   * נפרדות לחלוטין, וזה גרם כמה פעמים ל"Access Denied" אצל משתמשים שנוספו רק
+   * ב"אתר שלנו". הפעולה דורשת שלמשתמש המחובר שמריץ אותה תהיה בעצמו הרשאת "ניהול
+   * הרשאות" באתר (Owner/Full Control) - אחרת השרת מחזיר 403 והפונקציה נכשלת בשקט
+   * (הקוראים לה צריכים להציג הודעה ולהנחות הוספה ידנית כגיבוי).
+   * @param {string} query - מספר אישי או שם לחיפוש ב-SharePoint
+   * @param {string} [groupName] - שם קבוצת ה-SharePoint; ברירת מחדל CONFIG.SHAREPOINT.EDITOR_GROUP_NAME
+   * @returns {Promise<{ok:boolean, error?:string, matchedName?:string}>}
+   */
+  async addUserToSharePointGroup(query, groupName) {
+    if (typeof CONFIG === 'undefined' || CONFIG.DATA_SOURCE !== 'sharepoint') {
+      return { ok: false, error: 'not-sharepoint' };
+    }
+    const group = groupName || CONFIG.SHAREPOINT.EDITOR_GROUP_NAME;
+    if (!group) return { ok: false, error: 'no-group-configured' };
+    if (!query || !String(query).trim()) return { ok: false, error: 'empty-query' };
+
+    const digest = await this.getFormDigest();
+    if (!digest) return { ok: false, error: 'no-digest' };
+
+    // שלב 1: פתירת המחרוזת לזהות Claims מלאה (למשל i:0#.w|domain\username) - בלי זה
+    // אי אפשר לדעת את שם הדומיין/פורמט ה-claims של הפרמה הספציפית מבלי לתחזק אותו
+    // בקונפיג בנפרד; ה-People Picker כבר עושה את זה נכון בכל פריסה.
+    let resolvedKey, matchedName;
+    try {
+      const searchUrl = `${CONFIG.SHAREPOINT.SITE_URL}/_api/SP.UI.ApplicationPages.ClientPeoplePickerWebServiceInterface.clientPeoplePickerSearchUser`;
+      const searchRes = await fetch(searchUrl, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json;odata=verbose',
+          'Content-Type': 'application/json;odata=verbose',
+          'X-RequestDigest': digest
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          queryParams: {
+            __metadata: { type: 'SP.UI.ApplicationPages.ClientPeoplePickerQueryParameters' },
+            AllowEmailAddresses: true,
+            AllowMultipleEntities: false,
+            AllUrlZones: false,
+            MaximumEntitySuggestions: 5,
+            PrincipalSource: 15,
+            PrincipalType: 1,
+            QueryString: String(query).trim()
+          }
+        })
+      });
+      if (!searchRes.ok) return { ok: false, error: `people-picker-http-${searchRes.status}` };
+      const searchData = await searchRes.json();
+      const rawResults = searchData.d && searchData.d.ClientPeoplePickerSearchUser;
+      const results = rawResults ? JSON.parse(rawResults) : [];
+      if (!results.length) return { ok: false, error: 'user-not-found-in-sharepoint' };
+      resolvedKey = results[0].Key;
+      matchedName = results[0].DisplayText || results[0].Description || String(query);
+    } catch (e) {
+      return { ok: false, error: 'people-picker-failed' };
+    }
+
+    // שלב 2: הוספה בפועל לקבוצה עם הזהות שנפתרה - קריאה זו גם "מבטיחה" (ensures) את
+    // המשתמש ברשימת המשתמשים של האתר וגם מוסיפה אותו לקבוצה, בקריאה אחת.
+    // חשוב: פונים לקבוצה לפי מספר ה-ID שלה (sitegroups(ID)) ולא לפי getbyname('<שם
+    // בעברית>') - שם קבוצה בעברית בתוך נתיב ה-URL עצמו (בניגוד לגוף הבקשה, ששם עברית
+    // תמיד בטוחה) נכשל עם 500 באתר הצבאי המסווג הזה, ככל הנראה בגלל חסימת "high-bit
+    // characters" ב-URL ברמת ה-IIS/WAF (אפיון QA בפועל). _resolveGroupId פותרת את השם
+    // למספר פעם אחת (קריאת GET רגילה, בלי השם בתוך ה-URL) ושומרת אותו במטמון.
+    try {
+      const groupId = await this._resolveGroupId(group, digest);
+      const addUrl = groupId !== null
+        ? `${CONFIG.SHAREPOINT.SITE_URL}/_api/web/sitegroups(${groupId})/users`
+        : `${CONFIG.SHAREPOINT.SITE_URL}/_api/web/sitegroups/getbyname('${encodeURIComponent(group)}')/users`;
+      const addRes = await fetch(addUrl, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json;odata=verbose',
+          'Content-Type': 'application/json;odata=verbose',
+          'X-RequestDigest': digest
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ __metadata: { type: 'SP.User' }, LoginName: resolvedKey })
+      });
+      if (!addRes.ok) {
+        if (addRes.status === 403) return { ok: false, error: 'no-permission-to-manage-group' };
+        return { ok: false, error: `add-http-${addRes.status}` };
+      }
+      return { ok: true, matchedName };
+    } catch (e) {
+      return { ok: false, error: 'add-failed' };
+    }
+  },
+
+  _groupIdCache: {},
+
+  /**
+   * פותרת שם קבוצת SharePoint למספר ה-ID המספרי שלה, דרך רשימת כל קבוצות האתר
+   * (_api/web/sitegroups - כתובת ASCII קבועה; השם בעברית מגיע רק בתוך גוף התשובה,
+   * לא בתוך ה-URL של הבקשה) - כדי לאפשר קריאת sitegroups(ID) שאינה תלויה בכלל בשם
+   * הקבוצה בתוך נתיב ה-URL. מוחזר null אם הקבוצה לא נמצאה או שהקריאה נכשלה, ואז
+   * הקוד הקורא נופל בחזרה לנתיב getbyname הישן.
+   * @returns {Promise<number|null>}
+   */
+  async _resolveGroupId(groupName, digest) {
+    if (Object.prototype.hasOwnProperty.call(this._groupIdCache, groupName)) {
+      return this._groupIdCache[groupName];
+    }
+    try {
+      const res = await fetch(`${CONFIG.SHAREPOINT.SITE_URL}/_api/web/sitegroups`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json;odata=verbose',
+          'X-RequestDigest': digest
+        },
+        credentials: 'same-origin'
+      });
+      if (!res.ok) { this._groupIdCache[groupName] = null; return null; }
+      const data = await res.json();
+      const list = (data.d && data.d.results) || [];
+      const match = list.find(g => g.Title === groupName);
+      const id = match ? match.Id : null;
+      this._groupIdCache[groupName] = id;
+      return id;
+    } catch (e) {
+      this._groupIdCache[groupName] = null;
+      return null;
+    }
+  },
+
+  /**
    * שמירה ל-SharePoint REST API (File Upload / Overwrite)
    */
   async _saveToSharePoint(key, data) {

@@ -15,6 +15,30 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * שער-דילוג לתצוגות קריאה-בלבד שנטענות מחדש כל מחזור רענון אוטומטי (כל כמה שניות, ראו
+ * CONFIG.SYNC_INTERVAL_MS/updateUIForWeek) - גם כשהנתונים בפועל לא השתנו כלל מהמחזור
+ * הקודם. תיקוני "בנייה במעבר אחד" (בלי ריקון-ואז-מילוי) שנעשו קודם מנעו רק את חלון הזמן
+ * שבו התא נראה ריק תוך כדי awaiting לשרת - הם *לא* מנעו את התופעה שנקודת המבט של המשתמש
+ * היא "הטבלה מהבהבת/מרצדת כל כמה שניות", כי גם בנייה מלאה-במעבר-אחד עדיין הורסת ובונה
+ * מחדש עשרות/מאות רכיבי DOM (עם כל הצביעה/מיזוג השורות שלהם) בכל מחזור, גם כשהתוצאה
+ * הסופית זהה למה שכבר מוצג (אפיון QA: "עדיין מרצדים" - מודיעין, פלוגתי/חדר"ג, שק"ם,
+ * חיפוקים, גם בדרישות וגם בטבלאות הגדולות). הפתרון: משווים חתימת JSON של הנתונים
+ * שהתקבלו כרגע מול הפעם הקודמת עבור אותו מפתח-תצוגה, ומדלגים על כל מגע ב-DOM אם זהים -
+ * כך שהתצוגה "יציבה" ברוב מחזורי הרענון (שבהם באמת לא השתנה כלום), ומתעדכנת מיד ברגע
+ * שמשהו אכן משתנה (למשל אחרי אישור/פרסום).
+ * @param {string} cacheKey - מזהה ייחודי לתצוגה הנתונה (למשל 'modiein_' + tbodyId)
+ * @param {*} data - הנתונים שהתקבלו כרגע, כפי שיושוו (JSON.stringify) לפעם הקודמת
+ * @returns {boolean} true אם הנתונים השתנו (יש לרנדר); false אם זהים (אפשר לדלג)
+ */
+let _renderSnapshotCache = {};
+function _renderDataChanged(cacheKey, data) {
+  const serialized = JSON.stringify(data);
+  if (_renderSnapshotCache[cacheKey] === serialized) return false;
+  _renderSnapshotCache[cacheKey] = serialized;
+  return true;
+}
+
 /* ================================
    הגדרות טבלאות (לחישובים כלליים)
 ================================ */
@@ -1078,10 +1102,39 @@ async function globalExportManager() {
 }
 
 /**
+ * בודקת שלכל טבלת דרישה של קשר/אופטיקה השייכת ליחידה הנוכחית (לפי UNIT_OWN_TABLES) יש
+ * ערך ב"נושא שבוע" (השורה הראשונה, topic-textarea) - בקשת המפקדים: פלוגה לא יכולה לשמור
+ * ולייבא בלי לתעד קודם על מה השבוע. מספיק תא אחד מלא בשורה (לא כל העמודות) כדי לא להכביד.
+ * טבלה שלא קיימת כרגע ב-DOM (לא נטענה) לא נבדקת - אין מה לחסום על סמך משהו שלא קיים.
+ * @returns {{ok: boolean, missing: string[]}}
+ */
+function _getUnitKesherOpticTopicStatus() {
+  const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
+  const tables = UNIT_OWN_TABLES[page];
+  if (!tables) return { ok: true, missing: [] };
+  const [kesherTableId, opticTableId] = tables;
+  const missing = [];
+  [{ id: kesherTableId, name: 'תקשוב' }, { id: opticTableId, name: 'אופטיקה' }].forEach(({ id, name }) => {
+    const table = document.getElementById(id);
+    const topicRow = table ? table.querySelector('tbody tr.topic-row') : null;
+    if (!topicRow) return;
+    const filled = Array.from(topicRow.querySelectorAll('.topic-textarea')).some(ta => ta.value.trim() !== '');
+    if (!filled) missing.push(name);
+  });
+  return { ok: missing.length === 0, missing };
+}
+
+/**
  * פונקציית ייצוא פלוגה: שומרת את הטיוטה למצב שמאפשר למנהל לייבא.
  */
 async function globalExportUnit() {
   if (!confirm('האם סיימת את השיבוץ וברצונך לשמור את הנתונים כך שיהיו מוכנים לייבוא על ידי המנהל?')) return;
+
+  const topicStatus = _getUnitKesherOpticTopicStatus();
+  if (!topicStatus.ok) {
+    alert(`יש למלא "נושא שבוע" בדרישות ה${topicStatus.missing.join(' וה')} לפני שמירה וייבוא.`);
+    return;
+  }
 
   // ממירים קודם כל בלוק "ממתין" שנוצר/הוזז בגריד הבקשות (חדר"ג/שק"ם) לרשומת בקשה בפועל -
   // אין כפתור "שמור בקשות" נפרד, "שמור ומוכן לייבוא" הוא הפעולה היחידה ששומרת אותן. אם יש
@@ -1456,6 +1509,8 @@ async function renderHipokEntriesList() {
     filteredEntries = entries.filter(e => e.color === targetColor);
   }
 
+  // מדלגים על בניית הרשימה אם היא זהה למה שכבר מוצג - ראו _renderDataChanged
+  if (_renderDataChanged('hipokEntriesList_' + currentPage, filteredEntries)) {
   if (filteredEntries.length === 0) {
     container.innerHTML = '<p style="color:#666; text-align:center; padding: 15px; font-weight:bold;">אין חיפוקים שהוזנו לשבוע זה.</p>';
   } else {
@@ -1475,6 +1530,7 @@ async function renderHipokEntriesList() {
       `;
     }).join('');
   }
+  } // סוף if (_renderDataChanged)
 
   // רענון טבלת ההקצאות אם היא גלויה
   const haktzaotSection = document.getElementById('haktzaot');
@@ -2357,37 +2413,31 @@ async function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
 
-  if (!data) {
-    tbody.innerHTML = `<tr><td colspan="${companyCount + 1}" style="text-align:center;">אין נתונים מאושרים לשבוע זה</td></tr>`;
-    return;
-  }
+  // מדלגים על כל מגע ב-DOM אם הנתונים המפורסמים זהים לגמרי למה שכבר מוצג - ראו _renderDataChanged
+  if (!_renderDataChanged('modiein_' + tbodyId, data)) return;
 
-  tbody.innerHTML = '';
+  const emptyHtml = `<tr><td colspan="${companyCount + 1}" style="text-align:center;">אין נתונים מאושרים לשבוע זה</td></tr>`;
+  if (!data) { tbody.innerHTML = emptyHtml; return; }
+
   const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
-  if (keysWithData.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${companyCount + 1}" style="text-align:center;">אין נתונים מאושרים לשבוע זה</td></tr>`;
-    return;
-  }
+  if (keysWithData.length === 0) { tbody.innerHTML = emptyHtml; return; }
 
   const maxIndex = Math.max(...keysWithData.map(Number));
   const requiredRows = maxIndex < companyCount ? 1 : 2 + Math.floor((maxIndex - companyCount) / (companyCount + 1));
-  let hasAny = false;
 
+  // בונים את כל השורות ב-HTML לפני נגיעה ב-DOM (במעבר אחד, לא appendChild מצטבר) - כדי
+  // שהחלפת התוכן תהיה אטומית ולא תגרום להבהוב מיותר.
+  let rowsHtml = '';
   for (let r = 0; r < requiredRows; r++) {
-    let tr = document.createElement('tr');
     if (r === 0) {
-      tr.innerHTML += `<td class="test">נושא שבוע</td>`;
+      let rowHtml = `<td class="test">נושא שבוע</td>`;
       let rowHasData = false;
       for (let c = 0; c < companyCount; c++) {
         const val = data[c] || '';
         if (val) rowHasData = true;
-        tr.innerHTML += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;
+        rowHtml += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;
       }
-      if (rowHasData) {
-        tr.classList.add('special-row'); 
-        tbody.appendChild(tr);
-        hasAny = true;
-      }
+      if (rowHasData) rowsHtml += `<tr class="special-row">${rowHtml}</tr>`;
     } else {
       let isEmpty = true;
       let rowHtml = '';
@@ -2397,16 +2447,10 @@ async function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 
         if (val !== '') isEmpty = false;
         rowHtml += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;
       }
-      if (!isEmpty) {
-        tr.innerHTML = rowHtml;
-        tbody.appendChild(tr);
-        hasAny = true;
-      }
+      if (!isEmpty) rowsHtml += `<tr>${rowHtml}</tr>`;
     }
   }
-  if (!hasAny) {
-    tbody.innerHTML = `<tr><td colspan="${companyCount + 1}" style="text-align:center;">אין נתונים מאושרים לשבוע זה</td></tr>`;
-  }
+  tbody.innerHTML = rowsHtml || emptyHtml;
 }
 
 /** מרנדרת הקצאות מודיעין עבור בא"ח איסו"ק */
@@ -2437,6 +2481,18 @@ async function renderHaktzaotBahalag() {
 /* ================================
    חישובים (נוסחאות) לטבלת קשר ולשאר
 ================================ */
+
+/**
+ * מסמנת תא "סה"כ" מחושב (עודף/עודף כללי/זמין) באדום אם ערכו הנוכחי שלילי - כלומר יש יותר
+ * דרישה מכמות האמצעים בפועל (בקשת המפקדים). לא נוגעת בתאים ריקים - שלילי רק כשיש ערך
+ * מספרי בפועל וקטן מאפס.
+ * @param {HTMLInputElement} input
+ */
+function _applyNegativeHighlight(input) {
+  if (!input) return;
+  const raw = input.value !== '' ? parseFloat(input.value) : NaN;
+  input.classList.toggle('negative-value', !isNaN(raw) && raw < 0);
+}
 
 /**
  * מריצה נוסחאות וחישובי סיכום, דרישה, ויסות ועודפים עבור שורה בטבלת קשר.
@@ -2498,6 +2554,7 @@ function recalcKesherRow(row) {
       } else {
         surplusInput.value = '';
       }
+      _applyNegativeHighlight(surplusInput);
     }
   });
 
@@ -2529,6 +2586,7 @@ function recalcKesherRow(row) {
     } else {
       excessInput.value = '';
     }
+    _applyNegativeHighlight(excessInput);
   }
 }
 
@@ -2580,6 +2638,7 @@ function recalcRow(row, config) {
     } else {
       availableInput.value = '';
     }
+    _applyNegativeHighlight(availableInput);
   }
 
   const excessInput = row.cells[excessCol]?.querySelector('.cell-input');
@@ -2589,6 +2648,7 @@ function recalcRow(row, config) {
     } else {
       excessInput.value = '';
     }
+    _applyNegativeHighlight(excessInput);
   }
 }
 
@@ -2829,8 +2889,33 @@ let shekemStagedBlocks = [];
 let reqGridDragMode = null; // null | 'create' | 'move' | 'resize'
 let reqGridDragCtx = null;
 
-/** בונה תא-שעה + 7 תאי גריד ריקים (ללא textarea כברירת מחדל) לכל 36 השורות. */
+/**
+ * מאפסת את כל תאי הגריד (td.req-cell) חזרה למצב "ריק" נקי - בלי להרוס ולבנות מחדש את
+ * שלד הטבלה (36 השורות/288 התאים) עצמו. משמשת את buildReqTableBody במקום innerHTML
+ * מלא כשהשלד כבר קיים - ראו ההערה שם.
+ */
+function resetReqTableBody(tbody) {
+  tbody.querySelectorAll('td.req-cell').forEach(cell => {
+    cell.className = 'req-cell';
+    cell.rowSpan = 1;
+    cell.style.display = '';
+    delete cell.dataset.stagedIdx;
+    while (cell.firstChild) cell.removeChild(cell.firstChild);
+  });
+}
+
+/**
+ * בונה תא-שעה + 7 תאי גריד ריקים (ללא textarea כברירת מחדל) לכל 36 השורות. נקראת
+ * מ-paintUnitRequestGrid בכל רענון (כולל מחזור הרענון האוטומטי כל כמה שניות) - בדיוק כמו
+ * generateTimeSlots, אם השלד כבר קיים לא הורסים ובונים מחדש 288 תאים מאפס (הרס+בנייה של
+ * DOM בסדר גודל כזה כל כמה שניות הוא בדיוק מה שגרם ל"רצידה" הנמשכת בטבלאות הבקשות של
+ * חדר"ג/שק"ם - אפיון QA), אלא רק מאפסים את התאים הקיימים דרך resetReqTableBody.
+ */
 function buildReqTableBody(tbody) {
+  if (tbody.rows.length > 0) {
+    resetReqTableBody(tbody);
+    return;
+  }
   let html = '';
   for (let r = 0; r < 36; r++) {
     html += `<tr><td class="time-col">${rowIndexToTime(r)}</td>`;
@@ -3964,6 +4049,12 @@ async function loadHadragTables(week, year) {
     // שבוע אחד כבר לא רלוונטי, כל שאר הטבלאות בלולאה הזו גם לא יהיו רלוונטיות.
     if (week !== currentWeek || year !== currentYear) return;
 
+    // מדלגים על איפוס+אכלוס מחדש של הטבלה הזו אם הנתונים זהים למה שכבר מוצג - ראו
+    // _renderDataChanged. בלי זה, כל 252 התאים נהרסים ונבנים מחדש (איפוס rowSpan/display/
+    // class/textarea ואז מילוי חוזר) בכל מחזור רענון אוטומטי גם כשלא השתנה כלום, מה שגרם
+    // ל"רצידה" הנמשכת בטבלאות הגדולות (אפיון QA).
+    if (!_renderDataChanged('hadragTable_' + tableId, tableData)) continue;
+
     // מאפסים ומאכלסים מחדש **באותו מעבר סינכרוני** (בלי await בין השלבים) - כדי שלא יהיה
     // חלון זמן שבו כל התאים נראים ריקים בזמן ה-await לשרת (אותה תבנית באג בדיוק כמו
     // ב-loadTableData/loadHipokData - ראו שם).
@@ -4269,26 +4360,31 @@ async function loadShekemTables(week, year) {
   // מקבילה ומפורטת ב-loadTableData).
   if (week !== currentWeek || year !== currentYear) return;
 
-  // מאפסים ומאכלסים מחדש באותו מעבר סינכרוני - בלי await בין השלבים (ראו הערה ב-loadHadragTables).
-  resetHadragOrShekemTable(tbody);
-  if (!tableData) { await updatePlatoonGridConflictHighlight(['body-shekem'], 'shekemData'); return; }
+  // מדלגים על איפוס+אכלוס מחדש אם הנתונים זהים למה שכבר מוצג - ראו _renderDataChanged
+  // (אותה הערה כמו ב-loadHadragTables - זו הסיבה ש"טבלת השק"ם" עדיין המשיכה "לרצד" כל כמה
+  // שניות גם אחרי תיקון חלון-הריקון-הזמני).
+  if (_renderDataChanged('shekemTable_body-shekem', tableData)) {
+    // מאפסים ומאכלסים מחדש באותו מעבר סינכרוני - בלי await בין השלבים (ראו הערה ב-loadHadragTables).
+    resetHadragOrShekemTable(tbody);
+    if (tableData) {
+      for (let r = 0; r < 36; r++) {
+        for (let c = 0; c < 7; c++) {
+          const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
+          if (!cell) continue;
 
-  for (let r = 0; r < 36; r++) {
-    for (let c = 0; c < 7; c++) {
-      const cell = tbody.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
-      if (!cell) continue;
-      
-      const data = tableData[`${r}_${c}`];
-      if (data) {
-        const textarea = cell.querySelector('textarea');
-        if (textarea) {
-          textarea.value = data.val || '';
-          textarea.style.height = '100%';
+          const data = tableData[`${r}_${c}`];
+          if (data) {
+            const textarea = cell.querySelector('textarea');
+            if (textarea) {
+              textarea.value = data.val || '';
+              textarea.style.height = '100%';
+            }
+            cell.rowSpan = data.span || 1;
+            cell.style.display = data.disp || '';
+            if (data.classes) data.classes.forEach(cls => cell.classList.add(cls));
+            if (data.reqId) cell.dataset.reqId = data.reqId; else delete cell.dataset.reqId;
+          }
         }
-        cell.rowSpan = data.span || 1;
-        cell.style.display = data.disp || '';
-        if (data.classes) data.classes.forEach(cls => cell.classList.add(cls));
-        if (data.reqId) cell.dataset.reqId = data.reqId; else delete cell.dataset.reqId;
       }
     }
   }
@@ -5528,6 +5624,10 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
   // מה שגרם לטבלאות ההקצאות של חיפוקים/פלוגתי/שק"ם להמשיך "לרצד" גם אחרי התיקון בטבלאות
   // הניתנות לעריכה (אפיון QA).
   if (reqWeek !== currentWeek || reqYear !== currentYear) return;
+  // מדלגים על ההצבה בפועל אם ה-HTML זהה למה שכבר מוצג - ראו _renderDataChanged. גם בנייה
+  // אטומית (מעבר אחד, בלי ריקון קודם) עדיין הורסת ובונה מחדש את כל השורות בכל מחזור רענון
+  // אוטומטי אם לא בודקים זאת קודם - זה מה שהשאיר את "רצידת" ההקצאות קיימת חלקית.
+  if (!_renderDataChanged('haktzaotExtra_' + tbodyId, html)) return;
   tbody.innerHTML = html;
 }
 

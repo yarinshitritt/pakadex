@@ -221,6 +221,8 @@
 .bg-pikud  { background-color: #e3f2fd !important; border: 1.5px solid #93c5fd !important; }
 .bg-tazam  { background-color: #f3e5f5 !important; border: 1.5px solid #d8b4fe !important; }
 .bg-maphat { background-color: #fff3e0 !important; border: 1.5px solid #fdba74 !important; }
+/* משבצת "חסומה" שהמנהל סימן - יחידות לא יכולות לשבץ שם בקשה (ראו paintBlockedCell/reqGridHasConflict) */
+.bg-blocked { background-color: #000000 !important; border: 1.5px solid #000000 !important; }
 .imported:not([class*="bg-"]) { background-color: #e8f5e9 !important; border: 1.5px solid #86efac !important; }
 
 /* ================== Excel-like Selection ================== */

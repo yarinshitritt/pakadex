@@ -294,7 +294,7 @@ button, .sidebar, .sidebar-btn {
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
-/* כרטיסיות הניווט העליון (קשר/אופטיקה/מודיעין/חיפוקים/חדר"ג/שק"ם) בעמודי הטבלה הראשיים
+/* כרטיסיות הניווט העליון (קשר/אופטיקה/מודיעין/מענים רפואיים/חדר"ג/שק"ם) בעמודי הטבלה הראשיים
    עצמם (kesher.html/optic.html/וכו') מקבלות צבע ייחודי, כדי שיהיה ברור במבט חטוף שנמצאים
    בטבלה הגדולה/הראשית - בניגוד לאותו בר בדיוק שמופיע גם בעמודי היחידות (esuk.html וכו')
    ונשאר בעיצוב הרגיל שם. */
@@ -475,7 +475,7 @@ table tbody tr:hover {
 .bg-tazam  { background-color: #e9d5ff !important; border: 1px solid #d8b4fe !important; color: #581c87 !important; }
 .bg-maphat { background-color: #fed7aa !important; border: 1px solid #fdba74 !important; color: #7c2d12 !important; }
 
-/* ================== מכולות חדשות לבקשות חיפוקים, חדר"ג ושק"ם ================== */
+/* ================== מכולות חדשות לבקשות מענים רפואיים, חדר"ג ושק"ם ================== */
 .request-card-container {
   background-color: #ffffff !important;
   border: 1px solid #cbd5e1 !important;

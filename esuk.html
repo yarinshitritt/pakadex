@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="style.css?v=83">
-  <link rel="stylesheet" href="esuk.css?v=83">
-  <link rel="stylesheet" href="kesher.css?v=83">
-  <link rel="stylesheet" href="optic.css?v=83">
-  <link rel="stylesheet" href="modiein.css?v=83">
-  <link rel="stylesheet" href="hipokim.css?v=83">
-  <link rel="stylesheet" href="hadrag.css?v=83">
+  <link rel="stylesheet" href="style.css?v=88">
+  <link rel="stylesheet" href="esuk.css?v=88">
+  <link rel="stylesheet" href="kesher.css?v=88">
+  <link rel="stylesheet" href="optic.css?v=88">
+  <link rel="stylesheet" href="modiein.css?v=88">
+  <link rel="stylesheet" href="hipokim.css?v=88">
+  <link rel="stylesheet" href="hadrag.css?v=88">
   <title>PAKADEX - בא"ח איסו"ק</title>
 </head>
 <body>
@@ -123,8 +123,8 @@
  
         <div id="hipok" class="topsub" style="display:none;">
           <div class="request-card-container">
-            <button id="openHipokModalBtn" onclick="openHipokModal()" class="hipok-choice-btn" style="margin-bottom:15px;">הוספת חיפוק חדש</button>
-            <h3>חיפוקים שהוזנו לשבוע זה:</h3>
+            <button id="openHipokModalBtn" onclick="openHipokModal()" class="hipok-choice-btn" style="margin-bottom:15px;">הוספת מענה רפואי חדש</button>
+            <h3>מענים רפואיים שהוזנו לשבוע זה:</h3>
             <div id="hipokEntriesList"></div>
           </div>
         </div>
@@ -297,18 +297,18 @@
     <div class="modal-content">
       <span class="close-btn" onclick="closeHipokModal()">&times;</span>
 
-      <!-- שלב 1: בחירת סוג חיפוק -->
+      <!-- שלב 1: בחירת סוג מענה רפואי -->
       <div id="hipokStep1" class="hipok-step">
         <div class="modal-header">
-          <h3>הוספת חיפוק חדש</h3>
-          <p class="modal-subtitle">שלב 1 מתוך 3: בחר סוג חיפוק</p>
+          <h3>הוספת מענה רפואי חדש</h3>
+          <p class="modal-subtitle">שלב 1 מתוך 3: בחר סוג מענה רפואי</p>
         </div>
         <div class="hipok-type-grid">
           <button class="hipok-type-btn dry" onclick="selectHipokType('dry')">
-            <span class="type-title">חיפוק יבש</span>
+            <span class="type-title">מענה רפואי יבש</span>
           </button>
           <button class="hipok-type-btn wet" onclick="selectHipokType('wet')">
-            <span class="type-title">חיפוק רטוב</span>
+            <span class="type-title">מענה רפואי רטוב</span>
           </button>
         </div>
       </div>
@@ -316,7 +316,7 @@
       <!-- שלב 2: בחירת יום -->
       <div id="hipokStep2" class="hipok-step" style="display:none;">
         <div class="modal-header">
-          <h3>הוספת חיפוק חדש</h3>
+          <h3>הוספת מענה רפואי חדש</h3>
           <p class="modal-subtitle">שלב 2 מתוך 3: בחר יום בשבוע</p>
         </div>
         <div class="hipok-days-grid"></div>
@@ -328,12 +328,12 @@
       <!-- שלב 3: הזנת פרטים ושעות -->
       <div id="hipokStep3" class="hipok-step" style="display:none;">
         <div class="modal-header">
-          <h3>הוספת חיפוק חדש</h3>
+          <h3>הוספת מענה רפואי חדש</h3>
           <p class="modal-subtitle">שלב 3 מתוך 3: פרטי הטיפול והשעות</p>
         </div>
 
         <div class="form-group">
-          <label for="hipokTextInput">תיאור / פירוט החיפוק:</label>
+          <label for="hipokTextInput">תיאור / פירוט המענה הרפואי:</label>
           <textarea id="hipokTextInput" placeholder="הזן תיאור חופשי (למשל: תרגיל אימון, בדיקה וכו')"></textarea>
         </div>
         
@@ -349,7 +349,7 @@
         
         <div class="modal-footer">
           <button class="hipok-back-btn" onclick="hipokGoToStep(2)">➔ חזור</button>
-          <button class="hipok-submit-btn" onclick="submitHipokEntry()">הוסף חיפוק</button>
+          <button class="hipok-submit-btn" onclick="submitHipokEntry()">הוסף מענה רפואי</button>
         </div>
       </div>
     </div>
@@ -367,7 +367,7 @@
       document.getElementById(sectionId).style.display = 'flex';
 
       // currentCategory לא מתאפס בכוונה - מעבר בין בקשות/הקצאות נשאר על אותה קטגוריית טבלה
-      // (קשר/אופטיקה/מודיעין/חיפוקים/פלוגתי/שעות שק"ם) שהייתה פתוחה, ולא קופץ תמיד לקשר (אפיון QA).
+      // (קשר/אופטיקה/מודיעין/מענים רפואיים/פלוגתי/שעות שק"ם) שהייתה פתוחה, ולא קופץ תמיד לקשר (אפיון QA).
 
       const btnShekem = document.getElementById('btn-shekem');
       const btnChadrag = document.getElementById('btn-chadrag');
@@ -524,12 +524,12 @@
       }
     }
  
-    /* ===== מודל הוספת חיפוק ===== */
+    /* ===== מודל הוספת מענה רפואי ===== */
     let hipokSelectedType = null;
     let hipokSelectedDay = null;
  
     /**
-     * פותחת את מודאל הוספת החיפוק.
+     * פותחת את מודאל הוספת המענה הרפואי.
      */
     function openHipokModal() {
       hipokSelectedType = null;
@@ -540,7 +540,7 @@
     }
  
     /**
-     * סוגרת את מודאל הוספת החיפוק ומאפסת שדות.
+     * סוגרת את מודאל הוספת המענה הרפואי ומאפסת שדות.
      */
     function closeHipokModal() {
       document.getElementById('hipokModalOverlay').classList.remove('active');
@@ -553,7 +553,7 @@
     }
  
     /**
-     * מעבירה בין שלבי המודאל של הוספת חיפוק (צעד 1, 2, 3).
+     * מעבירה בין שלבי המודאל של הוספת מענה רפואי (צעד 1, 2, 3).
      * @param {number} step - מספר השלב
      */
     function hipokGoToStep(step) {
@@ -564,8 +564,8 @@
     }
  
     /**
-     * בוחרת את סוג החיפוק ומעבירה לשלב הבא במודאל.
-     * @param {string} type - סוג החיפוק
+     * בוחרת את סוג המענה הרפואי ומעבירה לשלב הבא במודאל.
+     * @param {string} type - סוג המענה הרפואי
      */
     function selectHipokType(type) {
       hipokSelectedType = type;
@@ -573,7 +573,7 @@
     }
  
     /**
-     * בונה את כפתורי בחירת יום בשבוע במודאל החיפוקים.
+     * בונה את כפתורי בחירת יום בשבוע במודאל המענים הרפואיים.
      */
     function buildHipokDayButtons() {
       const grid = document.querySelector('#hipokStep2 .hipok-days-grid');
@@ -589,7 +589,7 @@
     }
  
     /**
-     * בוחרת את היום המבוקש ומעבירה לשלב מילוי הפרטים במודאל החיפוקים.
+     * בוחרת את היום המבוקש ומעבירה לשלב מילוי הפרטים במודאל המענים הרפואיים.
      * @param {number} dayIndex - אינדקס יום בשבוע
      */
     function selectHipokDay(dayIndex) {
@@ -660,9 +660,9 @@
     });
   </script>
  
-  <script src="config.js?v=83"></script>
-  <script src="sharepointService.js?v=83"></script>
-  <script src="auth.js?v=83"></script>
-  <script src="script.js?v=83"></script>
+  <script src="config.js?v=88"></script>
+  <script src="sharepointService.js?v=88"></script>
+  <script src="auth.js?v=88"></script>
+  <script src="script.js?v=88"></script>
 </body>
 </html>

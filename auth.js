@@ -113,7 +113,7 @@ const AUTH = {
 
   /** מנהל-על קבוע - חייב להתקיים תמיד במערכת בתור מנהל, גם אם רשימת המשתמשים מתאפסת/נמחקת
       בטעות או בטרם הסתיים סנכרון ראשוני. ראו _ensurePermanentAdmin. */
-  PERMANENT_ADMIN: { pn: 's9385538', name: 'ירין שטרית', role: 'admin', unit: '' },
+  PERMANENT_ADMIN: { pn: 's9385538', name: 'ירין שטרית', jobTitle: 'מנהל מערכת', role: 'admin', unit: '' },
 
   /**
    * מוודאת שמנהל-העל הקבוע (PERMANENT_ADMIN) קיים ברשימה, בתפקיד מנהל ועם השם הנכון - ומתקנת
@@ -199,7 +199,11 @@ const AUTH = {
   saveUser(user) {
     const pn = this.normalizePn(user.pn);
     if (!pn) return { ok: false, error: 'מספר אישי חייב להכיל ספרות.' };
-    if (!this.ROLES[user.role]) return { ok: false, error: 'תפקיד לא חוקי.' };
+    if (!this.ROLES[user.role]) return { ok: false, error: 'הרשאה לא חוקית.' };
+    // תפקיד בפועל של האדם (למשל "מ"פ", "רס"פ", "קצין קשר") - נפרד לגמרי מהרשאת הגישה
+    // (role) לאפליקציה - בקשת המפקדים: לדעת מי כל אחד מהאנשים ברשימה, לא רק איזו הרשאה יש לו.
+    const jobTitle = (user.jobTitle || '').trim();
+    if (!jobTitle) return { ok: false, error: 'יש למלא תפקיד עבור המשתמש.' };
 
     // תמיכה בהרשאה לכמה יחידות בו-זמנית (למשל גם מפח"ט וגם גדוד הפיקוד).
     const units = Array.isArray(user.unit) ? user.unit : (user.unit ? [user.unit] : []);
@@ -211,6 +215,7 @@ const AUTH = {
     const record = {
       pn,
       name: (user.name || '').trim(),
+      jobTitle,
       role: user.role,
       unit: user.role === 'unit' ? validUnits : []
     };
@@ -283,7 +288,7 @@ const AUTH = {
     const users = await this.refreshUsers();
 
     if (users.length === 0) {
-      const admin = { pn: clean, name: 'מנהל ראשי', role: 'admin', unit: '' };
+      const admin = { pn: clean, name: 'מנהל ראשי', jobTitle: 'מנהל מערכת', role: 'admin', unit: '' };
       this.saveUsers([admin]);
       this.setSession(admin);
       return { ok: true, user: admin, bootstrapped: true };

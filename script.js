@@ -23,7 +23,7 @@ function escapeHtml(str) {
  * היא "הטבלה מהבהבת/מרצדת כל כמה שניות", כי גם בנייה מלאה-במעבר-אחד עדיין הורסת ובונה
  * מחדש עשרות/מאות רכיבי DOM (עם כל הצביעה/מיזוג השורות שלהם) בכל מחזור, גם כשהתוצאה
  * הסופית זהה למה שכבר מוצג (אפיון QA: "עדיין מרצדים" - מודיעין, פלוגתי/חדר"ג, שק"ם,
- * חיפוקים, גם בדרישות וגם בטבלאות הגדולות). הפתרון: משווים חתימת JSON של הנתונים
+ * מענים רפואיים, גם בדרישות וגם בטבלאות הגדולות). הפתרון: משווים חתימת JSON של הנתונים
  * שהתקבלו כרגע מול הפעם הקודמת עבור אותו מפתח-תצוגה, ומדלגים על כל מגע ב-DOM אם זהים -
  * כך שהתצוגה "יציבה" ברוב מחזורי הרענון (שבהם באמת לא השתנה כלום), ומתעדכנת מיד ברגע
  * שמשהו אכן משתנה (למשל אחרי אישור/פרסום).
@@ -266,7 +266,7 @@ function renderNavbars() {
 
     // הוסר סממן טקסט נפרד למנהל ("✓ הכל הופץ" / "⏳ יש שינויים שלא הופצו") - במקומו כפתור
     // "הפץ שינויים" עצמו משנה צבע (אדום/ירוק) לפי updateGlobalExportButtonStatus, בהתבסס על
-    // בדיקה גלובלית לכל המערכת (קשר/אופטיקה/מודיעין/חיפוקים/חדר"ג/שק"ם) לשבוע הנוכחי - לא רק העמוד הנוכחי.
+    // בדיקה גלובלית לכל המערכת (קשר/אופטיקה/מודיעין/מענים רפואיים/חדר"ג/שק"ם) לשבוע הנוכחי - לא רק העמוד הנוכחי.
 
     // הוסר גם סממן הטקסט הנפרד לעמוד יחידה ("✓ הכל נשמר" / "⏳ נוספו שינויים שטרם נשמרו") -
     // אותו קונספט של כפתור אדום/ירוק חל גם כאן: כפתור "שמור ומוכן לייבוא" עצמו (אותו כפתור
@@ -308,9 +308,9 @@ function renderNavbars() {
           <button class="topnav-btn ${isKesher ? 'active' : ''}" id="btn-kesher" onclick="${isUnitPage ? "showTopSection('kesher')" : "window.location.href='kesher.html'"}">תקשוב</button>
           <button class="topnav-btn ${isOptic ? 'active' : ''}" id="btn-optic" onclick="${isUnitPage ? "showTopSection('optic')" : "window.location.href='optic.html'"}">אופטיקה</button>
           <button class="topnav-btn ${isModiein ? 'active' : ''}" id="btn-modiein" onclick="${isUnitPage ? "showTopSection('modiein')" : "window.location.href='modiein.html'"}">מודיעין</button>
-          <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">חיפוקים</button>
+          <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">מענה רפואי</button>
           <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">פלוגתי</button>
-          <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שקם</button>
+          <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שק"ם</button>
           ${!isUnitPage ? `<button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 אקסל</button>` : ''}
         </div>
         <div class="toolbar-actions">
@@ -502,7 +502,7 @@ function getActiveTables() {
 }
 
 /**
- * שומרת את כל נתוני הטבלאות, החיפוקים, החדר"ג והשק"ם עבור השבוע והשנה הנוכחיים ב-DataService (SharePoint / Local).
+ * שומרת את כל נתוני הטבלאות, המענים הרפואיים, החדר"ג והשק"ם עבור השבוע והשנה הנוכחיים ב-DataService (SharePoint / Local).
  */
 async function saveCurrentWeek() {
   const tables = getActiveTables();
@@ -688,14 +688,14 @@ function loadViewedWeek() {
 
 // מנקה את השבוע הנצפה לפני ניווט לאזור/עמוד אחר בתפריט הצדדי (ראשי/טבלאות/ניהול הרשאות/
 // עמוד יחידה) - כדי שמעבר בין *אזורים* שונים באפליקציה תמיד ינחת מחדש על השבוע הקלנדרי
-// האמיתי, בניגוד למעבר בין *קטגוריות טבלה* (קשר/אופטיקה/מודיעין/חיפוקים/פלוגתי/שעות שק"ם)
+// האמיתי, בניגוד למעבר בין *קטגוריות טבלה* (קשר/אופטיקה/מודיעין/מענים רפואיים/פלוגתי/שעות שק"ם)
 // דרך סרגל הקטגוריות העליון, שממשיך לשמר את השבוע הנצפה כרגיל (אפיון QA: "בין עמודים תמיד
 // לשבוע הנוכחי, אבל בין טבלה לטבלה באותו עמוד להישאר על השבוע שנבחר").
 function clearViewedWeek() {
   try { sessionStorage.removeItem(VIEWED_WEEK_KEY); } catch (e) {}
 }
 
-// קטגוריית הטבלה הנצפית כרגע (קשר/אופטיקה/מודיעין/חיפוקים/פלוגתי/שעות שק"ם) בעמוד יחידה -
+// קטגוריית הטבלה הנצפית כרגע (קשר/אופטיקה/מודיעין/מענים רפואיים/פלוגתי/שעות שק"ם) בעמוד יחידה -
 // נשמרת ב-sessionStorage כדי שמעבר בין "דרישות" ל"הקצאות" (שמבוצע כניווט מלא לעמוד עם
 // ?view=... ולא כהחלפת סקשן פנימית) יישאר על אותה קטגוריה, במקום לקפוץ תמיד לקשר (אפיון QA).
 const CURRENT_CATEGORY_KEY = 'pakadex_current_category';
@@ -748,7 +748,7 @@ function nextWeek() {
 }
 
 /**
- * מעדכנת את כל רכיבי ממשק המשתמש (שדות שבוע, טבלאות, רשימות חיפוקים, חדר"ג ושק"ם) בעת החלפת שבוע.
+ * מעדכנת את כל רכיבי ממשק המשתמש (שדות שבוע, טבלאות, רשימות מענים רפואיים, חדר"ג ושק"ם) בעת החלפת שבוע.
  */
 async function updateUIForWeek() {
   const weekInput = document.getElementById('weekInput');
@@ -837,7 +837,7 @@ function initPublishIndicatorObserver() {
 /* ================================
    בדיקה גלובלית: האם קיימים בכלל המערכת (לא רק בעמוד הנוכחי) שינויים שטרם הופצו
    לשבוע הנוכחי - קשר/אופטיקה (לפי רשימת הממתינים), טבלאות מודיעין/דרישת יחידה,
-   חדר"ג, שק"ם וחיפוקים (השוואת draft מול published ישירות מהאחסון).
+   חדר"ג, שק"ם ומענים רפואיים (השוואת draft מול published ישירות מהאחסון).
 ================================ */
 
 /** מסננת ערכי תא "ריקים למעשה" (מחרוזת ריקה, או תא חדר"ג/שק"ם ללא טקסט וללא צבע) כדי שהשוואת draft מול published לא תיתקל בפער מלאכותי. */
@@ -874,7 +874,7 @@ async function hasAnySystemPendingChanges(week, year) {
   // כל הבדיקות כאן קריאה-בלבד ועצמאיות זו מזו (אין תלות סדר) - מריצים את כולן **במקביל**
   // (Promise.all) במקום ברצף עם await בלולאה. במצב שרת מרכזי (SharePoint) כל בדיקה היא
   // בקשת רשת אמיתית עם השהיה משלה - הרצה ברצף של עשרות בדיקות (טבלאות מנהל + חדר"ג + שק"ם +
-  // חיפוקים + כל הרשימות) הצטברה להשהיה של כמה שניות עד שכפתור "הפץ שינויים" מתעדכן, מה
+  // מענים רפואיים + כל הרשימות) הצטברה להשהיה של כמה שניות עד שכפתור "הפץ שינויים" מתעדכן, מה
   // שנראה כאילו הוא "לא מתעדכן בזמן" ודורש כמה לחיצות (אפיון QA).
   const checks = [];
 
@@ -900,10 +900,10 @@ async function hasAnySystemPendingChanges(week, year) {
   // שק"ם
   checks.push(_hasUnpublishedDraft(`shekemData_body-shekem_week${week}_year${year}`));
 
-  // חיפוקים - טבלת המנהל עצמה
+  // מענים רפואיים - טבלת המנהל עצמה
   checks.push(_hasUnpublishedDraft(getStorageKey('hipoktable', week, year)));
 
-  // בקשות חיפוקים שיחידה פרסמה וטרם יובאו לטבלת המנהל
+  // בקשות מענים רפואיים שיחידה פרסמה וטרם יובאו לטבלת המנהל
   checks.push((async () => {
     const publishedHipokEntries = (await fetchTableData(getHipokEntriesKey(week, year) + '_published')) || [];
     if (publishedHipokEntries.length === 0) return false;
@@ -935,7 +935,7 @@ const UNIT_OWN_TABLES = {
   'bahalag.html': ['bkeshertable', 'boptictable', 'reqbahalagTable']
 };
 
-// משווה תת-קבוצה (מסוננת ליחידה הנוכחית) מתוך רשימה משותפת (חיפוקים/חדר"ג/שק"ם) בין draft
+// משווה תת-קבוצה (מסוננת ליחידה הנוכחית) מתוך רשימה משותפת (מענים רפואיים/חדר"ג/שק"ם) בין draft
 // ל-published, כדי לגלות אם ליחידה יש רשומות משלה שעדיין לא נשמרו/פורסמו - ללא תלות
 // בשינויים שביצעו יחידות אחרות באותה רשימה משותפת.
 function _normalizeEntryListForCompare(list, filterFn) {
@@ -965,7 +965,7 @@ async function hasUnitPendingChanges(currentPage, week, year) {
   const tables = UNIT_OWN_TABLES[currentPage] || [];
   const checks = tables.map(tableId => _hasUnpublishedDraft(getStorageKey(tableId, week, year)));
 
-  // "שמור ומוכן לייבוא" הוא כפתור כללי - חל גם על בקשות חיפוקים/חדר"ג/שק"ם שהיחידה הגישה
+  // "שמור ומוכן לייבוא" הוא כפתור כללי - חל גם על בקשות מענים רפואיים/חדר"ג/שק"ם שהיחידה הגישה
   // (רשימות משותפות לכל היחידות, מסוננות כאן לפי הצבע של היחידה הנוכחית בלבד).
   const unitColor = PAGE_UNIT_MAP[currentPage];
   if (unitColor) {
@@ -982,7 +982,7 @@ async function hasUnitPendingChanges(currentPage, week, year) {
 
 /**
  * צובעת את כפתור הייצוא (אדום = יש שינויים חדשים, ירוק = הכל מעודכן לשבוע הנוכחי):
- * - "הפץ שינויים" (עמודי מנהל) - בדיקה גלובלית לכל המערכת (קשר/אופטיקה/מודיעין/חיפוקים/
+ * - "הפץ שינויים" (עמודי מנהל) - בדיקה גלובלית לכל המערכת (קשר/אופטיקה/מודיעין/מענים רפואיים/
  *   חדר"ג/שק"ם), לא רק לעמוד הנוכחי.
  * - "שמור ומוכן לייבוא" (עמוד יחידה, מזוהה לפי מחלקת unit-ready) - כפתור כללי לכל טבלאות
  *   הדרישה של אותה קבוצה (קשר+אופטיקה+מודיעין), לא רק לכרטיסייה הפתוחה כרגע.
@@ -1089,7 +1089,7 @@ async function globalExportManager() {
   if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
 
   // 3. Trigger save again so the orange class removal is saved (רק חדר"ג/שק"ם - קשר/אופטיקה/מודיעין/
-  // חיפוקים לא נשמרים דרך פונקציית save ייעודית; סימון הכתום שלהם מחושב חי מהשוואת draft מול published
+  // מענים רפואיים לא נשמרים דרך פונקציית save ייעודית; סימון הכתום שלהם מחושב חי מהשוואת draft מול published
   // ומתעדכן ממילא בטעינה/עדכון הבא, לא צריך "שמירה חוזרת" מפורשת).
   if (typeof saveHadragTables === 'function') saveHadragTables();
   if (typeof saveShekemTables === 'function') saveShekemTables();
@@ -1320,12 +1320,12 @@ function initWeekInput() {
 }
 
 /* ================================
-   מערכת החיפוקים (+ צבעים)
+   מערכת המענים הרפואיים (+ צבעים)
 ================================ */
 
 /**
- * קוראת את נתוני טבלת החיפוקים (משימות, שעות וצבעים) מתוך ה-DOM.
- * @returns {Object} אובייקט נתוני החיפוקים
+ * קוראת את נתוני טבלת המענים הרפואיים (משימות, שעות וצבעים) מתוך ה-DOM.
+ * @returns {Object} אובייקט נתוני המענים הרפואיים
  */
 function readHipokData() {
   const data = {};
@@ -1342,7 +1342,7 @@ function readHipokData() {
 }
 
 /**
- * שומרת את נתוני טבלת החיפוקים עבור השבוע והשנה הנוכחיים.
+ * שומרת את נתוני טבלת המענים הרפואיים עבור השבוע והשנה הנוכחיים.
  */
 async function saveHipokData() {
   const table = document.getElementById('hipoktable');
@@ -1357,7 +1357,7 @@ async function saveHipokData() {
 }
 
 /**
- * טוענת את נתוני טבלת החיפוקים עבור שבוע ושנה נתונים ומעדכנת את שדות הטבלה והצבעים.
+ * טוענת את נתוני טבלת המענים הרפואיים עבור שבוע ושנה נתונים ומעדכנת את שדות הטבלה והצבעים.
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
@@ -1406,7 +1406,7 @@ const HIPOK_DAY_LABELS = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "שב�
 const HIPOK_MAX_SLOTS_PER_GROUP = 6;
 
 /**
- * מפיקה מפתח שמירה עבור רשימת בקשות החיפוקים של היחידות.
+ * מפיקה מפתח שמירה עבור רשימת בקשות המענים הרפואיים של היחידות.
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  * @returns {string} מפתח שמירה
@@ -1414,10 +1414,10 @@ const HIPOK_MAX_SLOTS_PER_GROUP = 6;
 function getHipokEntriesKey(week, year) { return `hipokEntries_week${week}_year${year}`; }
 
 /**
- * טוענת את רשימת בקשות החיפוקים המאוחסנות לשבוע ושנה מסוימים.
+ * טוענת את רשימת בקשות המענים הרפואיים המאוחסנות לשבוע ושנה מסוימים.
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
- * @returns {Promise<Array<Object>>} מערך אובייקטי בקשות חיפוק
+ * @returns {Promise<Array<Object>>} מערך אובייקטי בקשות מענה רפואי
  */
 async function loadHipokEntries(week, year) {
   const key = getHipokEntriesKey(week, year);
@@ -1430,8 +1430,8 @@ async function loadHipokEntries(week, year) {
 }
 
 /**
- * שומרת את רשימת בקשות החיפוקים ב-DataService.
- * @param {Array<Object>} entries - מערך בקשות החיפוק
+ * שומרת את רשימת בקשות המענים הרפואיים ב-DataService.
+ * @param {Array<Object>} entries - מערך בקשות המענה הרפואי
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
@@ -1445,8 +1445,8 @@ async function saveHipokEntriesList(entries, week, year) {
 }
 
 /**
- * מוסיפה בקשת חיפוק חדשה לרשימה ומעדכנת את השמירה.
- * @param {string} type - סוג החיפוק ('dry' / 'wet')
+ * מוסיפה בקשת מענה רפואי חדשה לרשימה ומעדכנת את השמירה.
+ * @param {string} type - סוג המענה הרפואי ('dry' / 'wet')
  * @param {number} day - אינדקס יום (0-6)
  * @param {string} time - מחרוזת שעות
  * @param {string} [text] - פירוט המשימה
@@ -1461,7 +1461,7 @@ async function addHipokEntry(type, day, time, text = '', color = '') {
 }
 
 /**
- * מוחקת בקשת חיפוק ספציפית לפי מזהה ייחודי.
+ * מוחקת בקשת מענה רפואי ספציפית לפי מזהה ייחודי.
  * @param {string} id - מזהה הבקשה
  * @returns {Array<Object>} הרשימה המעודכנת לאחר המחיקה
  */
@@ -1472,7 +1472,7 @@ async function deleteHipokEntry(id) {
 }
 
 /**
- * מוחקת בקשת חיפוק ומעדכנת את התצוגה בעמוד היחידה.
+ * מוחקת בקשת מענה רפואי ומעדכנת את התצוגה בעמוד היחידה.
  * @param {string} id - מזהה הבקשה
  */
 async function removeHipokEntry(id) {
@@ -1489,7 +1489,7 @@ const PAGE_UNIT_MAP = {
 };
 
 /**
- * מרנדרת את רשימת בקשות החיפוקים המוגשות בעמוד היחידה הרלוונטית.
+ * מרנדרת את רשימת בקשות המענים הרפואיים המוגשות בעמוד היחידה הרלוונטית.
  */
 async function renderHipokEntriesList() {
   const container = document.getElementById('hipokEntriesList');
@@ -1512,10 +1512,10 @@ async function renderHipokEntriesList() {
   // מדלגים על בניית הרשימה אם היא זהה למה שכבר מוצג - ראו _renderDataChanged
   if (_renderDataChanged('hipokEntriesList_' + currentPage, filteredEntries)) {
   if (filteredEntries.length === 0) {
-    container.innerHTML = '<p style="color:#666; text-align:center; padding: 15px; font-weight:bold;">אין חיפוקים שהוזנו לשבוע זה.</p>';
+    container.innerHTML = '<p style="color:#666; text-align:center; padding: 15px; font-weight:bold;">אין מענים רפואיים שהוזנו לשבוע זה.</p>';
   } else {
     container.innerHTML = filteredEntries.map(entry => {
-      const typeText = entry.type === 'dry' ? 'חיפוק יבש' : 'חיפוק רטוב';
+      const typeText = entry.type === 'dry' ? 'מענה רפואי יבש' : 'מענה רפואי רטוב';
       const dayText = HIPOK_DAY_LABELS[entry.day] !== undefined ? 'יום ' + HIPOK_DAY_LABELS[entry.day] : '';
       const styleObj = UNIT_BG_MAP[entry.color] || { bg: '#fff9c4', border: '#ffe082', text: '#856404' };
 
@@ -1541,7 +1541,7 @@ async function renderHipokEntriesList() {
 
 
 /**
- * מוצאת ומחזירה תא ספציפי בטבלת החיפוקים לפי סוג החיפוק, היום ואינדקס המשבצת.
+ * מוצאת ומחזירה תא ספציפי בטבלת המענים הרפואיים לפי סוג המענה הרפואי, היום ואינדקס המשבצת.
  * @param {string} type - סוג ('dry' / 'wet')
  * @param {number} day - יום בשבוע
  * @param {number} slotIndex - אינדקס סלוט בתוך היום
@@ -1565,7 +1565,7 @@ function getHipokTableCell(type, day, slotIndex) {
 }
 
 /**
- * מפתח השמירה של רשימת מזהי בקשות החיפוק שכבר יובאו לטבלת המנהל לשבוע נתון -
+ * מפתח השמירה של רשימת מזהי בקשות המענה הרפואי שכבר יובאו לטבלת המנהל לשבוע נתון -
  * מונע ייבוא כפול (אפיון QA: לחיצה חוזרת על "ייבוא" יצרה עותק נוסף לבקשות שכבר יובאו).
  */
 function getHipokImportedIdsKey(week, year) { return `hipokImportedIds_week${week}_year${year}`; }
@@ -1589,18 +1589,18 @@ async function saveHipokImportedIds(ids, week, year) {
 }
 
 /**
- * מייבאת את בקשות החיפוקים של היחידות לתוך טבלת החיפוקים של המנהל מול מגבלת המשבצות.
+ * מייבאת את בקשות המענים הרפואיים של היחידות לתוך טבלת המענים הרפואיים של המנהל מול מגבלת המשבצות.
  */
 async function importHipukim() {
   const table = document.getElementById('hipoktable');
-  if (!table) { alert('טבלת החיפוקים לא נמצאה'); return; }
+  if (!table) { alert('טבלת המענים הרפואיים לא נמצאה'); return; }
 
-  // מייבאים רק חיפוקים שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") - לא בקשה שהוקלדה
+  // מייבאים רק מענים רפואיים שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") - לא בקשה שהוקלדה
   // ועדיין לא נשמרה על ידי היחידה (אפיון QA).
   const publishedKey = getHipokEntriesKey(currentWeek, currentYear) + '_published';
   const allEntries = (await fetchTableData(publishedKey)) || [];
   if (allEntries.length === 0) {
-    alert('אין חיפוקים מאושרים (לא בוצע שמירה לייבוא) לשבוע זה.');
+    alert('אין מענים רפואיים מאושרים (לא בוצע שמירה לייבוא) לשבוע זה.');
     return;
   }
 
@@ -1609,7 +1609,7 @@ async function importHipukim() {
   const entries = allEntries.filter(entry => !importedIdSet.has(entry.id));
 
   if (entries.length === 0) {
-    alert('כל החיפוקים שהוזנו כבר יובאו לטבלה.');
+    alert('כל המענים הרפואיים שהוזנו כבר יובאו לטבלה.');
     return;
   }
 
@@ -1680,9 +1680,9 @@ async function importHipukim() {
   saveHipokData();
   if (typeof updateHipokConflictHighlight === 'function') updateHipokConflictHighlight(currentWeek, currentYear);
   if (overflow.length > 0) {
-    alert(`יובאו ${entries.length - overflow.length} חיפוקים.\n${overflow.length} לא נכנסו (חריגה מ-6 משבצות).`);
+    alert(`יובאו ${entries.length - overflow.length} מענים רפואיים.\n${overflow.length} לא נכנסו (חריגה מ-6 משבצות).`);
   } else {
-    alert(`יובאו ${entries.length} חיפוקים בהצלחה`);
+    alert(`יובאו ${entries.length} מענים רפואיים בהצלחה`);
   }
 }
 
@@ -2863,7 +2863,9 @@ const HADRAG_FACILITY_NAMES = {
   'tavor': 'פיקוד 1'
 };
 const HADRAG_DAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
-const ALL_COLOR_CLASSES = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'imported', 'conflict-overlap'];
+// 'bg-blocked' - סימון "חסום" של המנהל (בקשה חדר"ג/שק"ם - מונע מיחידות לשבץ בקשה במשבצת
+// הזו בכלל, גם אם לא הוזן בה טקסט - ראו reqGridHasConflict/paintUnitRequestGrid).
+const ALL_COLOR_CLASSES = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'bg-blocked', 'imported', 'conflict-overlap'];
 // 'conflict-overlap' הוא סימון ויזואלי-בלבד המחושב חי (updatePlatoonGridConflictHighlight) מהשוואת draft מול
 // published, ואסור לו להישמר/להיגרר כחלק ממצב התא עצמו - אחרת השמירה מיד לאחר ניקוי הסימון הכתום בהפצה
 // (globalExportManager, שלב 3) כותבת draft שונה מה-published שכבר הועתק, וכפתור "הפץ שינויים" נשאר אדום.
@@ -2936,6 +2938,27 @@ function paintApprovedBlock(tbody, day, startRow, span, text, unitClasses) {
   const div = document.createElement('div');
   div.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;font-weight:800;font-size:11.5px;padding:1px 2px;overflow:hidden;';
   div.textContent = text;
+  cell.appendChild(div);
+  for (let r = startRow + 1; r < startRow + span; r++) {
+    const covered = tbody.querySelector(`td.req-cell[data-row="${r}"][data-col="${day}"]`);
+    if (covered) covered.style.display = 'none';
+  }
+}
+
+/**
+ * מציירת משבצת "חסומה" (המנהל סימן אותה בשחור בטבלה הגדולה) בגריד הבקשות של היחידה -
+ * קריאה-בלבד, בלי אינטראקציה (pointer-events:none דרך אותה מחלקת approved-block), כדי
+ * שהיחידה לא תוכל בכלל לגרור/ליצור עליה בקשה. מוצגת גם אם המנהל לא הקליד טקסט לתוכה
+ * בכלל - הסימון עצמו (הצבע השחור) הוא מה שחוסם, לא תוכן התא (בקשת המפקדים).
+ */
+function paintBlockedCell(tbody, day, startRow, span, text) {
+  const cell = tbody.querySelector(`td.req-cell[data-row="${startRow}"][data-col="${day}"]`);
+  if (!cell) return;
+  cell.rowSpan = span;
+  cell.classList.add('approved-block', 'bg-blocked');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;font-weight:800;font-size:11px;color:#fff;padding:1px 2px;overflow:hidden;';
+  div.textContent = (text && text.trim()) ? text : '🔒 חסום';
   cell.appendChild(div);
   for (let r = startRow + 1; r < startRow + span; r++) {
     const covered = tbody.querySelector(`td.req-cell[data-row="${r}"][data-col="${day}"]`);
@@ -3019,7 +3042,16 @@ async function paintUnitRequestGrid(type) {
     for (let c = 0; c < 7; c++) {
       for (let r = 0; r < 36; r++) {
         const cellData = published[`${r}_${c}`];
-        if (cellData && cellData.val && String(cellData.val).trim() !== '') {
+        if (!cellData) continue;
+        // משבצת "חסומה" (bg-blocked) מוצגת ונחשבת תפוסה גם בלי טקסט בכלל - הסימון של המנהל
+        // הוא-הוא החסימה, לא תוכן התא (ראו paintBlockedCell/reqGridHasConflict).
+        const isBlocked = (cellData.classes || []).includes('bg-blocked');
+        const hasText = cellData.val && String(cellData.val).trim() !== '';
+        if (isBlocked) {
+          const span = cellData.span || 1;
+          paintBlockedCell(tbody, c, r, span, cellData.val);
+          r += (span - 1);
+        } else if (hasText) {
           const span = cellData.span || 1;
           const unitClasses = (cellData.classes || []).filter(cls => UNIT_BG_MAP[cls]);
           paintApprovedBlock(tbody, c, r, span, cellData.val, unitClasses.length ? unitClasses : ['bg-esuk']);
@@ -3099,7 +3131,10 @@ async function reqGridHasConflict(type, facility, day, startRow, endRow, stagedA
   if (published) {
     for (let r = 0; r < 36; r++) {
       const cellData = published[`${r}_${day}`];
-      if (cellData && cellData.val && String(cellData.val).trim() !== '') {
+      // תא "חסום" (bg-blocked) נחשב תפוס גם בלי טקסט - ראו paintBlockedCell.
+      const isBlocked = cellData && (cellData.classes || []).includes('bg-blocked');
+      const hasText = cellData && cellData.val && String(cellData.val).trim() !== '';
+      if (hasText || isBlocked) {
         const span = cellData.span || 1;
         const cellEnd = r + span - 1;
         if (startRow <= cellEnd && r <= endRow) return true;
@@ -4792,7 +4827,7 @@ function _applyRequestsState(reqState) {
   }
 }
 
-// צביעת תא חיפוקים (setCellColor ב-hipokim.html) היא מחלקת CSS על ה-wrapper, לא .value של
+// צביעת תא מענים רפואיים (setCellColor ב-hipokim.html) היא מחלקת CSS על ה-wrapper, לא .value של
 // שדה - לכן לא נתפסת ע"י _getUndoFieldMap/.task-input/.time-input, וללא הקוד הזה שינוי צבע
 // בלבד לא היה ניתן לביטול (Ctrl+Z) בכלל.
 function _captureHipokColorsState() {
@@ -5433,7 +5468,7 @@ document.addEventListener('click', (e) => {
 });
 
 /* =========================================================
-   הקצאות מתקדמות (חדר"ג, שק"ם, חיפוקים) לפי צבע יחידה
+   הקצאות מתקדמות (חדר"ג, שק"ם, מענים רפואיים) לפי צבע יחידה
 ========================================================= */
 
 function rowToTimeStr(r) {
@@ -5544,12 +5579,12 @@ async function getHipokimAllocationsForUnit(unitColor, week, year) {
   const DAY_LABELS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
   // הטבלה ב-hipokim.html מכילה 12 שורות כפול 7 ימים = 84 תאים
-  // אינדקסים 0-41 הם חיפוק יבש (6 שורות)
-  // אינדקסים 42-83 הם חיפוק רטוב (6 שורות)
+  // אינדקסים 0-41 הם מענה רפואי יבש (6 שורות)
+  // אינדקסים 42-83 הם מענה רפואי רטוב (6 שורות)
   for (let i = 0; i < 84; i++) {
     const taskColor = data[`color_${i}`] || '';
     if (taskColor === unitColor) {
-      const typeText = i < 42 ? 'חיפוק יבש' : 'חיפוק רטוב';
+      const typeText = i < 42 ? 'מענה רפואי יבש' : 'מענה רפואי רטוב';
       const dayIndex = i % 7;
       const dayText = DAY_LABELS[dayIndex] || '';
       
@@ -5621,7 +5656,7 @@ async function renderUnitHaktzaotExtra(tbodyId, type, unitColor) {
   // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשה הזו הייתה באוויר - זורקים את התוצאה (ראו הערה
   // מפורטת ב-loadTableData) - לפני שמציבים את כל ה-HTML במעבר אחד. לא מרוקנים קודם ורק אחר
   // כך ממתינים ל-await (אותה תבנית באג בדיוק כמו בשאר הטבלאות - ראו loadTableData). זה בדיוק
-  // מה שגרם לטבלאות ההקצאות של חיפוקים/פלוגתי/שק"ם להמשיך "לרצד" גם אחרי התיקון בטבלאות
+  // מה שגרם לטבלאות ההקצאות של מענים רפואיים/פלוגתי/שק"ם להמשיך "לרצד" גם אחרי התיקון בטבלאות
   // הניתנות לעריכה (אפיון QA).
   if (reqWeek !== currentWeek || reqYear !== currentYear) return;
   // מדלגים על ההצבה בפועל אם ה-HTML זהה למה שכבר מוצג - ראו _renderDataChanged. גם בנייה
@@ -6126,6 +6161,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="ctx-color-dot bg-pikud" data-color="bg-pikud" title="פיקוד"></div>
         <div class="ctx-color-dot bg-tazam" data-color="bg-tazam" title="תצ&quot;מ"></div>
         <div class="ctx-color-dot bg-maphat" data-color="bg-maphat" title="מפח&quot;ט"></div>
+        <div class="ctx-color-dot bg-blocked" data-color="bg-blocked" title="חסום - יחידות לא יוכלו לשבץ כאן"></div>
       </div>
       <div class="ctx-divider"></div>
       <button id="ctx-btn-delete">מחק שיבוץ</button>
@@ -6210,7 +6246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dot.addEventListener('click', function(e) {
       e.stopPropagation();
       if (currentCtxCell) {
-        const colors = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'imported', 'conflict-overlap'];
+        const colors = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat', 'bg-blocked', 'imported', 'conflict-overlap'];
         colors.forEach(c => currentCtxCell.classList.remove(c));
         currentCtxCell.classList.add(this.dataset.color);
         

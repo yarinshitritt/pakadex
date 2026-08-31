@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="style.css?v=83">
-  <link rel="stylesheet" href="hipokim.css?v=83">
-  <title>PAKADEX - חיפוקים</title>
+  <link rel="stylesheet" href="style.css?v=88">
+  <link rel="stylesheet" href="hipokim.css?v=88">
+  <title>PAKADEX - מענה רפואי</title>
 </head>
 <body>
 
@@ -26,13 +26,13 @@
               <input type="text" id="weekInput" style="width:55px; height:28px; font-size:16px; font-weight:800; text-align:center; border:1px solid #0284c7; border-radius:4px; color:#000000; background:#ffffff; outline:none;">
             </th>
             <th colspan="8" style="position:relative; background:#0f172a; color:#ffffff; font-size:16px; font-weight:800; border:1px solid #1e293b;">
-              חיפוקים
+              מענה רפואי
               <button onclick="importHipukim()" class="table-import-btn">ייבוא</button>
             </th>
           </tr>
           <tr>
             <th>אמבולנס</th>
-            <th>סוג חיפוק</th>
+            <th>סוג מענה רפואי</th>
             <th>יום א׳</th>
             <th>יום ב׳</th>
             <th>יום ג׳</th>
@@ -45,7 +45,7 @@
         <tbody>
           <tr>
             <td rowspan="12">אמבולנס</td>
-            <td rowspan="6" class="dry-type">חיפוק יבש</td>
+            <td rowspan="6" class="dry-type">מענה רפואי יבש</td>
             <td><input type="text" class="cell-input"></td>
             <td><input type="text" class="cell-input"></td>
             <td><input type="text" class="cell-input"></td>
@@ -61,7 +61,7 @@
           <tr><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td><td><input type="text" class="cell-input"></td></tr>
 
           <tr>
-            <td rowspan="6" class="wet-type">חיפוק רטוב</td>
+            <td rowspan="6" class="wet-type">מענה רפואי רטוב</td>
             <td><input type="text" class="cell-input"></td>
             <td><input type="text" class="cell-input"></td>
             <td><input type="text" class="cell-input"></td>
@@ -87,10 +87,10 @@
 
   </div>
 
-  <script src="config.js?v=83"></script>
-  <script src="sharepointService.js?v=83"></script>
-  <script src="auth.js?v=83"></script>
-  <script src="script.js?v=83"></script>
+  <script src="config.js?v=88"></script>
+  <script src="sharepointService.js?v=88"></script>
+  <script src="auth.js?v=88"></script>
+  <script src="script.js?v=88"></script>
 
   <script>
     const ALL_HIPOK_COLORS = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat'];
@@ -211,8 +211,8 @@
       await updateHipokConflictHighlight(week, year);
     }
 
-    /* סימון כתום (.conflict-overlap) למשבצות חיפוקים ששונו מאז ההפצה האחרונה של המנהל -
-       חיפוקים לא היה מחובר למנגנון הסימון הכללי (MANAGER_TRACKED_TABLES מיועד לטבלאות מבוססות
+    /* סימון כתום (.conflict-overlap) למשבצות מענים רפואיים ששונו מאז ההפצה האחרונה של המנהל -
+       מענים רפואיים לא היה מחובר למנגנון הסימון הכללי (MANAGER_TRACKED_TABLES מיועד לטבלאות מבוססות
        cell-input פשוטות), ולכן סממן "יש שינויים שלא הופצו" מעולם לא הופיע כאן. */
     async function updateHipokConflictHighlight(week, year) {
       const wrappers = document.querySelectorAll('#hipoktable .cell-wrapper');
@@ -242,7 +242,7 @@
       });
     }
 
-    /* חוקי עסק לטבלת החיפוקים (אפיון 1.7) */
+    /* חוקי עסק לטבלת המענים הרפואיים (אפיון 1.7) */
 
     // צביעה אדומה אוטומטית כאשר התיאור מכיל את המילה "רומניות"
     function applyRomaniotRule(taskEl) {
@@ -263,7 +263,7 @@
       if (cleaned !== el.value) el.value = cleaned;
     }
 
-    // תבנית "HH:MM - HH:MM" תקינה (זהה לוולידציה במודאל "הוספת חיפוק" ביחידות) -
+    // תבנית "HH:MM - HH:MM" תקינה (זהה לוולידציה במודאל "הוספת מענה רפואי" ביחידות) -
     // ה-pattern שהיה על ה-input לא נאכף בפועל כי השדה אינו בתוך <form>, ולכן עד כה
     // ניתן היה להזין ערך שאינו בפורמט שעה תקין ישירות לתוך הטבלה.
     const HIPOK_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d\s*-\s*([01]\d|2[0-3]):[0-5]\d$/;

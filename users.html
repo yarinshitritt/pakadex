@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="style.css?v=83">
+  <link rel="stylesheet" href="style.css?v=88">
   <title>PAKADEX - ניהול הרשאות</title>
   <style>
     .users-wrap { width: 100%; }
@@ -115,6 +115,10 @@
             <input type="text" id="nameField" placeholder="שם מלא" autocomplete="off">
           </div>
           <div class="field">
+            <label for="jobTitleField">תפקיד</label>
+            <input type="text" id="jobTitleField" placeholder="תפקיד" autocomplete="off">
+          </div>
+          <div class="field">
             <label for="roleField">הרשאה</label>
             <select id="roleField" onchange="onRoleChange()">
               <option value="admin">מנהל</option>
@@ -159,6 +163,7 @@
             <tr>
               <th style="width:130px;">מספר אישי</th>
               <th>שם</th>
+              <th>תפקיד</th>
               <th style="width:190px;">הרשאה</th>
               <th style="width:170px;">פעולות</th>
             </tr>
@@ -170,10 +175,10 @@
     </div>
   </div>
 
-  <script src="config.js?v=83"></script>
-  <script src="sharepointService.js?v=83"></script>
-  <script src="auth.js?v=83"></script>
-  <script src="script.js?v=83"></script>
+  <script src="config.js?v=88"></script>
+  <script src="sharepointService.js?v=88"></script>
+  <script src="auth.js?v=88"></script>
+  <script src="script.js?v=88"></script>
 
   <script>
     // מסך זה פתוח למנהל בלבד
@@ -246,6 +251,7 @@
     function clearForm() {
       document.getElementById('pnField').value = '';
       document.getElementById('nameField').value = '';
+      document.getElementById('jobTitleField').value = '';
       document.getElementById('roleField').value = 'admin';
       setCheckedUnits([]);
       onRoleChange();
@@ -256,6 +262,7 @@
       const res = AUTH.saveUser({
         pn: document.getElementById('pnField').value,
         name: document.getElementById('nameField').value,
+        jobTitle: document.getElementById('jobTitleField').value,
         role: document.getElementById('roleField').value,
         unit: getCheckedUnits()
       });
@@ -303,6 +310,7 @@
       if (!u) return;
       document.getElementById('pnField').value = u.pn;
       document.getElementById('nameField').value = u.name || '';
+      document.getElementById('jobTitleField').value = u.jobTitle || '';
       document.getElementById('roleField').value = u.role;
       onRoleChange();
       setCheckedUnits(u.role === 'unit' ? u.unit : []);
@@ -336,7 +344,7 @@
       const me = AUTH.getSession();
 
       if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-row">אין משתמשים רשומים במערכת.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-row">אין משתמשים רשומים במערכת.</td></tr>';
         return;
       }
 
@@ -347,7 +355,7 @@
       }
 
       if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-row">לא נמצאו משתמשים עם מספר אישי התואם לחיפוש.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-row">לא נמצאו משתמשים עם מספר אישי התואם לחיפוש.</td></tr>';
         return;
       }
 
@@ -358,6 +366,7 @@
           <tr>
             <td style="font-weight:800; letter-spacing:1px;">${escapeHtml(u.pn)}${isMe ? ' <span style="color:#0284c7; font-size:11px;">(אני)</span>' : ''}</td>
             <td>${escapeHtml(u.name) || '—'}</td>
+            <td>${escapeHtml(u.jobTitle) || '—'}</td>
             <td><span class="role-chip role-${u.role}">${label}</span></td>
             <td>
               <button class="row-btn edit-btn" onclick="editUser('${u.pn}')">ערוך</button>

@@ -216,6 +216,230 @@ const UNIT_TITLE_MAP = {
 };
 
 /**
+ * מפיקה מחרוזת תאריך עברי להיום (למשל "18 באלול תשפ"ו") דרך תמיכת הדפדפן בלוח השנה העברי
+ * (Intl.DateTimeFormat עם he-u-ca-hebrew) - בלי תלות בספריית לוח שנה עברי נפרדת. אם הדפדפן
+ * לא תומך (לא צפוי בדפדפנים מודרניים, אך למקרה של דפדפן ישן ברשת הצבאית) מחזירה מחרוזת ריקה
+ * במקום לזרוק שגיאה שתשבש את כל סרגל הניווט.
+ */
+function _getHebrewDateString() {
+  try {
+    return new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+  } catch (e) {
+    return '';
+  }
+}
+
+/** מפיקה מחרוזת תאריך לועזי להיום (DD.MM.YYYY). */
+function _getGregorianDateString() {
+  return new Intl.DateTimeFormat('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
+}
+
+/**
+ * מועדים/חגים עבריים עיקריים - מפתח (חודש עברי באנגלית, כפי שמוחזר מ-Intl עם en-u-ca-hebrew;
+ * יום בחודש) -> שם. שימוש בשם החודש האנגלי (ולא העברי) כי הוא יציב וחד-משמעי (אין תלות
+ * בכתיב "תשרי" מול "תשׁרי" וכו'). ימי חנוכה/פסח/סוכות שחלים בחודש קצר (29 יום, לא 30) פשוט
+ * לעולם לא יתאימו לאף תאריך אמיתי באותה שנה - לא גורם להתאמות שווא.
+ * יום הזיכרון/העצמאות **אינם** ברשימה הזו בכוונה - הם נדחים בפועל יום-יומיים בהתאם ליום
+ * בשבוע שבו חל ה' באייר (כדי לא לחול בסמוך לשבת), ומחושבים בנפרד ב-_getIyarMemorialDates.
+ */
+const JEWISH_HOLIDAYS_TABLE = [
+  { month: 'Tishri', day: 1, name: 'ראש השנה' },
+  { month: 'Tishri', day: 2, name: 'ראש השנה' },
+  { month: 'Tishri', day: 10, name: 'יום כיפור' },
+  { month: 'Tishri', day: 15, name: 'סוכות' },
+  { month: 'Tishri', day: 16, name: 'סוכות' },
+  { month: 'Tishri', day: 17, name: 'חול המועד סוכות' },
+  { month: 'Tishri', day: 18, name: 'חול המועד סוכות' },
+  { month: 'Tishri', day: 19, name: 'חול המועד סוכות' },
+  { month: 'Tishri', day: 20, name: 'חול המועד סוכות' },
+  { month: 'Tishri', day: 21, name: 'הושענא רבה' },
+  { month: 'Tishri', day: 22, name: 'שמיני עצרת' },
+  { month: 'Tishri', day: 23, name: 'שמחת תורה' },
+  { month: 'Kislev', day: 25, name: 'חנוכה' },
+  { month: 'Kislev', day: 26, name: 'חנוכה' },
+  { month: 'Kislev', day: 27, name: 'חנוכה' },
+  { month: 'Kislev', day: 28, name: 'חנוכה' },
+  { month: 'Kislev', day: 29, name: 'חנוכה' },
+  { month: 'Kislev', day: 30, name: 'חנוכה' },
+  { month: 'Tevet', day: 1, name: 'חנוכה' },
+  { month: 'Tevet', day: 2, name: 'חנוכה' },
+  { month: 'Tevet', day: 10, name: 'עשרה בטבת' },
+  { month: 'Shevat', day: 15, name: 'ט"ו בשבט' },
+  { month: 'Adar', day: 14, name: 'פורים' },
+  { month: 'Adar', day: 15, name: 'שושן פורים' },
+  { month: 'Adar II', day: 14, name: 'פורים' },
+  { month: 'Adar II', day: 15, name: 'שושן פורים' },
+  { month: 'Nisan', day: 15, name: 'פסח' },
+  { month: 'Nisan', day: 16, name: 'פסח' },
+  { month: 'Nisan', day: 17, name: 'חול המועד פסח' },
+  { month: 'Nisan', day: 18, name: 'חול המועד פסח' },
+  { month: 'Nisan', day: 19, name: 'חול המועד פסח' },
+  { month: 'Nisan', day: 20, name: 'חול המועד פסח' },
+  { month: 'Nisan', day: 21, name: 'שביעי של פסח' },
+  { month: 'Nisan', day: 27, name: 'יום השואה' },
+  { month: 'Iyar', day: 18, name: 'ל"ג בעומר' },
+  { month: 'Iyar', day: 28, name: 'יום ירושלים' },
+  { month: 'Sivan', day: 6, name: 'שבועות' },
+  { month: 'Tammuz', day: 17, name: 'צום י"ז בתמוז' },
+  { month: 'Av', day: 9, name: 'תשעה באב' }
+];
+
+/**
+ * מחשבת את יום ראשון (תחילת השבוע כפי שמוצג בטבלאות - עמודת "ראשון") עבור שבוע/שנה נתונים,
+ * לפי אותו חישוב ISO-8601 שמניב את מספר השבוע (getISOWeekInfo) - יום ב' של שבוע ISO, פחות
+ * יום אחד. הופכת (week, year) -> תאריך, בניגוד ל-getISOWeekInfo שהופכת תאריך -> (week, year).
+ * @returns {Date} תאריך יום ראשון (UTC חצות)
+ */
+function _getWeekStartDate(week, year) {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const week1Monday = new Date(jan4);
+  week1Monday.setUTCDate(jan4.getUTCDate() - (jan4Day - 1));
+  const targetMonday = new Date(week1Monday);
+  targetMonday.setUTCDate(week1Monday.getUTCDate() + (week - 1) * 7);
+  const sunday = new Date(targetMonday);
+  sunday.setUTCDate(targetMonday.getUTCDate() - 1);
+  return sunday;
+}
+
+/**
+ * מוצאת את התאריך הלועזי התואם ליום עברי נתון (שנה עברית + חודש + יום), בסריקה חסומה
+ * (עד 120 יום) החל מ-1 במרץ של שנת ההערכה הלועזית שסופקה - כל חודשי אייר-סיוון-וכו' חלים
+ * בטווח הזה. אין פונקציית המרה ישירה עברי->לועזי ב-Intl (רק ההפך), ולכן סריקה יום-אחר-יום
+ * היא הדרך הפשוטה והאמינה ביותר כאן - מבוצעת פעם אחת בלבד לכל רינדור, לא יקרה.
+ * @returns {Date|null} UTC חצות, או null אם לא נמצא בטווח הסריקה
+ */
+function _hebrewDateToGregorian(hebrewYear, monthName, day, estimateGregYear) {
+  const fmt = new Intl.DateTimeFormat('en-u-ca-hebrew', { day: 'numeric', month: 'short', year: 'numeric' });
+  const d = new Date(Date.UTC(estimateGregYear, 2, 1));
+  for (let i = 0; i < 120; i++) {
+    const parts = fmt.formatToParts(d);
+    const m = (parts.find(p => p.type === 'month') || {}).value;
+    const dd = parseInt((parts.find(p => p.type === 'day') || {}).value, 10);
+    const yy = parseInt((parts.find(p => p.type === 'year') || {}).value, 10);
+    if (m === monthName && dd === day && yy === hebrewYear) return new Date(d);
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return null;
+}
+
+/**
+ * מחשבת את התאריכים הלועזיים בפועל של יום הזיכרון ויום העצמאות עבור שנה עברית נתונה, כולל
+ * הדחייה הרשמית כשה' באייר (התאריך הבסיסי של העצמאות) חל בסמוך לשבת - ראו החוק הישראלי:
+ * חל בשישי -> נדחה יומיים אחורה ליום חמישי (ג' באייר); חל בשבת -> נדחה יומיים אחורה ליום
+ * חמישי (ג' באייר); חל בראשון -> (לא קורה בפועל בלוח העברי) נדחה יום קדימה לשני; חל בשני ->
+ * נדחה יום קדימה לשלישי (ו' באייר) - כדי שיום הזיכרון (יום לפני) לא ייפול בשבת/ראשון.
+ * בשאר הימים (שלישי/רביעי) אין דחייה. יום הזיכרון הוא תמיד יום אחד לפני העצמאות בפועל.
+ * @param {number} hebrewYear
+ * @param {number} estimateGregYear - שנה לועזית משוערת שבה חל אייר של השנה העברית הזו
+ * @returns {{zikaron: Date, atzmaut: Date}|null}
+ */
+function _getIyarMemorialDates(hebrewYear, estimateGregYear) {
+  const base5Iyar = _hebrewDateToGregorian(hebrewYear, 'Iyar', 5, estimateGregYear);
+  if (!base5Iyar) return null;
+  const atzmaut = new Date(base5Iyar);
+  const dow = base5Iyar.getUTCDay(); // 0=Sun..6=Sat
+  if (dow === 5) atzmaut.setUTCDate(atzmaut.getUTCDate() - 1);      // שישי -> חמישי
+  else if (dow === 6) atzmaut.setUTCDate(atzmaut.getUTCDate() - 2); // שבת -> חמישי
+  else if (dow === 0) atzmaut.setUTCDate(atzmaut.getUTCDate() + 1); // ראשון -> שני (לא קורה בפועל)
+  else if (dow === 1) atzmaut.setUTCDate(atzmaut.getUTCDate() + 1); // שני -> שלישי
+  const zikaron = new Date(atzmaut);
+  zikaron.setUTCDate(zikaron.getUTCDate() - 1);
+  return { zikaron, atzmaut };
+}
+
+/**
+ * בודקת את שבעת ימי השבוע הנוכחי (ראשון עד שבת) מול טבלת המועדים העבריים הקבועים, ובנפרד
+ * מול התאריכים המחושבים (עם הדחייה) של יום הזיכרון/העצמאות, ומחזירה רשימת שמות מועדים
+ * ייחודיים שחלים באותו שבוע (חג רב-יומי כמו סוכות/פסח/חנוכה מופיע פעם אחת בלבד גם אם כמה
+ * מימיו נופלים באותו שבוע).
+ * @param {number} week
+ * @param {number} year
+ * @returns {string[]}
+ */
+function _getHolidayNamesForWeek(week, year) {
+  try {
+    const sunday = _getWeekStartDate(week, year);
+    const fmt = new Intl.DateTimeFormat('en-u-ca-hebrew', { day: 'numeric', month: 'short', year: 'numeric' });
+    const found = [];
+    let hebrewYearOfWeek = null;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sunday);
+      d.setUTCDate(sunday.getUTCDate() + i);
+      const parts = fmt.formatToParts(d);
+      const month = (parts.find(p => p.type === 'month') || {}).value;
+      const day = parseInt((parts.find(p => p.type === 'day') || {}).value, 10);
+      if (month === 'Iyar') hebrewYearOfWeek = parseInt((parts.find(p => p.type === 'year') || {}).value, 10);
+      const match = JEWISH_HOLIDAYS_TABLE.find(h => h.month === month && h.day === day);
+      if (match && !found.includes(match.name)) found.push(match.name);
+    }
+
+    // יום הזיכרון/העצמאות - רק אם השבוע הזה נופל בטווח אייר (hebrewYearOfWeek נקבע למעלה),
+    // כדי לא לבצע חיפוש לועזי->עברי מיותר בכל שבוע בשנה.
+    if (hebrewYearOfWeek !== null) {
+      const memorial = _getIyarMemorialDates(hebrewYearOfWeek, sunday.getUTCFullYear());
+      if (memorial) {
+        const sundayTime = sunday.getTime(), saturdayTime = sunday.getTime() + 6 * 86400000;
+        if (memorial.zikaron.getTime() >= sundayTime && memorial.zikaron.getTime() <= saturdayTime) found.push('יום הזיכרון');
+        if (memorial.atzmaut.getTime() >= sundayTime && memorial.atzmaut.getTime() <= saturdayTime) found.push('יום העצמאות');
+      }
+    }
+
+    return found;
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * מוסיפה/מעדכנת ליד הכותרת (PAKADEX) את תאריך היום (עברי מעל, לועזי מתחתיו, ומועד/חג של
+ * השבוע הנצפה אם יש כזה) וסימון סיווג "-סודי-" באמצע שורת הזהות (container1). פועלת על
+ * ה-DOM **אחרי** ההזרקה/הקיום של container1 - זהה בעמודי מנהל (container1 מוזרק דינמית כאן,
+ * ראו identityRowBlock) ובעמודי יחידה (container1 קבוע וסטטי ב-HTML של העמוד עצמו) - כך שאין
+ * צורך לשכפל את הלוגיקה בנפרד לכל עמוד יחידה.
+ * אידמפוטנטית - קוראת שוב לאלמנטים קיימים ומעדכנת את התוכן שלהם במקום ליצור כפילויות, כי
+ * נקראת גם מ-updateUIForWeek בכל מעבר שבוע (השבוע הנצפה יכול להשתנות בלי שה-container1 עצמו
+ * נבנה מחדש, למשל בעמוד יחידה שבו הוא קבוע וסטטי) - אחרת שורת המועד הייתה נשארת "תקועה" על
+ * השבוע שהוצג בטעינת העמוד הראשונה בלבד.
+ */
+function _injectDateAndClassificationBanner() {
+  const container1 = document.querySelector('.container1');
+  if (!container1) return;
+  const titleWrap = container1.lastElementChild;
+  if (!titleWrap) return;
+
+  let dateBlock = titleWrap.querySelector(':scope > .app-date-block');
+  if (!dateBlock) {
+    dateBlock = document.createElement('div');
+    dateBlock.className = 'app-date-block';
+    dateBlock.style.cssText = 'display:flex; flex-direction:column; align-items:flex-start; line-height:1.3; margin-inline-end:6px;';
+    dateBlock.innerHTML = `
+      <span class="app-date-he" style="font-size:11px; color:#e2e8f0; font-weight:700; white-space:nowrap;"></span>
+      <span class="app-date-greg" style="font-size:11px; color:#94a3b8; white-space:nowrap;"></span>
+      <span class="app-date-holiday" style="font-size:11px; color:#fbbf24; font-weight:700; white-space:nowrap;"></span>
+    `;
+    titleWrap.insertAdjacentElement('afterbegin', dateBlock);
+  }
+  dateBlock.querySelector('.app-date-he').textContent = _getHebrewDateString();
+  dateBlock.querySelector('.app-date-greg').textContent = _getGregorianDateString();
+
+  const holidays = (typeof currentWeek !== 'undefined' && typeof currentYear !== 'undefined')
+    ? _getHolidayNamesForWeek(currentWeek, currentYear)
+    : [];
+  const holidaySpan = dateBlock.querySelector('.app-date-holiday');
+  holidaySpan.textContent = holidays.join(', ');
+  holidaySpan.style.display = holidays.length ? '' : 'none';
+
+  if (!container1.querySelector(':scope > .classification-banner')) {
+    const classificationBanner = document.createElement('div');
+    classificationBanner.className = 'classification-banner';
+    classificationBanner.style.cssText = 'color:rgba(255,255,255,0.4); font-weight:900; font-size:15px; letter-spacing:3px;';
+    classificationBanner.textContent = '-סודי-';
+    titleWrap.insertAdjacentElement('beforebegin', classificationBanner);
+  }
+}
+
+/**
  * מייצרת ומזריקה את סרגלי הניווט העליון והצדדי באופן דינמי לכל עמודי המערכת.
  */
 function renderNavbars() {
@@ -333,6 +557,8 @@ function renderNavbars() {
       const chipPlaceholder = document.getElementById('user-chip-placeholder');
       if (chipPlaceholder) chipPlaceholder.innerHTML = userChipBlock;
     }
+
+    _injectDateAndClassificationBanner();
 
     if (typeof updateNotifBadge === 'function') updateNotifBadge();
     if (typeof updateSyncIndicator === 'function') updateSyncIndicator();
@@ -634,22 +860,26 @@ async function loadTableData(tableId, week, year) {
     // "שיראו את כל הטקסט שמכניסים").
     if (input.classList.contains('topic-textarea')) autoResizeTopicTextarea(input);
 
-    if (!hasVal) return;
-
-    // Add conflict-overlap if this is a manager table and value differs from published.
-    // בטבלאות המשולבות (קשר/אופטיקה) הסימון לא נקבע כאן (draft מול published) אלא לפי
-    // רשימת האינדקסים הממתינים (pendingSet) - כדי לא לתלות אותו בעריכה ישירה של המנהל.
-    if (MANAGER_TRACKED_TABLES.includes(tableId) && !isMasterCombined) {
-      const publishedVal = managerPublishedData[idx] || '';
-      if (data[idx] !== publishedVal) {
-        const td = input.closest('td');
-        if (td) td.classList.add('conflict-overlap');
+    // קובעים אם התא הזה צריך סימון כתום (conflict-overlap) - ותמיד גם מסירים אותו כשלא,
+    // לא רק מוסיפים כשכן. בטבלאות המשולבות (קשר/אופטיקה) הסימון נקבע לפי רשימת האינדקסים
+    // הממתינים (pendingSet, ולא draft מול published, כדי לא לתלות אותו בעריכה ישירה של
+    // המנהל); בשאר הטבלאות המנוהלות - השוואת draft מול published ישירות.
+    // חשוב: התוצאה תמיד *מוחלת* (toggle, לא רק add) - כולל כשאין ערך בתא בכלל (hasVal=false).
+    // בלי זה, תא שקיבל את הסימון בשבוע X (למשל דרך ייבוא מיחידה) היה נשאר מסומן גם בשבוע Y
+    // אחר לגמרי אחרי מעבר שבוע - כי אופטימיזציית "לא בונים מחדש את מבנה הטבלה אם רשימת
+    // הפריטים לא השתנתה" (renderDynamicTableStructure) משאירה את אותם תאי DOM ממש בין
+    // שבועות, וכלום לא ניקה מהם בעבר את הסימון של השבוע הקודם (אפיון QA: "הסימון עובר גם
+    // לשבועות אחרים").
+    let shouldMarkConflict = false;
+    if (hasVal) {
+      if (MANAGER_TRACKED_TABLES.includes(tableId) && !isMasterCombined) {
+        const publishedVal = managerPublishedData[idx] || '';
+        if (data[idx] !== publishedVal) shouldMarkConflict = true;
       }
+      if (isMasterCombined && canViewDraft && pendingSet.has(idx)) shouldMarkConflict = true;
     }
-    if (isMasterCombined && canViewDraft && pendingSet.has(idx)) {
-      const td = input.closest('td');
-      if (td) td.classList.add('conflict-overlap');
-    }
+    const td = input.closest('td');
+    if (td) td.classList.toggle('conflict-overlap', shouldMarkConflict);
   });
 
   if (data && isDynamic) {
@@ -750,11 +980,203 @@ function nextWeek() {
 /**
  * מעדכנת את כל רכיבי ממשק המשתמש (שדות שבוע, טבלאות, רשימות מענים רפואיים, חדר"ג ושק"ם) בעת החלפת שבוע.
  */
+/**
+ * מריצה פונקציה אסינכרונית על כל איבר במערך, בבאצ'ים חסומים בגודל `batchSize` (במקום כולם
+ * במקביל, ובניגוד לרצף אחד-אחד) - כדי לא להציף שרת אמיתי (SharePoint) בעשרות בקשות בו-זמנית.
+ * במצב שרת מרכזי אמיתי (בניגוד ל-localStorage המקומי שנבדק כאן) בקשות רבות-מדי בבת-אחת
+ * עלולות להיכשל/להיחסם חלקית (הגבלת קצב/עומס) - כשל כזה ב-fetchTableData חוזר בשקט ל-
+ * localStorage המקומי (ראו _loadFromSharePoint), שעלול להיות ריק/מיושן במכשיר שלא טען את
+ * השבוע הזה בעצמו לאחרונה - בפועל זה בדיוק מה שגרם לחיפוש "לפספס" התאמות אמיתיות שקיימות
+ * בפועל בשרת (אפיון QA: "מילה שקיימת כמה פעמים... נמצאה רק פעם אחת").
+ */
+async function _runInBatches(items, batchSize, fn) {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
+}
+
+/**
+ * סורקת את כל שבועות השנה הנתונה עבור טבלה מאוחדת (קשר/אופטיקה) ומחזירה את השבועות שבהם
+ * שורת "נושא שבוע" מכילה את מחרוזת החיפוש - **כל** התאים התואמים בשורה (לא רק ההתאמה
+ * הראשונה שנתקלים בה - יחידות שונות עלולות לכתוב את אותה מילה בתאי הנושא הנפרדים שלהן
+ * באותו שבוע, וכולן רלוונטיות). קוראת ישירות מהטיוטה של המנהל (לא מ-published) - תואם למה
+ * שהמנהל רואה בפועל בעריכה שלו (ראו loadTableData/canViewDraft).
+ * שדה נושא-השבוע תמיד תופס את האינדקסים 0..dataCols-1 בדיוק (שורת הנושא היא תמיד השורה
+ * הראשונה שנבנית, ו-readTableData ממספרת אינדקסים לפי סדר .cell-input במסמך - ראו שם).
+ * @param {string} tableId - 'keshertable' או 'optictable'
+ * @param {number} dataCols
+ * @param {string} term - מחרוזת החיפוש (לא רגישה לרישיות - השוואת includes פשוטה)
+ * @param {number} year
+ * @returns {Promise<{week:number, year:number, snippet:string}[]>}
+ */
+async function _searchWeeklyTopic(tableId, dataCols, term, year) {
+  const lowerTerm = term.trim().toLowerCase();
+  if (!lowerTerm) return [];
+  const weeksInYear = getWeeksInYear(year);
+  const weeks = Array.from({ length: weeksInYear }, (_, i) => i + 1);
+  const perWeek = await _runInBatches(weeks, 8, async (week) => {
+    const data = await fetchTableData(getStorageKey(tableId, week, year));
+    if (!data) return null;
+    const snippets = [];
+    for (let i = 0; i < dataCols; i++) {
+      const val = data[i];
+      if (val && String(val).toLowerCase().includes(lowerTerm) && !snippets.includes(String(val))) {
+        snippets.push(String(val));
+      }
+    }
+    return snippets.length ? { week, year, snippet: snippets.join(' | ') } : null;
+  });
+  return perWeek.filter(Boolean);
+}
+
+/**
+ * מזריקה (פעם אחת בלבד, מוגנת מהזרקה כפולה) תיבת חיפוש נושא-שבוע לצד כפתורי "העתק שבוע"/
+ * "הדבק לכל השנה" בעמודי המנהל של קשר ואופטיקה בלבד - עבור טבלת המאסטר המאוחדת (keshertable/
+ * optictable), לא עמודי יחידה. פועלת אחרי טעינת הדף (המפתח toolbarRow מזוהה לפי .add-row-btn
+ * הקיים כבר ב-HTML הסטטי של העמוד, בלי צורך לשכפל הזרקה נפרדת לכל קובץ).
+ */
+function _initTopicSearchUI() {
+  const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
+  const isKesher = page === 'kesher.html';
+  const isOptic = page === 'optic.html';
+  if (!isKesher && !isOptic) return;
+  if (document.getElementById('topic-search-wrap')) return;
+
+  const tableId = isKesher ? 'keshertable' : 'optictable';
+  const listEntry = (isKesher ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST).find(t => t.id === tableId);
+  if (!listEntry) return;
+  const dataCols = listEntry.dataCols;
+
+  const toolbarRow = document.querySelector('.add-row-btn');
+  const rightGroup = toolbarRow ? toolbarRow.parentElement.lastElementChild : null;
+  if (!rightGroup) return;
+
+  const wrap = document.createElement('div');
+  wrap.id = 'topic-search-wrap';
+  wrap.style.cssText = 'position:relative; display:flex; align-items:center; gap:6px;';
+
+  const yearNow = (typeof currentYear !== 'undefined') ? currentYear : new Date().getFullYear();
+  const yearOptions = [yearNow - 1, yearNow, yearNow + 1]
+    .map(y => `<option value="${y}"${y === yearNow ? ' selected' : ''}>${y}</option>`).join('');
+
+  wrap.innerHTML = `
+    <div style="position:relative;">
+      <button type="button" id="topic-search-icon" title="חפש" aria-label="חפש"
+        style="position:absolute; top:50%; left:6px; transform:translateY(-50%); font-size:13px; opacity:0.6; border:none; background:none; padding:2px 4px; cursor:pointer; line-height:1;">🔍</button>
+      <input type="text" id="topic-search-input" placeholder="חיפוש לפי נושא שבוע..."
+        style="width:170px; height:32px; padding:0 8px 0 26px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+    </div>
+    <select id="topic-search-year" style="height:32px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">${yearOptions}</select>
+    <div id="topic-search-results" style="display:none; position:absolute; top:38px; left:0; z-index:50; background:#fff; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.18); min-width:260px; max-width:360px; max-height:320px; overflow-y:auto; padding:4px;"></div>
+  `;
+  rightGroup.insertAdjacentElement('afterbegin', wrap);
+
+  if (!document.getElementById('topic-search-style')) {
+    const style = document.createElement('style');
+    style.id = 'topic-search-style';
+    style.textContent = '.topic-search-result:hover { background:#f1f5f9 !important; } #topic-search-icon:hover { opacity:1 !important; }';
+    document.head.appendChild(style);
+  }
+
+  const input = wrap.querySelector('#topic-search-input');
+  const yearSelect = wrap.querySelector('#topic-search-year');
+  const icon = wrap.querySelector('#topic-search-icon');
+  const resultsBox = wrap.querySelector('#topic-search-results');
+
+  // מזהה חיפוש עולה (monotonic) - כדי שתשובה איטית לחיפוש ישן לא "תדביק" בטעות תוצאות
+  // שגויות על גבי חיפוש חדש יותר שכבר הוקלד, אם שתי בקשות באוויר בו-זמנית (הקלדה מהירה).
+  let searchToken = 0;
+
+  const runSearch = async () => {
+    const term = input.value.trim();
+    const myToken = ++searchToken;
+    if (!term) { resultsBox.style.display = 'none'; return; }
+    const searchYear = parseInt(yearSelect.value, 10);
+    resultsBox.style.display = 'block';
+    resultsBox.innerHTML = '<div style="padding:8px; color:#64748b; font-size:13px;">מחפש...</div>';
+    const matches = await _searchWeeklyTopic(tableId, dataCols, term, searchYear);
+    if (myToken !== searchToken) return; // הוקלד חיפוש חדש בזמן שזה היה באוויר - מתעלמים מהתוצאה הישנה
+    if (matches.length === 0) {
+      resultsBox.innerHTML = '<div style="padding:8px; color:#64748b; font-size:13px;">לא נמצאו שבועות עם נושא זה.</div>';
+      return;
+    }
+    resultsBox.innerHTML = matches.map(m => `
+      <button type="button" class="topic-search-result" data-week="${m.week}" data-year="${m.year}"
+        style="display:block; width:100%; text-align:right; padding:6px 8px; border:none; background:none; cursor:pointer; border-radius:4px; font-size:13px; color:#0f172a;">
+        <strong>שבוע ${m.week} (${m.year})</strong><br><span style="color:#475569;">${escapeHtml(m.snippet)}</span>
+      </button>
+    `).join('');
+  };
+
+  // חיפוש חי תוך כדי הקלדה - עם דיליי קצר (debounce) כדי לא להריץ סריקת 52 שבועות על כל תו
+  // בודד שמוקלד. האייקון (בצד שמאל של התיבה) ומקש Enter מריצים חיפוש מיידי, בלי להמתין
+  // לדיליי - לבקשת המשתמש שהאייקון יהיה לחיץ.
+  let debounceTimer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runSearch, 350);
+  });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(debounceTimer); runSearch(); } });
+  icon.addEventListener('click', () => { clearTimeout(debounceTimer); runSearch(); });
+  yearSelect.addEventListener('change', () => { if (input.value.trim()) runSearch(); });
+  resultsBox.addEventListener('click', (e) => {
+    const resBtn = e.target.closest('.topic-search-result');
+    if (!resBtn) return;
+    const w = parseInt(resBtn.dataset.week, 10), y = parseInt(resBtn.dataset.year, 10);
+    resultsBox.style.display = 'none';
+    if (typeof loadWeek === 'function') loadWeek(y, w);
+  });
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) resultsBox.style.display = 'none';
+  });
+}
+
+/**
+ * מוחקת מהמטמון (_renderSnapshotCache) כל מפתח שמתחיל בקידומת נתונה - כדי לאלץ רינדור מחדש
+ * בפעם הבאה שהפונקציה המתאימה נקראת, גם אם הנתונים עצמם (בניגוד למשל למיקום/גודל בפיקסלים)
+ * לא השתנו כלל. ראו שימוש ב-_initZoomSyncHandler.
+ */
+function _invalidateRenderCachePrefix(prefix) {
+  Object.keys(_renderSnapshotCache).forEach(k => { if (k.startsWith(prefix)) delete _renderSnapshotCache[k]; });
+}
+
+/**
+ * מחברת (פעם אחת בלבד, מוגנת מהזרקה כפולה) את סליידר הזום של עמוד חדר"ג (#zoomSlider,
+ * hadrag.html) לרינדור-מחדש כפוי של שכבות ההתנגשות (renderStackedConflicts). השכבות
+ * ממוקמות/ממודדות ב-position:absolute עם פיקסלים מוחלטים (getBoundingClientRect + scroll),
+ * ומוצמדות ל-document.body - לא לתוך .table-container שעליו חל ה-CSS zoom של הסליידר עצמו.
+ * המדידה עצמה (getBoundingClientRect) כן משקפת את רמת הזום *ברגע המדידה*, אבל _renderDataChanged
+ * מדלג על רינדור מחדש כשנתוני ההתנגשות עצמם (לא הזום) לא השתנו - כך שאחרי שינוי זום בלי שינוי
+ * נתונים, השכבות נשארות "תקועות" בגודל/מיקום מהזום הקודם, לא פרופורציונליות יותר לתאים
+ * שהשתנו בגודלם (אפיון QA: "מגדילים את הטבלה... המשבצת על משבצת נשארת קטנה ביחס למשבצות").
+ * לכן, בכל שינוי זום, מוחקים במפורש את המטמון של שכבות ההתנגשות ומרנדרים אותן מחדש - כדי
+ * שהמדידה תתבצע מחדש ברמת הזום העדכנית.
+ */
+function _initZoomSyncHandler() {
+  const slider = document.getElementById('zoomSlider');
+  if (!slider || slider.dataset.stackedConflictSyncBound === 'true') return;
+  slider.dataset.stackedConflictSyncBound = 'true';
+  slider.addEventListener('input', () => {
+    _invalidateRenderCachePrefix('stackedConflicts_hadrag_');
+    if (typeof renderStackedConflicts === 'function') renderStackedConflicts('hadrag');
+  });
+}
+
 async function updateUIForWeek() {
   const weekInput = document.getElementById('weekInput');
   const weekInputOptic = document.getElementById('weekInputOptic');
   if (weekInput) weekInput.value = currentWeek;
   if (weekInputOptic) weekInputOptic.value = currentWeek;
+
+  // מעדכנת את שורת המועד/חג ליד הכותרת - השבוע הנצפה יכול להשתנות (ניווט קודם/הבא) בלי
+  // שקוראים ל-renderNavbars מחדש, ראו ההערה המפורטת ב-_injectDateAndClassificationBanner.
+  if (typeof _injectDateAndClassificationBanner === 'function') _injectDateAndClassificationBanner();
+  if (typeof _initTopicSearchUI === 'function') _initTopicSearchUI();
+  if (typeof _initZoomSyncHandler === 'function') _initZoomSyncHandler();
 
   const tables = getActiveTables();
   for (const tableId of tables) {
@@ -787,14 +1209,19 @@ async function updateUIForWeek() {
 
   if (typeof renderHipokEntriesList === 'function') await renderHipokEntriesList();
   
-  // פונקציות החדר"ג והשק"ם: הטבלאות (עם סימוני הכתום) חייבות להיטען לפני גריד הבקשות של היחידה,
-  // כדי שהסריקה הישירה של הגריד המפורסם (paintUnitRequestGrid) תפעל על נתונים עדכניים.
+  // ממקמות אוטומטית בקשות שפורסמו ("שמור ומוכן לייבוא") ישירות בטיוטת הטבלה - בלי צעד אישור
+  // ידני של המנהל (בקשת המפקדים). פעולת נתונים טהורה (לא נוגעת ב-DOM) - בטוחה גם בעמוד יחידה.
+  if (typeof autoPlaceRequests === 'function') await autoPlaceRequests('hadrag');
+  if (typeof autoPlaceRequests === 'function') await autoPlaceRequests('shekem');
+
+  // הטבלאות (עם סימוני הכתום) חייבות להיטען לפני גריד הבקשות של היחידה, כדי שהסריקה הישירה
+  // של הגריד המפורסם (paintUnitRequestGrid) תפעל על נתונים עדכניים.
   if (typeof loadHadragTables === 'function') await loadHadragTables(currentWeek, currentYear);
+  if (typeof renderStackedConflicts === 'function') await renderStackedConflicts('hadrag');
   if (typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
-  if (typeof renderHadragPendingRequests === 'function') await renderHadragPendingRequests();
   if (typeof loadShekemTables === 'function') await loadShekemTables(currentWeek, currentYear);
+  if (typeof renderStackedConflicts === 'function') await renderStackedConflicts('shekem');
   if (typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
-  if (typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
 
   if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
 
@@ -1049,19 +1476,57 @@ async function _detectConcurrentPublish(draftKeys) {
   return false;
 }
 
+/**
+ * מפתחות הרשימות המשותפות (לא שייכות למנהל או ליחידה ספציפית - כל הצדדים כותבים/קוראים
+ * מאותו מערך משותף) - צריכות להתפרסם גם מפעולת המנהל וגם מפעולת כל יחידה.
+ */
+function _sharedRequestListKeys(week, year) {
+  return [getHadragRequestsKey(week, year), getShekemRequestsKey(week, year), getHipokEntriesKey(week, year)];
+}
+
+/**
+ * כל מפתחות ה"טיוטה" ששייכים בפועל למנהל (טבלאות מאוחדות/מאסטר וגריד חדר"ג/שק"ם) - בלי
+ * טבלאות הדרישה של יחידות בודדות (אלה שייכות ליחידה עצמה, ראו _unitOwnedDraftKeys).
+ */
+function _adminOwnedDraftKeys(week, year) {
+  const keys = [];
+  MASTER_COMBINED_TABLES.forEach(tableId => {
+    keys.push(getStorageKey(tableId, week, year));
+    keys.push(getPendingImportKey(tableId, week, year));
+  });
+  ['esukTable', 'hirgTable', 'pikudTable', 'tazamTable', 'bahalagTable'].forEach(tableId => {
+    keys.push(getStorageKey(tableId, week, year));
+  });
+  keys.push(getStorageKey('hipoktable', week, year));
+  ['hadrag', 'shekem'].forEach(type => {
+    _platoonTableIds(type).forEach(tableId => {
+      keys.push(`${_platoonDataKeyPrefix(type)}_${tableId}_week${week}_year${year}`);
+      keys.push(`${_platoonStackedKeyPrefix(type)}_${tableId}_week${week}_year${year}`);
+    });
+  });
+  return keys.concat(_sharedRequestListKeys(week, year));
+}
+
+/**
+ * כל מפתחות ה"טיוטה" ששייכים בפועל ליחידה נתונה (עמוד יחידה) - שלוש טבלאות הדרישה שלה
+ * (קשר/אופטיקה/מודיעין) בלבד, בתוספת הרשימות המשותפות (ראו _sharedRequestListKeys).
+ * @param {string} page - שם קובץ עמוד היחידה (למשל 'esuk.html')
+ */
+function _unitOwnedDraftKeys(page, week, year) {
+  const ownTableIds = UNIT_OWN_TABLES[page] || [];
+  return ownTableIds.map(id => getStorageKey(id, week, year)).concat(_sharedRequestListKeys(week, year));
+}
+
 async function globalExportManager() {
   if (!confirm('האם אתה בטוח שברצונך להפיץ את כלל השינויים לשבוע זה? (פעולה זו תאשר את המצב הנוכחי ותנקה סימונים כתומים)')) return;
 
-  const currentPrefix = `week${currentWeek}_year${currentYear}`;
-
-  // 1. Copy all draft keys to published
-  // חשוב: קודם ממצים את כל מפתחות ה-localStorage לרשימה קבועה (snapshot), ורק אז כותבים.
-  // כתיבה תוך כדי איטרציה לפי localStorage.key(i)/localStorage.length משבשת את סדר
-  // האינדקסים הפנימי (המפתחות החדשים לא בהכרח נוספים בסוף), מה שגרם לדילוג אקראי
-  // על טבלאות מסוימות - הסימן שהמשתמש דיווח עליו כ"לפעמים מתבלבל בטבלאות גדולות".
-  const draftKeysSnapshot = Object.keys(localStorage).filter(
-    key => key.includes(currentPrefix) && !key.includes('_published')
-  );
+  // רק מפתחות ששייכים בפועל למנהל (ראו _adminOwnedDraftKeys) - לא כל מפתח שמכיל את קידומת
+  // השבוע/שנה שקיים איכשהו ב-localStorage של הדפדפן הזה. בלי ההגבלה הזו, אם אותו דפדפן שימש
+  // בעבר (למשל לבדיקה) גם כדי להיכנס כיחידה, טיוטת דרישה של יחידה שטרם פרסמה אותה בעצמה
+  // הייתה מתפרסמת בטעות מתוך לחיצת "הפץ שינויים" של המנהל - בלי שהיחידה בכלל ידעה או אישרה
+  // זאת (אפיון QA).
+  const allowedKeys = new Set(_adminOwnedDraftKeys(currentWeek, currentYear));
+  const draftKeysSnapshot = Object.keys(localStorage).filter(key => allowedKeys.has(key));
 
   if (await _detectConcurrentPublish(draftKeysSnapshot)) {
     if (!confirm('שים לב: נראה שמשתמש/מכשיר אחר כבר הפיץ שינויים לשבוע זה מאז שהעמוד הזה נטען לאחרונה. המשך ההפצה עלול לדרוס את השינוי הזה. לרענן ולבדוק קודם מומלץ.\n\nלהמשיך בכל זאת ולהפיץ?')) return;
@@ -1104,23 +1569,25 @@ async function globalExportManager() {
 /**
  * בודקת שלכל טבלת דרישה של קשר/אופטיקה השייכת ליחידה הנוכחית (לפי UNIT_OWN_TABLES) יש
  * ערך ב"נושא שבוע" (השורה הראשונה, topic-textarea) - בקשת המפקדים: פלוגה לא יכולה לשמור
- * ולייבא בלי לתעד קודם על מה השבוע. מספיק תא אחד מלא בשורה (לא כל העמודות) כדי לא להכביד.
+ * ולייבא (בשום פעולה - גם רק חדר"ג/שק"ם/מענה רפואי, לא משנה איזה חלק בעמוד היחידה נמצא
+ * כרגע פתוח) בלי לתעד קודם על מה השבוע, תמיד - גם אם אין באותו שבוע שום עדכון חדש בקשר/
+ * אופטיקה עצמם. מספיק תא אחד מלא בשורה (לא כל העמודות) כדי לא להכביד.
  * טבלה שלא קיימת כרגע ב-DOM (לא נטענה) לא נבדקת - אין מה לחסום על סמך משהו שלא קיים.
- * @returns {{ok: boolean, missing: string[]}}
+ * @returns {Promise<{ok: boolean, missing: string[]}>}
  */
-function _getUnitKesherOpticTopicStatus() {
+async function _getUnitKesherOpticTopicStatus() {
   const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
   const tables = UNIT_OWN_TABLES[page];
   if (!tables) return { ok: true, missing: [] };
   const [kesherTableId, opticTableId] = tables;
   const missing = [];
-  [{ id: kesherTableId, name: 'תקשוב' }, { id: opticTableId, name: 'אופטיקה' }].forEach(({ id, name }) => {
+  for (const { id, name } of [{ id: kesherTableId, name: 'תקשוב' }, { id: opticTableId, name: 'אופטיקה' }]) {
     const table = document.getElementById(id);
     const topicRow = table ? table.querySelector('tbody tr.topic-row') : null;
-    if (!topicRow) return;
+    if (!topicRow) continue;
     const filled = Array.from(topicRow.querySelectorAll('.topic-textarea')).some(ta => ta.value.trim() !== '');
     if (!filled) missing.push(name);
-  });
+  }
   return { ok: missing.length === 0, missing };
 }
 
@@ -1130,7 +1597,7 @@ function _getUnitKesherOpticTopicStatus() {
 async function globalExportUnit() {
   if (!confirm('האם סיימת את השיבוץ וברצונך לשמור את הנתונים כך שיהיו מוכנים לייבוא על ידי המנהל?')) return;
 
-  const topicStatus = _getUnitKesherOpticTopicStatus();
+  const topicStatus = await _getUnitKesherOpticTopicStatus();
   if (!topicStatus.ok) {
     alert(`יש למלא "נושא שבוע" בדרישות ה${topicStatus.missing.join(' וה')} לפני שמירה וייבוא.`);
     return;
@@ -1142,13 +1609,15 @@ async function globalExportUnit() {
   if (typeof commitHadragStagedBlocks === 'function' && !(await commitHadragStagedBlocks())) return;
   if (typeof commitShekemStagedBlocks === 'function' && !(await commitShekemStagedBlocks())) return;
 
-  const currentPrefix = `week${currentWeek}_year${currentYear}`;
-
-  // ראו הערה במימוש globalExportManager: יש למצות snapshot של המפתחות לפני כתיבה,
-  // אחרת כתיבה תוך כדי איטרציה עלולה לדלג על מפתחות באופן לא צפוי.
-  const draftKeysSnapshot = Object.keys(localStorage).filter(
-    key => key.includes(currentPrefix) && !key.includes('_published')
-  );
+  // רק מפתחות ששייכים בפועל ליחידה הזו (שלוש טבלאות הדרישה שלה + הרשימות המשותפות - ראו
+  // _unitOwnedDraftKeys) - לא כל מפתח שמכיל את קידומת השבוע/שנה שקיים איכשהו ב-localStorage
+  // של הדפדפן הזה. בלי ההגבלה הזו, אם אותו דפדפן שימש בעבר (למשל לבדיקה) גם כדי להיכנס
+  // כמנהל, טיוטת מנהל שטרם הופצה (למשל שיבוץ ישיר בחדר"ג) הייתה מתפרסמת בטעות מתוך לחיצת
+  // "שמור ומוכן לייבוא" של היחידה - בלי שהמנהל בכלל לחץ "הפץ שינויים" (אפיון QA: "שיבוץ
+  // המנהל הופיע אפילו שהוא לא הפיץ אותו").
+  const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
+  const allowedKeys = new Set(_unitOwnedDraftKeys(page, currentWeek, currentYear));
+  const draftKeysSnapshot = Object.keys(localStorage).filter(key => allowedKeys.has(key));
 
   if (await _detectConcurrentPublish(draftKeysSnapshot)) {
     if (!confirm('שים לב: נראה שהנתונים האלה כבר עודכנו במקביל ממכשיר/משתמש אחר מאז שהעמוד הזה נטען. שמירה עכשיו עלולה לדרוס את העדכון הזה. לרענן ולבדוק קודם מומלץ.\n\nלהמשיך בכל זאת ולשמור?')) return;
@@ -2362,6 +2831,12 @@ async function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbody
     names = await getRowsForWeek('optic', currentWeek, currentYear);
   }
 
+  // מדלגים על ריקון+בנייה מחדש של כל השורות אם הנתונים זהים למה שכבר מוצג - ראו
+  // _renderDataChanged. בלי זה טבלת ההקצאות (קשר/אופטיקה בעמוד יחידה) "נעלמת ומופיעה" בכל
+  // מחזור רענון אוטומטי (כל כמה שניות) כשתצוגת "הקצאות" פתוחה, גם כשלא השתנה כלום - אותה
+  // תבנית בדיוק כמו loadHadragTables/loadShekemTables/renderHaktzaotModieinUnit (אפיון QA: "מרצד").
+  if (!_renderDataChanged('haktzaot_' + tbodyId, { data, names })) return;
+
   tbody.innerHTML = '';
   let hasAny = false;
 
@@ -3029,14 +3504,28 @@ async function paintUnitRequestGrid(type) {
   const facilities = isHadrag ? Object.keys(HADRAG_FACILITY_NAMES) : ['shekem'];
   const stagedArr = isHadrag ? hadragStagedBlocks : shekemStagedBlocks;
 
+  const publishedByFacility = {};
+  for (const facility of facilities) {
+    const dataTableId = isHadrag ? ('body-' + facility) : 'body-shekem';
+    const pubKey = `${isHadrag ? 'hadragData' : 'shekemData'}_${dataTableId}_week${currentWeek}_year${currentYear}_published`;
+    publishedByFacility[facility] = await fetchTableData(pubKey);
+  }
+
+  // מדלגים על ריקון+ציור מחדש של כל תאי הגריד (252 תאים לכל מתקן) אם דבר לא השתנה מאז
+  // הרינדור הקודם באותו טעינת-עמוד - בלי זה גריד הבקשות של היחידה "נעלם ומופיע" בכל מחזור
+  // רענון אוטומטי (כל כמה שניות) גם כשלא השתנה כלום (אפיון QA: "מרצד") - אותה תבנית בדיוק
+  // כמו _renderDataChanged ב-loadHadragTables/loadShekemTables.
+  if (!_renderDataChanged('unitReqGrid_' + type, { published: publishedByFacility, staged: stagedArr })) {
+    if (typeof updateGlobalExportButtonStatus === 'function') updateGlobalExportButtonStatus();
+    return;
+  }
+
   for (const facility of facilities) {
     const tbody = document.getElementById('req-body-' + facility);
     if (!tbody) continue;
     buildReqTableBody(tbody);
 
-    const dataTableId = isHadrag ? ('body-' + facility) : 'body-shekem';
-    const pubKey = `${isHadrag ? 'hadragData' : 'shekemData'}_${dataTableId}_week${currentWeek}_year${currentYear}_published`;
-    const published = await fetchTableData(pubKey);
+    const published = publishedByFacility[facility];
     if (!published) continue;
 
     for (let c = 0; c < 7; c++) {
@@ -3095,7 +3584,28 @@ async function loadUnitRequestGridState(type) {
   // ב-loadTableData).
   if (reqWeek !== currentWeek || reqYear !== currentYear) return;
 
-  const own = allRequests.filter(r => r.status === 'pending' && (r.unit || 'bg-esuk') === unitClass);
+  const ownAll = allRequests.filter(r => (r.unit || 'bg-esuk') === unitClass);
+
+  // "עדיין שלה לראות בגריד הבקשות שלה" = טרם מופיעה בפועל בגריד המפורסם - לא בודקים לפי
+  // r.status בלבד: autoPlaceRequests (ראו שם) עלולה לסמן בקשה 'approved' עוד לפני שהמנהל
+  // בפועל לחץ "הפץ שינויים" (היא רק הונחה בטיוטה) - אם היינו מסתמכים על הסטטוס בלבד, הבלוק
+  // היה "נעלם" מהתצוגה של היחידה בפער הזמן שבין המיקום האוטומטי לבין ההפצה בפועל (אפיון QA:
+  // "כפתור שמור ומוכן לייבוא לא עובד" - זה בדיוק מה שנראה למשתמש). המקור האמיתי הוא: האם
+  // התא בגריד ה-*_published מכיל reqId שתואם לבקשה הזו.
+  const publishedCache = {};
+  const own = [];
+  for (const r of ownAll) {
+    const dataTableId = isHadrag ? ('body-' + r.facility) : 'body-shekem';
+    if (!(dataTableId in publishedCache)) {
+      const pubKey = `${isHadrag ? 'hadragData' : 'shekemData'}_${dataTableId}_week${reqWeek}_year${reqYear}_published`;
+      publishedCache[dataTableId] = (await fetchTableData(pubKey)) || {};
+    }
+    const isLive = Object.values(publishedCache[dataTableId]).some(c => c && c.reqId === r.id);
+    if (!isLive) own.push(r);
+  }
+  // שוב בדיקת שבוע/שנה - ה-fetch-ים למעלה יכלו לקחת זמן (אותה תבנית בדיוק כמו ב-loadTableData).
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
+
   const staged = own.map(r => {
     const startRow = timeToRowIndex(r.startTime);
     return {
@@ -3709,15 +4219,213 @@ const PAGE_UNIT_NAMES = {
   'bahalag.html': 'מפח"ט'
 };
 
+/* =========================================================
+   מיקום אוטומטי של בקשות חדר"ג/שק"ם בטבלה - בלי צעד אישור ידני של המנהל (בקשת המפקדים).
+   בקשה שהיחידה שמרה ופרסמה ("שמור ומוכן לייבוא") מונחת ישירות בטיוטת הטבלה הגדולה. אם
+   המשבצת המבוקשת כבר תפוסה (או חסומה - bg-blocked) - הבקשה לא נדרסת ולא נדחית, אלא עוברת
+   ל"מחסנית התנגשויות" נפרדת (hadragStacked_/shekemStacked_) שמוצגת בגריד כמה שכבות מוזזות
+   באלכסון ומעט שקופות מעל אותה משבצת (renderStackedConflicts), וניתנת לגרירה ע"י המנהל
+   למשבצת פנויה לבחירתו (ראו מנגנון הגרירה הייעודי בהמשך הקובץ, ליד "Excel-like Drag & Drop").
+========================================================= */
+
+/** רשימת ה-tbody-ים הרלוונטיים לסוג נתון - 4 מתקנים לחדר"ג, טבלה אחת לשק"ם. */
+function _platoonTableIds(type) {
+  return type === 'hadrag' ? ['body-chadrag', 'body-anafit8', 'body-anafit-bah', 'body-tavor'] : ['body-shekem'];
+}
+function _platoonDataKeyPrefix(type) { return type === 'hadrag' ? 'hadragData' : 'shekemData'; }
+function _platoonStackedKeyPrefix(type) { return type === 'hadrag' ? 'hadragStacked' : 'shekemStacked'; }
+
 /**
- * מוחקת בקשת חדר"ג ומעדכנת את הרשימות בתצוגה.
+ * בודקת האם משבצת/טווח משבצות (r1..r2 בעמודה col) תפוסות בפועל בנתוני טבלה נתונים - תא עם
+ * טקסט, תא חסום (bg-blocked), או תא מכוסה (disp:'none', כלומר בתוך rowSpan של בלוק שהתחיל
+ * קודם). משמשת גם את autoPlaceRequests וגם את הטלת-הגרירה (drop) של פתרון התנגשות.
+ */
+function _platoonRangeOccupied(tableData, day, startRow, endRow) {
+  for (let r = startRow; r <= endRow; r++) {
+    const c = tableData[`${r}_${day}`];
+    if (c && (c.disp === 'none' || (c.val && String(c.val).trim() !== '') || (c.classes || []).includes('bg-blocked'))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * ממקמת אוטומטית כל בקשה שפורסמה וטרם שובצה/הוערמה. רצה **רק** בעמוד שבו קיימת בפועל
+ * טבלת המנהל הרלוונטית (hadrag.html/shekem.html) - לא בעמוד יחידה כלשהו. זו לא רק שאלת
+ * ביצועים: globalExportUnit (כפתור "שמור ומוכן לייבוא" של היחידה) מפרסם באופן גורף כל
+ * מפתח שתואם את קידומת השבוע הנוכחי שקיים ב-localStorage שלו - אילו הפונקציה הזו הייתה
+ * נוגעת ב-hadragData/shekemData (טיוטת טבלת המנהל) גם מעמוד יחידה, קריאת/כתיבת הנתונים
+ * דרך DataService הייתה משאירה עותק שלהם ב-localStorage המקומי של אותה יחידה, וקליק על
+ * "שמור ומוכן לייבוא" שלה היה עלול לפרסם בטעות את כל טיוטת הטבלה הגדולה של המנהל - גם אם
+ * הוא כלל לא ביקש להפיץ (אפיון QA: "כפתור שמור ומוכן לייבוא לא עובד על פלוגתי ושק"ם" -
+ * הבקשה שלה עצמה "נעלמה" כי autoPlaceRequests הספיקה לסמן אותה 'approved' לפני שהמנהל
+ * פרסם בפועל - ראו גם התיקון המקביל ב-loadUnitRequestGridState).
+ * @param {'hadrag'|'shekem'} type
+ */
+async function autoPlaceRequests(type) {
+  if (!_platoonTableIds(type).some(id => document.getElementById(id))) return;
+
+  // קולטים את השבוע/שנה הנוכחיים **פעם אחת בלבד**, לפני כל await, ומשתמשים רק במשתנים
+  // המקומיים האלה (reqWeek/reqYear) בכל בניית מפתח שמירה בפונקציה הזו - גם בקריאה וגם
+  // בכתיבה. הפונקציה הזו רצה בכל מחזור רענון אוטומטי וכוללת כמה await ברצף (בקשות רשת
+  // אמיתיות במצב שרת מרכזי) - אם היא הייתה ממשיכה לקרוא את currentWeek/currentYear הגלובליים
+  // בכל שלב מחדש, ניווט לשבוע אחר (למשל לחיצת "שבוע הבא") באמצע הריצה היה גורם לה לקרוא
+  // נתונים עם השבוע הישן אך לכתוב אותם תחת מפתח השבוע החדש - בפועל מעתיק את תוכן השבוע
+  // הישן לתוך אחסון השבוע החדש (אפיון QA: "מילאתי שעות בפלוגתי לשבוע 37 וזה העתיק את השעות
+  // משבוע 36"). עכשיו, גם אם המשתמש עבר שבוע באמצע, הפונקציה משלימה את עבודתה בעקביות מלאה
+  // על השבוע שאיתו התחילה - לא "קופצת" בין שבועות באמצע.
+  const reqWeek = currentWeek, reqYear = currentYear;
+
+  const isHadrag = type === 'hadrag';
+  const loadRequests = isHadrag ? loadHadragRequests : loadShekemRequests;
+  const saveRequests = isHadrag ? saveHadragRequests : saveShekemRequests;
+  const requestsKeyBase = isHadrag ? getHadragRequestsKey(reqWeek, reqYear) : getShekemRequestsKey(reqWeek, reqYear);
+
+  const allRequests = await loadRequests(reqWeek, reqYear);
+  const publishedRequests = (await fetchTableData(requestsKeyBase + '_published')) || [];
+  const publishedIds = new Set(publishedRequests.map(r => r.id));
+  const candidates = allRequests.filter(req => req.status !== 'approved' && publishedIds.has(req.id));
+  if (candidates.length === 0) return;
+
+  const dataPrefix = _platoonDataKeyPrefix(type);
+  const stackedPrefix = _platoonStackedKeyPrefix(type);
+  const tableIds = _platoonTableIds(type);
+
+  const dataByTable = {}, stackedByTable = {};
+  const changedData = new Set(), changedStacked = new Set();
+  for (const tableId of tableIds) {
+    dataByTable[tableId] = (await DataService.getItem(`${dataPrefix}_${tableId}_week${reqWeek}_year${reqYear}`)) || {};
+    stackedByTable[tableId] = (await DataService.getItem(`${stackedPrefix}_${tableId}_week${reqWeek}_year${reqYear}`)) || [];
+  }
+
+  let requestsChanged = false;
+
+  for (const req of candidates) {
+    const tableId = isHadrag ? ('body-' + req.facility) : 'body-shekem';
+    if (!dataByTable[tableId]) continue;
+
+    const alreadyPlaced = Object.values(dataByTable[tableId]).some(c => c && c.reqId === req.id);
+    const alreadyStacked = stackedByTable[tableId].some(s => s.reqId === req.id);
+    if (alreadyPlaced || alreadyStacked) continue;
+
+    const startRow = timeToRowIndex(req.startTime);
+    const endRow = Math.max(startRow, timeToRowIndex(req.endTime) - 1);
+    const span = endRow - startRow + 1;
+
+    if (_platoonRangeOccupied(dataByTable[tableId], req.day, startRow, endRow)) {
+      stackedByTable[tableId].push({
+        reqId: req.id, day: req.day, startRow, span,
+        text: req.text, unitClass: req.unit || 'bg-esuk', unitName: req.unitName || ''
+      });
+      changedStacked.add(tableId);
+    } else {
+      for (let r = startRow; r <= endRow; r++) {
+        dataByTable[tableId][`${r}_${req.day}`] = (r === startRow)
+          ? { val: req.text, span, disp: '', classes: [req.unit || 'bg-esuk', 'imported'], reqId: req.id }
+          : { val: '', span: 1, disp: 'none', classes: [], reqId: null };
+      }
+      changedData.add(tableId);
+      req.status = 'approved';
+      requestsChanged = true;
+    }
+  }
+
+  for (const tableId of changedData) {
+    await DataService.setItem(`${dataPrefix}_${tableId}_week${reqWeek}_year${reqYear}`, dataByTable[tableId]);
+  }
+  for (const tableId of changedStacked) {
+    await DataService.setItem(`${stackedPrefix}_${tableId}_week${reqWeek}_year${reqYear}`, stackedByTable[tableId]);
+  }
+  if (requestsChanged) {
+    await saveRequests(allRequests, reqWeek, reqYear);
+  }
+}
+
+/**
+ * מציירת "שכבות" חזותיות (overlay מוחלט מעל התא, מוזז באלכסון ומעט שקוף) עבור כל בקשה
+ * שנתקלה בהתנגשות ב-autoPlaceRequests ולכן לא הונחה בפועל - עם אפשרות גרירה למשבצת פנויה
+ * (ראו מנגנון הגרירה הייעודי) ומחיקה (✕ קטן בפינת השכבה).
+ * @param {'hadrag'|'shekem'} type
+ */
+async function renderStackedConflicts(type) {
+  const stackedPrefix = _platoonStackedKeyPrefix(type);
+
+  for (const tableId of _platoonTableIds(type)) {
+    const tbody = document.getElementById(tableId);
+    if (!tbody) continue;
+    const stacked = (await DataService.getItem(`${stackedPrefix}_${tableId}_week${currentWeek}_year${currentYear}`)) || [];
+
+    // מדלגים על הריקון+בנייה מחדש של שכבות ההתנגשות אם הנתונים זהים למה שכבר מוצג - בלי זה
+    // השכבות (מוצמדות ל-document.body, לא לתוך התא) נעלמות ומופיעות מחדש בכל מחזור רענון
+    // אוטומטי (כל כמה שניות) גם כשלא השתנה כלום, מה שנראה כ"הבהוב" בעמוד (אפיון QA: "פלוגתי
+    // מרצד") - אותה תבנית בדיוק כמו _renderDataChanged ב-loadHadragTables/loadShekemTables.
+    if (!_renderDataChanged('stackedConflicts_' + type + '_' + tableId, stacked)) continue;
+
+    document.querySelectorAll(`.stacked-conflict-overlay[data-type="${type}"][data-table-id="${tableId}"]`).forEach(el => el.remove());
+
+    const headerRow = tbody.closest('table')?.querySelector('thead tr');
+
+    stacked.forEach((item, idx) => {
+      // מיקום המשבצת (item.startRow) עלול ליפול בתוך תא "מכוסה" (disp:'none') של בלוק ממוזג
+      // קיים - למשל התנגשות שמתחילה מאוחר יותר מהשיבוץ התפוס אך עדיין בתוך טווח השעות שלו.
+      // תא מכוסה כזה מוחזר כן מ-querySelector, אבל getBoundingClientRect שלו הוא אפס לגמרי
+      // (רוחב/גובה/מיקום 0), מה שהזיז את השכבה (וה-✕ שלה) לפינה השמאלית-עליונה של המסך במקום
+      // למקום הנכון (אפיון QA: "רואים רק איקס בצד שמאל של המסך"). לכן שואבים את הגיאומטריה לא
+      // מהתא הספציפי (שעלול להיות מכוסה) אלא משני מקורות שתמיד גלויים: תא עמודת השעה של אותה
+      // שורה (time-col, לעולם לא ממוזג/מוסתר - נותן top/height אמינים לשורה בודדת) ותא הכותרת
+      // (thead) של אותו יום (לעולם לא מושפע ממיזוגים בגוף הטבלה - נותן left/width אמינים).
+      const tr = tbody.rows[item.startRow];
+      const timeCell = tr ? tr.firstElementChild : null;
+      const headerCell = headerRow ? headerRow.children[item.day + 1] : null;
+      if (!timeCell || !headerCell) return;
+      const rowRect = timeCell.getBoundingClientRect();
+      const colRect = headerCell.getBoundingClientRect();
+      if (rowRect.height === 0 || colRect.width === 0) return;
+
+      const overlay = document.createElement('div');
+      overlay.className = 'stacked-conflict-overlay ' + (item.unitClass || 'bg-esuk');
+      overlay.draggable = true;
+      overlay.dataset.tableId = tableId;
+      overlay.dataset.type = type;
+      overlay.dataset.reqId = item.reqId;
+      overlay.dataset.span = String(item.span);
+      overlay.dataset.unitClass = item.unitClass || 'bg-esuk';
+      overlay.dataset.unitName = item.unitName || '';
+      overlay.dataset.text = item.text || '';
+      overlay.title = (item.unitName ? item.unitName + ' - ' : '') + 'התנגשות זמנים - גרור למשבצת פנויה כדי לפתור';
+      overlay.innerHTML = `<span class="stacked-conflict-text">${escapeHtml(item.text)}</span><span class="stacked-conflict-del" title="מחק בקשה">✕</span>`;
+      // top מיושר בדיוק לפי rowRect, בלי שום היסט - כדי שהשעות של הבקשה יהיו קריאות במדויק
+      // מול עמודת השעה (בקשת המשתמש: "לשים את השיבוץ ממש על השעות"). ההיסט (idx + 1, לא idx
+      // - כדי שגם השכבה הראשונה תוזז מהתוכן התפוס שמתחתיה) הוא אך ורק אופקי (בצד), כדי
+      // שהתנגשויות מרובות עדיין יהיו ניתנות להבחנה זו מזו בלי לפגוע ביישור האנכי המדויק.
+      overlay.style.top = (rowRect.top + window.scrollY) + 'px';
+      overlay.style.left = (colRect.left + window.scrollX + (idx + 1) * 8) + 'px';
+      overlay.style.width = colRect.width + 'px';
+      overlay.style.height = (rowRect.height * item.span) + 'px';
+      overlay.style.zIndex = String(200 + idx);
+      document.body.appendChild(overlay);
+    });
+  }
+}
+
+/**
+ * מוחקת בקשת חדר"ג ומעדכנת את הרשימות בתצוגה - כולל הסרה ממחסנית ההתנגשויות אם הבקשה
+ * הייתה שם (אחרת "שכבה" יתומה הייתה נשארת מוצגת לצמיתות).
  * @param {string} id - מזהה הבקשה
  */
 async function deleteHadragRequest(id) {
   const requests = (await loadHadragRequests(currentWeek, currentYear)).filter(req => req.id !== id);
   await saveHadragRequests(requests, currentWeek, currentYear);
+  for (const tableId of _platoonTableIds('hadrag')) {
+    const key = `hadragStacked_${tableId}_week${currentWeek}_year${currentYear}`;
+    const stacked = await DataService.getItem(key);
+    if (stacked && stacked.some(s => s.reqId === id)) {
+      await DataService.setItem(key, stacked.filter(s => s.reqId !== id));
+    }
+  }
   if(typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
-  if(typeof renderHadragPendingRequests === 'function') await renderHadragPendingRequests();
+  if(typeof renderStackedConflicts === 'function') await renderStackedConflicts('hadrag');
 }
 
 /**
@@ -3742,6 +4450,11 @@ async function renderHadragRequestsList() {
   if (targetColor) {
     filteredRequests = requests.filter(req => (req.unit || 'bg-esuk') === targetColor);
   }
+
+  // מדלגים על בניית הרשימה מחדש אם היא זהה למה שכבר מוצג - ראו _renderDataChanged
+  // (אותה תבנית בדיוק כמו renderHipokEntriesList) - בלי זה הרשימה "נעלמת ומופיעה" בכל מחזור
+  // רענון אוטומטי גם כשלא השתנה כלום (אפיון QA: "מרצד").
+  if (!_renderDataChanged('hadragRequestsList_' + currentPage, filteredRequests)) return;
 
   if (filteredRequests.length === 0) {
     container.innerHTML = '<p style="color:#666;">אין בקשות לשבוע זה.</p>';
@@ -3825,145 +4538,9 @@ const UNIT_BG_MAP = {
   'bg-maphat': { bg: '#ffe0b2', border: '#ffb74d', text: '#e65100' }
 };
 
-/**
- * מרנדרת את כרטיסי הבקשות הממתינות לאישור חדר"ג עבור עמוד ניהול החדר"ג.
- */
-async function renderHadragPendingRequests() {
-  const container = document.getElementById('hadragPendingList');
-  if (!container) return;
-  const reqWeek = currentWeek, reqYear = currentYear;
-
-  const allRequests = await loadHadragRequests(reqWeek, reqYear);
-  // רק בקשות שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") מוצגות למנהל - לא בקשה שהוקלדה
-  // ועדיין לא נשמרה על ידי היחידה (אפיון QA).
-  const publishedKey = getHadragRequestsKey(reqWeek, reqYear) + '_published';
-  const publishedRequests = (await fetchTableData(publishedKey)) || [];
-  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשות האלה היו באוויר - זורקים את התוצאה (ראו הערה
-  // מפורטת ב-loadTableData).
-  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
-  const publishedIds = new Set(publishedRequests.map(r => r.id));
-  const pendingRequests = allRequests.filter(req => req.status !== 'approved' && publishedIds.has(req.id));
-
-  if (pendingRequests.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:#64748b; font-size:13px; font-weight:700; margin:6px 0;">אין בקשות ממתינות לאישור.</p>';
-    return;
-  }
-
-  container.innerHTML = pendingRequests.map(req => {
-    const unitKey = req.unit || 'bg-esuk';
-    const info = UNIT_BG_MAP[unitKey] || UNIT_BG_MAP['bg-esuk'];
-    const unitName = req.unitName || 'בא"ח איסו"ק';
-    const facilityName = HADRAG_FACILITY_NAMES[req.facility] || 'חדר"ג';
-    const dayName = HADRAG_DAY_LABELS[req.day] !== undefined ? 'יום ' + HADRAG_DAY_LABELS[req.day] : '';
-
-    return `
-      <div class="request-card" style="background:#ffffff; border:1px solid #cbd5e1; border-right:4px solid ${info.border}; padding:6px 12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:4px;">
-        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-          <span style="background:${info.bg}; border:1px solid ${info.border}; color:${info.text}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:11.5px;">${escapeHtml(unitName)}</span>
-          <span style="background:#0f172a; color:#ffffff; padding:2px 8px; border-radius:6px; font-weight:700; font-size:11.5px;">${facilityName} • ${dayName}</span>
-        </div>
-
-        <span style="color:#000000; font-weight:800; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 4px;">${escapeHtml(req.text)}</span>
-
-        <div style="direction:ltr; display:flex; align-items:center; gap:4px; flex-shrink:0; background:#f8fafc; padding:3px 6px; border-radius:6px; border:1px solid #e2e8f0;">
-          <input type="time" id="editStart_${req.id}" value="${req.startTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
-          <span style="font-weight:700; color:#64748b; font-size:12px;">-</span>
-          <input type="time" id="editEnd_${req.id}" value="${req.endTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
-        </div>
-
-        <div style="display:flex; gap:6px; flex-shrink:0;">
-          <button class="btn-approve" style="background:linear-gradient(135deg, #16a34a, #15803d); color:#ffffff; border:none; padding:4px 12px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(22,163,74,0.2);" onclick="approveHadragRequest('${req.id}')">שבץ</button>
-          <button class="btn-reject" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:4px 10px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center;" onclick="rejectHadragRequest('${req.id}')">✕</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-/**
- * מאשרת בקשת חדר"ג, מחשבת את מיזוג השורות הנדרש, ומשבצת אותה בטבלה.
- * @param {string} reqId - מזהה הבקשה
- */
-async function approveHadragRequest(reqId) {
-  const requests = await loadHadragRequests(currentWeek, currentYear);
-  const reqIndex = requests.findIndex(r => r.id === reqId);
-  if (reqIndex === -1) return;
-  
-  const req = requests[reqIndex];
-  const tbodyId = 'body-' + req.facility;
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) { alert('הטבלה הרלוונטית לא נמצאה'); return; }
-
-  const newStartInput = document.getElementById(`editStart_${reqId}`);
-  const newEndInput = document.getElementById(`editEnd_${reqId}`);
-  
-  if (newStartInput && newEndInput) {
-    if (newStartInput.value >= newEndInput.value) {
-      alert('שגיאה: שעת הסיום חייבת להיות מאוחרת משעת ההתחלה.');
-      return;
-    }
-    req.startTime = newStartInput.value;
-    req.endTime = newEndInput.value;
-  }
-
-  const startRow = timeToRowIndex(req.startTime);
-  const endRow = Math.max(startRow, timeToRowIndex(req.endTime) - 1);
-  const col = req.day;
-
-  let hasConflict = false;
-  for (let r = startRow; r <= endRow; r++) {
-    const cell = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
-    if (!cell) continue;
-    if (cell.style.display === 'none' || cell.rowSpan > 1 || cell.classList.contains('merged') || cell.classList.contains('imported')) {
-      hasConflict = true;
-    }
-    const input = cell.querySelector('textarea');
-    if (input && input.value.trim() !== '') hasConflict = true;
-  }
-
-  if (hasConflict) {
-    alert('⚠️ אי אפשר לשבץ: השעות שבחרת תפוסות.');
-    return;
-  }
-
-  const firstCell = tbody.querySelector(`td.platoon-cell[data-row="${startRow}"][data-col="${col}"]`);
-  if (!firstCell) return;
-
-  for (let r = startRow; r <= endRow; r++) {
-    const cell = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
-    if (cell) {
-      cell.style.display = (r === startRow) ? '' : 'none';
-      cell.rowSpan = 1;
-      cell.classList.remove('merged', ...ALL_COLOR_CLASSES);
-    }
-  }
-
-  firstCell.rowSpan = (endRow - startRow + 1);
-  const textarea = firstCell.querySelector('textarea');
-  if (textarea) {
-    textarea.style.height = '100%';
-    textarea.value = req.text;
-    const unitClass = req.unit || 'bg-esuk';
-    firstCell.classList.add(unitClass, 'imported');
-  }
-  firstCell.dataset.reqId = reqId;
-
-  req.status = 'approved';
-  await saveHadragRequests(requests, currentWeek, currentYear);
-  if (typeof saveHadragTables === 'function') saveHadragTables();
-  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
-  await renderHadragPendingRequests();
-}
-
-/**
- * דוחה ומודקת בקשת חדר"ג לאחר אישור המשתמש.
- * @param {string} reqId - מזהה הבקשה
- */
-async function rejectHadragRequest(reqId) {
-  if (confirm('האם אתה בטוח שברצונך לדחות ולמחוק בקשה זו?')) {
-    await deleteHadragRequest(reqId);
-  }
-}
+// renderHadragPendingRequests/approveHadragRequest/rejectHadragRequest הוסרו - הוחלפו
+// ב-autoPlaceRequests/renderStackedConflicts (למעלה, ליד deleteHadragRequest): בקשות
+// ממוקמות אוטומטית בטבלה, ואם יש התנגשות מוצגות כשכבות ניתנות לגרירה במקום ברשימת אישור.
 
 /**
  * שומרת את מצב תאי הטבלאות ומיזוגי השורות בכל מתקני החדר"ג לשבוע הנוכחי.
@@ -4148,14 +4725,22 @@ async function saveShekemRequests(requests, week, year) {
 }
 
 /**
- * מוחקת בקשת שק"ם ומעדכנת את התצוגות.
+ * מוחקת בקשת שק"ם ומעדכנת את התצוגות - כולל הסרה ממחסנית ההתנגשויות אם הבקשה הייתה שם
+ * (ראו ההערה המקבילה ב-deleteHadragRequest).
  * @param {string} id - מזהה הבקשה
  */
 async function deleteShekemRequest(id) {
   const requests = (await loadShekemRequests(currentWeek, currentYear)).filter(req => req.id !== id);
   await saveShekemRequests(requests, currentWeek, currentYear);
+  for (const tableId of _platoonTableIds('shekem')) {
+    const key = `shekemStacked_${tableId}_week${currentWeek}_year${currentYear}`;
+    const stacked = await DataService.getItem(key);
+    if (stacked && stacked.some(s => s.reqId === id)) {
+      await DataService.setItem(key, stacked.filter(s => s.reqId !== id));
+    }
+  }
   if(typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
-  if(typeof renderShekemPendingRequests === 'function') await renderShekemPendingRequests();
+  if(typeof renderStackedConflicts === 'function') await renderStackedConflicts('shekem');
 }
 
 /**
@@ -4181,6 +4766,10 @@ async function renderShekemRequestsList() {
     filteredRequests = requests.filter(req => (req.unit || 'bg-esuk') === targetColor);
   }
 
+  // מדלגים על בניית הרשימה מחדש אם היא זהה למה שכבר מוצג - ראו _renderDataChanged
+  // (אותה תבנית בדיוק כמו renderHipokEntriesList/renderHadragRequestsList).
+  if (!_renderDataChanged('shekemRequestsList_' + currentPage, filteredRequests)) return;
+
   if (filteredRequests.length === 0) {
     container.innerHTML = '<p style="color:#666;">אין בקשות לשבוע זה.</p>';
     return;
@@ -4200,143 +4789,8 @@ async function renderShekemRequestsList() {
   }).join('');
 }
 
-/**
- * מרנדרת את כרטיסי הבקשות הממתינות לאישור שק"ם עבור עמוד ניהול השק"ם.
- */
-async function renderShekemPendingRequests() {
-  const container = document.getElementById('shekemPendingList');
-  if (!container) return;
-  const reqWeek = currentWeek, reqYear = currentYear;
-
-  const allRequests = await loadShekemRequests(reqWeek, reqYear);
-  // רק בקשות שהיחידה שמרה ופרסמה בפועל ("שמור ומוכן לייבוא") מוצגות למנהל - לא בקשה שהוקלדה
-  // ועדיין לא נשמרה על ידי היחידה (אפיון QA).
-  const publishedKey = getShekemRequestsKey(reqWeek, reqYear) + '_published';
-  const publishedRequests = (await fetchTableData(publishedKey)) || [];
-  // אם כבר עברו לשבוע/שנה אחרים בזמן שהבקשות האלה היו באוויר - זורקים את התוצאה (ראו הערה
-  // מפורטת ב-loadTableData).
-  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
-  const publishedIds = new Set(publishedRequests.map(r => r.id));
-  const pendingRequests = allRequests.filter(req => req.status !== 'approved' && publishedIds.has(req.id));
-
-  if (pendingRequests.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:#64748b; font-size:13px; font-weight:700; margin:6px 0;">אין בקשות לשעות שק"ם הממתינות לאישור.</p>';
-    return;
-  }
-
-  container.innerHTML = pendingRequests.map(req => {
-    const unitKey = req.unit || 'bg-esuk';
-    const info = UNIT_BG_MAP[unitKey] || UNIT_BG_MAP['bg-esuk'];
-    const unitName = req.unitName || 'בא"ח איסו"ק';
-    const dayName = HADRAG_DAY_LABELS[req.day] !== undefined ? 'יום ' + HADRAG_DAY_LABELS[req.day] : '';
-
-    return `
-      <div class="request-card" style="background:#ffffff; border:1px solid #cbd5e1; border-right:4px solid ${info.border}; padding:6px 12px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:4px;">
-        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-          <span style="background:${info.bg}; border:1px solid ${info.border}; color:${info.text}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:11.5px;">${escapeHtml(unitName)}</span>
-          <span style="background:#0f172a; color:#ffffff; padding:2px 8px; border-radius:6px; font-weight:700; font-size:11.5px;">שק"ם • ${dayName}</span>
-        </div>
-
-        <span style="color:#000000; font-weight:800; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 4px;">${escapeHtml(req.text)}</span>
-
-        <div style="direction:ltr; display:flex; align-items:center; gap:4px; flex-shrink:0; background:#f8fafc; padding:3px 6px; border-radius:6px; border:1px solid #e2e8f0;">
-          <input type="time" id="editShekemStart_${req.id}" value="${req.startTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
-          <span style="font-weight:700; color:#64748b; font-size:12px;">-</span>
-          <input type="time" id="editShekemEnd_${req.id}" value="${req.endTime}" step="1800" style="padding:2px 4px; border:1px solid #cbd5e1; border-radius:4px; font-size:12px; font-weight:700; width:68px; text-align:center; color:#000000; background:#ffffff; outline:none;">
-        </div>
-
-        <div style="display:flex; gap:6px; flex-shrink:0;">
-          <button class="btn-approve" style="background:linear-gradient(135deg, #16a34a, #15803d); color:#ffffff; border:none; padding:4px 12px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(22,163,74,0.2);" onclick="approveShekemRequest('${req.id}')">שבץ</button>
-          <button class="btn-reject" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:4px 10px; border-radius:6px; font-size:12.5px; font-weight:800; cursor:pointer; height:28px; display:flex; align-items:center; justify-content:center;" onclick="rejectShekemRequest('${req.id}')">✕</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-/**
- * מאשרת ומשבצת בקשת שק"ם בטבלת השק"ם.
- * @param {string} reqId - מזהה הבקשה
- */
-async function approveShekemRequest(reqId) {
-  const requests = await loadShekemRequests(currentWeek, currentYear);
-  const reqIndex = requests.findIndex(r => r.id === reqId);
-  if (reqIndex === -1) return;
-  
-  const req = requests[reqIndex];
-  const tbody = document.getElementById('body-shekem');
-  if (!tbody) return;
-
-  const newStartInput = document.getElementById(`editShekemStart_${reqId}`);
-  const newEndInput = document.getElementById(`editShekemEnd_${reqId}`);
-  
-  if (newStartInput && newEndInput) {
-    if (newStartInput.value >= newEndInput.value) {
-      alert('שגיאה: שעת הסיום חייבת להיות מאוחרת משעת ההתחלה.');
-      return;
-    }
-    req.startTime = newStartInput.value;
-    req.endTime = newEndInput.value;
-  }
-
-  const startRow = timeToRowIndex(req.startTime);
-  const endRow = Math.max(startRow, timeToRowIndex(req.endTime) - 1);
-  const col = req.day;
-
-  let hasConflict = false;
-  for (let r = startRow; r <= endRow; r++) {
-    const cell = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
-    if (!cell) continue;
-    if (cell.style.display === 'none' || cell.rowSpan > 1 || cell.classList.contains('merged') || cell.classList.contains('imported')) {
-      hasConflict = true;
-    }
-    const input = cell.querySelector('textarea');
-    if (input && input.value.trim() !== '') hasConflict = true;
-  }
-
-  if (hasConflict) {
-    alert('⚠️ אי אפשר לשבץ: השעות שבחרת כבר תפוסות בטבלה.');
-    return;
-  }
-
-  const firstCell = tbody.querySelector(`td.platoon-cell[data-row="${startRow}"][data-col="${col}"]`);
-  if (!firstCell) return;
-
-  for (let r = startRow; r <= endRow; r++) {
-    const cell = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${col}"]`);
-    if (cell) {
-      cell.style.display = (r === startRow) ? '' : 'none';
-      cell.rowSpan = 1;
-      cell.classList.remove('merged', ...ALL_COLOR_CLASSES);
-    }
-  }
-
-  firstCell.rowSpan = (endRow - startRow + 1);
-  const textarea = firstCell.querySelector('textarea');
-  if (textarea) {
-    textarea.style.height = '100%';
-    textarea.value = req.text;
-    const unitClass = req.unit || 'bg-esuk';
-    firstCell.classList.add(unitClass, 'imported');
-  }
-  firstCell.dataset.reqId = reqId;
-
-  req.status = 'approved';
-  await saveShekemRequests(requests, currentWeek, currentYear);
-  if (typeof saveShekemTables === 'function') saveShekemTables();
-  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
-  await renderShekemPendingRequests();
-}
-
-/**
- * דוחה בקשת שק"ם ומוחקת אותה.
- * @param {string} reqId - מזהה הבקשה
- */
-async function rejectShekemRequest(reqId) {
-  if (confirm('האם אתה בטוח שברצונך לדחות ולמחוק בקשה זו?')) {
-    await deleteShekemRequest(reqId);
-  }
-}
+// renderShekemPendingRequests/approveShekemRequest/rejectShekemRequest הוסרו - הוחלפו
+// ב-autoPlaceRequests/renderStackedConflicts (ראו ההערה המקבילה ליד deleteHadragRequest).
 
 /**
  * שומרת את מצב טבלת השק"ם ב-LocalStorage.
@@ -4705,8 +5159,8 @@ window.onload = function () {
     // הרחבה: נותנת נדנוד חי גם לחדר"ג/שק"ם/סטטוס ההפצה כשטאב אחר (אותו דפדפן) שינה נתונים -
     // בלי לטעון מחדש את הגריד הניתן לעריכה (שעלול לדרוס עריכה פעילה באמצע), רק מרעננת
     // תצוגות קריאה-בלבד (רשימות ממתינות) וסממנים (כפתור הפצה, התראות).
-    if (typeof renderHadragPendingRequests === 'function') renderHadragPendingRequests();
-    if (typeof renderShekemPendingRequests === 'function') renderShekemPendingRequests();
+    if (typeof renderStackedConflicts === 'function') renderStackedConflicts('hadrag');
+    if (typeof renderStackedConflicts === 'function') renderStackedConflicts('shekem');
     if (typeof updateGlobalExportButtonStatus === 'function') updateGlobalExportButtonStatus();
     if (typeof updateNotifBadge === 'function') updateNotifBadge();
   });
@@ -4822,8 +5276,14 @@ function _applyRequestsState(reqState) {
   if (changed) {
     if (typeof renderHadragRequestsList === 'function') renderHadragRequestsList();
     if (typeof renderShekemRequestsList === 'function') renderShekemRequestsList();
-    if (typeof renderHadragPendingRequests === 'function') renderHadragPendingRequests();
-    if (typeof renderShekemPendingRequests === 'function') renderShekemPendingRequests();
+    // שחזור בטל/בצע-שוב יכול להחזיר בקשה למצב "ממתין" - מריצים מיקום אוטומטי מחדש כדי
+    // שהיא תשתקף נכון (בטבלה או כשכבת התנגשות), לא רק מרעננים תצוגה ישנה.
+    (async () => {
+      if (typeof autoPlaceRequests === 'function') { await autoPlaceRequests('hadrag'); await autoPlaceRequests('shekem'); }
+      if (typeof loadHadragTables === 'function') await loadHadragTables(currentWeek, currentYear);
+      if (typeof loadShekemTables === 'function') await loadShekemTables(currentWeek, currentYear);
+      if (typeof renderStackedConflicts === 'function') { await renderStackedConflicts('hadrag'); await renderStackedConflicts('shekem'); }
+    })();
   }
 }
 
@@ -5965,6 +6425,149 @@ document.addEventListener('drop', function(e) {
   if (movedReqId && typeof relinkGridRequestToCell === 'function') relinkGridRequestToCell(movedReqId, targetCell);
   if (typeof saveHadragTables === 'function') saveHadragTables();
   if (typeof saveShekemTables === 'function') saveShekemTables();
+});
+
+/* =========================================================
+   גרירת "שכבות התנגשות" (stacked-conflict-overlay) - נפרד לגמרי ממנגנון הגרירה הרגיל של
+   תאי הטבלה למעלה (draggedHadragData): ה-overlay מצורף ל-document.body, לא בתוך
+   td.platoon-cell, כך ש-e.target.closest('td.platoon-cell') במנגנון הרגיל תמיד יחזיר null
+   עבורו ולא יתנגש. פותר בקשה "מוערמת" (autoPlaceRequests) שהתנגשה עם תוכן קיים - המנהל
+   גורר אותה למשבצת פנויה לבחירתו (בכל אחד מהמתקנים של אותו סוג).
+========================================================= */
+let draggedStackedConflict = null;
+let draggedStackedOverlayEl = null;
+let stackedDragPreviewElement = null;
+
+function computeStackedDropTarget(e) {
+  const cell = e.target.closest('td.platoon-cell');
+  if (!cell || !draggedStackedConflict) return null;
+  const tbody = cell.closest('tbody');
+  if (!tbody || !_platoonTableIds(draggedStackedConflict.type).includes(tbody.id)) return null;
+
+  const col = parseInt(cell.dataset.col, 10);
+  const hoverRow = getRowIndexAtY(tbody, e.clientY);
+  const baseRow = hoverRow !== -1 ? hoverRow : parseInt(cell.dataset.row, 10);
+  const maxStartRow = tbody.rows.length - draggedStackedConflict.span;
+  const startRow = Math.max(0, Math.min(baseRow, Math.max(0, maxStartRow)));
+  const endRow = Math.min(tbody.rows.length - 1, startRow + draggedStackedConflict.span - 1);
+  return { tbody, tableId: tbody.id, col, startRow, endRow };
+}
+
+document.addEventListener('dragstart', function(e) {
+  const overlay = e.target.closest('.stacked-conflict-overlay');
+  if (!overlay) return;
+  draggedStackedConflict = {
+    sourceTableId: overlay.dataset.tableId,
+    type: overlay.dataset.type,
+    reqId: overlay.dataset.reqId,
+    span: parseInt(overlay.dataset.span, 10) || 1,
+    unitClass: overlay.dataset.unitClass,
+    unitName: overlay.dataset.unitName,
+    text: overlay.dataset.text
+  };
+  draggedStackedOverlayEl = overlay;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', 'stacked-conflict');
+  setTimeout(() => { overlay.style.opacity = '0.3'; }, 0);
+});
+
+document.addEventListener('dragover', function(e) {
+  const target = computeStackedDropTarget(e);
+  if (!target) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+
+  const startDom = target.tbody.querySelector(`td.platoon-cell[data-row="${target.startRow}"][data-col="${target.col}"]`);
+  const endTr = target.tbody.rows[target.endRow];
+  if (!startDom || !endTr) return;
+  const startRect = startDom.getBoundingClientRect();
+  const timeCellEnd = endTr.firstElementChild;
+  if (!timeCellEnd) return;
+  const endRect = timeCellEnd.getBoundingClientRect();
+
+  if (!stackedDragPreviewElement) {
+    stackedDragPreviewElement = document.createElement('div');
+    stackedDragPreviewElement.style.cssText = 'position:absolute;border:2px dashed #dc2626;pointer-events:none;z-index:250;background:rgba(220,38,38,0.15);';
+    document.body.appendChild(stackedDragPreviewElement);
+  }
+  stackedDragPreviewElement.style.top = (startRect.top + window.scrollY) + 'px';
+  stackedDragPreviewElement.style.left = (startRect.left + window.scrollX) + 'px';
+  stackedDragPreviewElement.style.width = startRect.width + 'px';
+  stackedDragPreviewElement.style.height = (endRect.bottom - startRect.top) + 'px';
+});
+
+document.addEventListener('dragend', function(e) {
+  if (draggedStackedOverlayEl) draggedStackedOverlayEl.style.opacity = '0.82';
+  if (stackedDragPreviewElement) { stackedDragPreviewElement.remove(); stackedDragPreviewElement = null; }
+  draggedStackedConflict = null;
+  draggedStackedOverlayEl = null;
+});
+
+document.addEventListener('drop', async function(e) {
+  const target = computeStackedDropTarget(e);
+  if (!target || !draggedStackedConflict) return;
+  e.preventDefault();
+  if (stackedDragPreviewElement) { stackedDragPreviewElement.remove(); stackedDragPreviewElement = null; }
+
+  const info = draggedStackedConflict;
+  // שומרים הפניה מקומית לפני האיפוס - כדי שאם ההצבה תידחה (משבצת תפוסה, ראו למטה) עדיין
+  // אפשר יהיה לשחזר את השקיפות המקורית של השכבה. אחרת ה-dragend שיורה מיד אחרי ה-drop הזה
+  // (draggedStackedOverlayEl כבר null בשלב הזה) לא היה משחזר אותה, והשכבה הייתה נשארת תקועה
+  // בשקיפות 0.3 (מצב "בגרירה") לצמיתות, גם אחרי שהגרירה בפועל נכשלה (אפיון QA).
+  const overlayEl = draggedStackedOverlayEl;
+  draggedStackedConflict = null;
+  draggedStackedOverlayEl = null;
+
+  // קולטים את השבוע/שנה פעם אחת כאן, לפני כל await - ראו הערה מפורטת ב-autoPlaceRequests על
+  // אותו באג בדיוק (ניווט שבוע באמצע פונקציה אסינכרונית שממשיכה לקרוא את currentWeek/
+  // currentYear הגלובליים מחדש בכל שלב, גורם לערבוב בין שבועות).
+  const reqWeek = currentWeek, reqYear = currentYear;
+
+  const { tableId, col, startRow, endRow } = target;
+  const dataPrefix = _platoonDataKeyPrefix(info.type);
+  const dataKey = `${dataPrefix}_${tableId}_week${reqWeek}_year${reqYear}`;
+  const tableData = (await DataService.getItem(dataKey)) || {};
+
+  if (_platoonRangeOccupied(tableData, col, startRow, endRow)) {
+    if (overlayEl) overlayEl.style.opacity = '0.82';
+    alert('⛔ המשבצת הזו תפוסה - יש לבחור מיקום פנוי אחר.');
+    return;
+  }
+
+  for (let r = startRow; r <= endRow; r++) {
+    tableData[`${r}_${col}`] = (r === startRow)
+      ? { val: info.text, span: (endRow - startRow + 1), disp: '', classes: [info.unitClass, 'imported'], reqId: info.reqId }
+      : { val: '', span: 1, disp: 'none', classes: [], reqId: null };
+  }
+  await DataService.setItem(dataKey, tableData);
+
+  const stackedKey = `${_platoonStackedKeyPrefix(info.type)}_${info.sourceTableId}_week${reqWeek}_year${reqYear}`;
+  const stackedArr = (await DataService.getItem(stackedKey)) || [];
+  await DataService.setItem(stackedKey, stackedArr.filter(s => s.reqId !== info.reqId));
+
+  const loadRequests = info.type === 'hadrag' ? loadHadragRequests : loadShekemRequests;
+  const saveRequests = info.type === 'hadrag' ? saveHadragRequests : saveShekemRequests;
+  const allRequests = await loadRequests(reqWeek, reqYear);
+  const req = allRequests.find(r => r.id === info.reqId);
+  if (req) { req.status = 'approved'; await saveRequests(allRequests, reqWeek, reqYear); }
+
+  if (typeof _recordUndoChangeImmediate === 'function') _recordUndoChangeImmediate();
+
+  if (info.type === 'hadrag') { await loadHadragTables(currentWeek, currentYear); await renderStackedConflicts('hadrag'); }
+  else { await loadShekemTables(currentWeek, currentYear); await renderStackedConflicts('shekem'); }
+});
+
+/** מחיקת בקשה ישירות מתוך שכבת ההתנגשות (✕ קטן בפינת ה-overlay) - בלי צורך לגרור אותה קודם. */
+document.addEventListener('click', async function(e) {
+  const delBtn = e.target.closest('.stacked-conflict-del');
+  if (!delBtn) return;
+  const overlay = delBtn.closest('.stacked-conflict-overlay');
+  if (!overlay) return;
+  if (!confirm('למחוק את הבקשה הזו?')) return;
+  const type = overlay.dataset.type;
+  const reqId = overlay.dataset.reqId;
+  if (type === 'hadrag') await deleteHadragRequest(reqId);
+  else await deleteShekemRequest(reqId);
 });
 
 /* =========================================================

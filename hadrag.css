@@ -225,6 +225,46 @@
 .bg-blocked { background-color: #000000 !important; border: 1.5px solid #000000 !important; }
 .imported:not([class*="bg-"]) { background-color: #e8f5e9 !important; border: 1.5px solid #86efac !important; }
 
+/* "שכבת התנגשות" (autoPlaceRequests) - בקשה שהתנגשה עם תוכן קיים ומוצגת מוזזת באלכסון ומעט
+   שקופה מעל המשבצת התפוסה, עד שהמנהל יגרור אותה למקום פנוי (ראו renderStackedConflicts). */
+.stacked-conflict-overlay {
+  position: absolute;
+  opacity: 0.82;
+  cursor: grab;
+  font-size: 10px;
+  font-weight: 800;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #dc2626 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  border-radius: 3px;
+  overflow: hidden;
+  padding: 1px 12px 1px 2px;
+  text-align: center;
+}
+.stacked-conflict-overlay .stacked-conflict-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+.stacked-conflict-overlay .stacked-conflict-del {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #dc2626;
+  color: #ffffff;
+  width: 13px;
+  height: 13px;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 /* ================== Excel-like Selection ================== */
 .selected-cell {
   outline: 2px solid #22c55e !important;

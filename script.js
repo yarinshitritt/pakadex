@@ -67,6 +67,12 @@ const MANAGER_TRACKED_TABLES = [
      כי importFromSubTable מלכתחילה כותבת רק לעמודות החברה/יחידה שבאמת מיובאות. */
 const MASTER_COMBINED_TABLES = ['keshertable', 'optictable'];
 
+// טבלאות המודיעין הגדולות (עמוד המנהל) - שייכות למנהל, בניגוד ל-reqXTable/XkeshertableX/
+// XoptictableX שברשימת MANAGER_TRACKED_TABLES, ששייכות ליחידה עצמה (טרם יובאו). מקור אמת
+// יחיד המשותף בין _adminOwnedDraftKeys (מה מפיצים) ל-hasAnySystemPendingChanges (מה בודקים) -
+// ראו הערה ב-hasAnySystemPendingChanges על הבאג שקרה כששתי הרשימות האלה לא היו זהות.
+const ADMIN_OWNED_MODIEIN_TABLES = ['esukTable', 'hirgTable', 'pikudTable', 'tazamTable', 'bahalagTable'];
+
 function getPendingImportKey(tableId, week, year) {
   return `pendingImport_${tableId}_week${week}_year${year}`;
 }
@@ -221,9 +227,50 @@ const UNIT_TITLE_MAP = {
  * לא תומך (לא צפוי בדפדפנים מודרניים, אך למקרה של דפדפן ישן ברשת הצבאית) מחזירה מחרוזת ריקה
  * במקום לזרוק שגיאה שתשבש את כל סרגל הניווט.
  */
+/**
+ * ממירה מספר (1-999) לאותיות עבריות לפי כללי הגימטריה המקובלים בלוח השנה העברי: גרש (׳)
+ * אחרי אות בודדת, גרשיים (״) לפני האות האחרונה כשיש יותר מאחת. מטפלת בחריגים המקובלים
+ * ט"ו/ט"ז (15/16) כדי לא לאיית צירוף שנחשב חלק משם ה'.
+ */
+function _numberToHebrewLetters(num) {
+  if (num === 15) return 'ט"ו';
+  if (num === 16) return 'ט"ז';
+
+  const HUNDREDS = ['', 'ק', 'ר', 'ש', 'ת', 'תק', 'תר', 'תש', 'תת', 'תתק'];
+  const TENS = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ'];
+  const UNITS = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+
+  let n = num;
+  let letters = HUNDREDS[Math.floor(n / 100) % 10];
+  n %= 100;
+  letters += TENS[Math.floor(n / 10)];
+  n %= 10;
+  letters += UNITS[n];
+
+  if (letters.length <= 1) return letters ? letters + "'" : '';
+  return letters.slice(0, -1) + '"' + letters.slice(-1);
+}
+
+/**
+ * ממירה שנה עברית מלאה (למשל 5786) לכתיב באותיות: אלפים (ה') + מאות/עשרות/יחידות (תשפ"ו) -
+ * "ה' תשפ"ו". מניחה טווח האלף החמישי/השישי (5000-6999) - הטווח הרלוונטי בפועל היום ובעתיד
+ * הנראה לעין; לא נדרשת תמיכה בשנים לפני כן במערכת הזו.
+ */
+function _hebrewYearToLetters(year) {
+  const thousands = Math.floor(year / 1000);
+  const remainder = year % 1000;
+  return `${_numberToHebrewLetters(thousands)} ${_numberToHebrewLetters(remainder)}`;
+}
+
 function _getHebrewDateString() {
   try {
-    return new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+    const parts = new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(new Date());
+    const get = (type) => (parts.find(p => p.type === type) || {}).value || '';
+    const day = parseInt(get('day'), 10);
+    const year = parseInt(get('year'), 10);
+    const month = get('month');
+    if (!day || !year || !month) return '';
+    return `${_numberToHebrewLetters(day)} ב${month} ${_hebrewYearToLetters(year)}`;
   } catch (e) {
     return '';
   }
@@ -477,6 +524,7 @@ function renderNavbars() {
     // חיווי משתמש מחובר + יציאה (אפיון חלק 3)
     const session = (typeof AUTH !== 'undefined') ? AUTH.getSession() : null;
     const userChipBlock = session ? `
+      <div class="user-chip-wrap">
       <div class="user-chip">
         <div class="user-chip-info">
           <span class="user-chip-name">${escapeHtml(session.name) || escapeHtml(session.pn)}</span>
@@ -485,6 +533,15 @@ function renderNavbars() {
         ${AUTH.canManageUsers()
           ? '<button class="user-chip-btn" onclick="clearViewedWeek(); clearViewedCategory(); window.location.href=\'users.html\'" title="ניהול הרשאות">👥</button>'
           : ''}
+      </div>
+      <div class="support-note" title="פרטי קשר לתקלות">
+        <span class="support-note-title">תקלות:</span>
+        <span>ירין שטרית: <bdi>0543384656</bdi></span>
+        <span class="support-note-sep">|</span>
+        <span>מחשוב: <bdi>0529003347</bdi></span>
+        <span class="support-note-sep">|</span>
+        <span>שעות פעילות: <bdi>9:00 - 21:00</bdi></span>
+      </div>
       </div>
     ` : '';
 
@@ -525,6 +582,14 @@ function renderNavbars() {
       ? '<button id="global-export-btn" class="global-export-btn" onclick="globalExportManager()">הפץ שינויים</button>'
       : '<button id="global-export-btn" class="global-export-btn unit-ready" onclick="globalExportUnit()">שמור ומוכן לייבוא</button>';
 
+    // כפתורי ניהול פלוגות (הוסף / הסר) - למנהל בלבד, בעמודי הטבלאות, במיכל נפרד לצד כפתורי הקטגוריות.
+    const companyActionsBlock = (!isUnitPage && _coIsAdmin()) ? `
+        <div class="company-actions">
+          <button type="button" class="company-btn company-btn-add" onclick="openAddCompanyModal()" title="הוספת פלוגה לגדוד">➕ הוסף פלוגה</button>
+          <button type="button" class="company-btn company-btn-remove" onclick="openRemoveCompanyModal()" title="הסרת פלוגה קיימת">➖ הסר פלוגה</button>
+          <button type="button" class="company-btn company-btn-summary" onclick="openCompaniesSummaryModal()" title="סיכום פלוגות שנוספו/הוסרו, עריכה ושחזור">📋 סיכום פלוגות</button>
+        </div>` : '';
+
     // שורת כלים: כרטיסיות ניווט בין הקטגוריות מימין, וכלי עבודה + פעולת ההפצה משמאל - מקובצים בבירור כדי לצמצם עומס חזותי.
     const toolbarRowBlock = !isMain ? `
       <div class="toolbar-row">
@@ -535,8 +600,9 @@ function renderNavbars() {
           <button class="topnav-btn ${isHipok ? 'active' : ''}" id="btn-hipok" onclick="${isUnitPage ? "showTopSection('hipok')" : "window.location.href='hipokim.html'"}">מענה רפואי</button>
           <button class="topnav-btn ${isHadrag ? 'active' : ''}" id="btn-chadrag" onclick="${isUnitPage ? "showTopSection('chadrag')" : "window.location.href='hadrag.html'"}">פלוגתי</button>
           <button class="topnav-btn ${isShekem ? 'active' : ''}" id="btn-shekem" onclick="${isUnitPage ? "showTopSection('shekem')" : "window.location.href='shekem.html'"}">שעות שק"ם</button>
-          ${!isUnitPage ? `<button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 אקסל</button>` : ''}
+          ${!isUnitPage ? `<button class="topnav-btn ${currentPage.includes('general') ? 'active' : ''}" id="btn-excel" onclick="window.location.href='general.html'">📗 גאנט</button>` : ''}
         </div>
+        ${companyActionsBlock}
         <div class="toolbar-actions">
           <div class="tool-group">
             ${bellBlock}
@@ -710,6 +776,13 @@ function readTableData(tableId) {
   const table = document.getElementById(tableId);
   if (!table) return {};
   const data = {};
+  const desc = _coDesc(tableId);
+  if (desc) {
+    // טבלה שמבנה העמודות שלה תלוי ברשימת הפלוגות: המפתח נגזר מהשדה עצמו (פלוגה מקורית =
+    // אותו מפתח מספרי כמו תמיד, פלוגה שנוספה = x<מזהה>_<שורה>) ולא ממיקומו הכללי בטבלה.
+    _coKeyedInputs(table, desc).forEach(({ input, key }) => { data[key] = input.value; });
+    return data;
+  }
   table.querySelectorAll('.cell-input').forEach((input, index) => data[index] = input.value);
   return data;
 }
@@ -735,6 +808,10 @@ async function saveCurrentWeek() {
   for (const tableId of tables) {
     const table = document.getElementById(tableId);
     if (table) {
+      // טבלה בעלת מבנה עמודות דינמי שעדיין לא נטענה במלואה לשבוע שמוצג (מבנה שנבנה מחדש וריק,
+      // או מעבר שבוע שהטעינה שלו עוד לא הסתיימה) - אסור לשמור את תוכן ה-DOM שלה כרגע, אחרת
+      // התאים הריקים/של השבוע הקודם היו נכתבים על נתוני השבוע החדש (ראו _loadTableDataImpl).
+      if (_coDesc(tableId) && !table._coReady) continue;
       const tw = tableWeeks[tableId] || { week: currentWeek, year: currentYear };
       const key = getStorageKey(tableId, tw.week, tw.year);
       const data = readTableData(tableId);
@@ -770,12 +847,50 @@ async function fetchTableData(key) {
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
+// מגינים מפני שתי קריאות חופפות ל-loadTableData על אותה טבלה בו-זמנית (למשל מחזור רענון
+// תקופתי שמתנגש עם שמירה/ייבוא מפורש שעוד לא הסתיים, שתיהן נמשכות זמן ממשי מול שרת מרכזי
+// אמיתי) - בלי ההגנה הזו, שתי הקריאות מבצעות את התאמת מספר-השורות של טבלה דינמית (מודיעין)
+// בו-זמנית ובלתי-תלוי זו בזו, מה שגורם למספר השורות "לקפוץ" זמנית בין הערכים השונים שכל
+// קריאה מחשבת - נראה למשתמש כטבלה שמאבדת ומחזירה שורות ("מהבהבת") ממש בזמן שמירה/ייבוא
+// (אפיון QA: "טבלת המודיעין מרצדת... כשנשמר בשרפוינט"). קריאה שמגיעה בזמן שכבר יש קריאה
+// פעילה לאותה טבלה לא מתבצעת במקביל - היא רק שומרת את הפרמטרים העדכניים ביותר, וכשהקריאה
+// הפעילה מסתיימת היא מריצה הרצה נוספת (ולא יותר מאחת) עם הפרמטרים האלה.
+const _loadTableDataInFlight = {};
+const _loadTableDataRerunArgs = {};
+
 async function loadTableData(tableId, week, year) {
+  if (_loadTableDataInFlight[tableId]) {
+    _loadTableDataRerunArgs[tableId] = { week, year };
+    return;
+  }
+  _loadTableDataInFlight[tableId] = true;
+  try {
+    await _loadTableDataImpl(tableId, week, year);
+  } finally {
+    _loadTableDataInFlight[tableId] = false;
+    const rerun = _loadTableDataRerunArgs[tableId];
+    if (rerun) {
+      delete _loadTableDataRerunArgs[tableId];
+      loadTableData(tableId, rerun.week, rerun.year);
+    }
+  }
+}
+
+async function _loadTableDataImpl(tableId, week, year) {
   const table = document.getElementById(tableId);
   if (!table) return;
 
+  const coDesc = _coDesc(tableId);
+  if (coDesc) {
+    // טבלה שמוצגת כרגע לשבוע אחר ממה שעומדים לטעון לתוכה - עד שהמילוי יסתיים היא לא "מוכנה"
+    // לשמירה (ראו saveCurrentWeek), כדי שתוכן השבוע הקודם לא ייכתב בטעות על השבוע החדש.
+    if (table._coShown !== week + '_' + year) table._coReady = false;
+  }
+
   if (KESHER_TABLE_LIST.some(t => t.id === tableId) || OPTIC_TABLE_LIST.some(t => t.id === tableId)) {
     renderDynamicTableStructure(tableId, week, year);
+  } else if (coDesc && coDesc.kind === 'modiein') {
+    _coEnsureModieinStructure(table, coDesc, week, year);
   }
 
   const dynamicTables = [
@@ -807,20 +922,9 @@ async function loadTableData(tableId, week, year) {
   // ראו שם - אפיון QA: "הנתונים נעלמים לרגע כל כמה שניות").
   if (isDynamic) {
     const tbody = table.tBodies[0];
-    let requiredRows = 2; // מינימום: שורת נושא + שורה ריקה אחת
-    if (data) {
-      const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
-      if (keysWithData.length > 0) {
-        const maxIndex = Math.max(...keysWithData.map(Number));
-        let inputsPerRow = 7;
-        if (tbody.rows[1]) {
-          inputsPerRow = tbody.rows[1].querySelectorAll('.cell-input').length;
-        }
-        if (inputsPerRow > 0 && maxIndex >= 0) {
-          requiredRows = Math.max(requiredRows, Math.floor(maxIndex / inputsPerRow) + 1);
-        }
-      }
-    }
+    // מינימום: שורת נושא + שורה ריקה אחת. מספר השורות הנדרש נגזר מהמפתחות (כולל מפתחות של
+    // פלוגות שנוספו, x<מזהה>_<שורה>) - ראו _coModieinRowsNeeded.
+    const requiredRows = _coModieinRowsNeeded(coDesc, data, 2);
     while (tbody.rows.length > requiredRows) {
       tbody.deleteRow(-1);
     }
@@ -829,7 +933,11 @@ async function loadTableData(tableId, week, year) {
     }
   }
 
-  const inputs = table.querySelectorAll('.cell-input');
+  // שדות הקלט עם מפתח האחסון שלהם: בטבלאות עם מבנה עמודות דינמי המפתח נגזר מהשדה עצמו, ובשאר
+  // הטבלאות הוא האינדקס לפי סדר המסמך (כמו תמיד).
+  const keyedInputs = coDesc
+    ? _coKeyedInputs(table, coDesc)
+    : Array.from(table.querySelectorAll('.cell-input')).map((input, idx) => ({ input, key: idx }));
 
   // Check for manager published data to highlight changes in orange
   let managerPublishedData = {};
@@ -851,7 +959,7 @@ async function loadTableData(tableId, week, year) {
   // פני כל התאים, בלי שלב-ביניים שמרוקן את כולם קודם ורק אחר כך ממלא מחדש. הריקון-ואז-מילוי
   // הישן יצר חלון זמן אמיתי (בזמן ה-await לשרת) שבו כל התאים נראים ריקים - בדיוק זה גרם
   // לנתונים "להיעלם לרגע" בכל מחזור רענון אוטומטי (כל כמה שניות, אפיון QA).
-  inputs.forEach((input, idx) => {
+  keyedInputs.forEach(({ input, key: idx }) => {
     const hasVal = !!(data && data[idx] !== undefined);
     input.value = hasVal ? data[idx] : '';
     // הצבת value ישירות לא מפעילה אירוע 'input' (רק הקלדה אמיתית/dispatchEvent מפעילים אותו) -
@@ -892,6 +1000,15 @@ async function loadTableData(tableId, week, year) {
   }
 
   if (isUnitReqTable(tableId)) recalcUnitReqTotals(table);
+
+  if (coDesc) {
+    table._coShown = week + '_' + year;
+    table._coReady = true;
+    if (table._coRebase) {
+      table._coRebase = false;
+      if (typeof resetUndoHistory === 'function') resetUndoHistory();
+    }
+  }
 }
 
 /* ================================
@@ -1022,12 +1139,17 @@ async function _searchWeeklyTopic(tableId, dataCols, term, year) {
     const data = await fetchTableData(getStorageKey(tableId, week, year));
     if (!data) return null;
     const snippets = [];
-    for (let i = 0; i < dataCols; i++) {
-      const val = data[i];
+    const consider = (val) => {
       if (val && String(val).toLowerCase().includes(lowerTerm) && !snippets.includes(String(val))) {
         snippets.push(String(val));
       }
-    }
+    };
+    for (let i = 0; i < dataCols; i++) consider(data[i]);
+    // נושא השבוע של פלוגות שנוספו נשמר תחת x<מזהה>_0 (שורה 0 = שורת הנושא)
+    Object.keys(data).forEach(k => {
+      const px = _coParseExtraKey(k);
+      if (px && px.r === 0) consider(data[k]);
+    });
     return snippets.length ? { week, year, snippet: snippets.join(' | ') } : null;
   });
   return perWeek.filter(Boolean);
@@ -1178,6 +1300,10 @@ async function updateUIForWeek() {
   if (typeof _initTopicSearchUI === 'function') _initTopicSearchUI();
   if (typeof _initZoomSyncHandler === 'function') _initZoomSyncHandler();
 
+  // ספר הפלוגות (פלוגות שנוספו/הוסרו) חייב להיות טרי לפני שהטבלאות נבנות - מבנה העמודות
+  // נגזר ממנו. נקרא מהשרת (אם מוגדר) אל המטמון המקומי שממנו getCompanyLayout קוראת.
+  await refreshCompanyRoster();
+
   const tables = getActiveTables();
   for (const tableId of tables) {
     tableWeeks[tableId] = { week: currentWeek, year: currentYear };
@@ -1294,7 +1420,9 @@ async function _hasUnpublishedDraft(key) {
   if (Object.keys(normalizedDraft).length === 0) return false;
   const published = await fetchTableData(key + '_published');
   const normalizedPublished = _normalizeCellDataForCompare(published);
-  return JSON.stringify(normalizedDraft) !== JSON.stringify(normalizedPublished);
+  // השוואה יציבה (ללא תלות בסדר המפתחות): מפתחות של פלוגות שנוספו (x12_3) הם טקסטואליים, וסדר
+  // ההוספה שלהם לאובייקט יכול להשתנות בין טיוטה לפרסום (שמירה מה-DOM מול מיפוי שורות מחדש).
+  return _stableStringify(normalizedDraft) !== _stableStringify(normalizedPublished);
 }
 
 async function hasAnySystemPendingChanges(week, year) {
@@ -1313,9 +1441,14 @@ async function hasAnySystemPendingChanges(week, year) {
     checks.push(_hasUnpublishedDraft(getStorageKey(tableId, week, year)));
   }
 
-  // מודיעין, דרישות יחידה, ותת-טבלאות קשר/אופטיקה
-  const otherTrackedTables = MANAGER_TRACKED_TABLES.filter(id => !MASTER_COMBINED_TABLES.includes(id));
-  for (const tableId of otherTrackedTables) {
+  // מודיעין (טבלאות המנהל בלבד - ADMIN_OWNED_MODIEIN_TABLES). **לא** כל MANAGER_TRACKED_TABLES:
+  // הרשימה ההיא כוללת גם reqXTable/XkeshertableX/XoptictableX - טבלאות הדרישה של היחידות
+  // עצמן (קשר/אופטיקה/מודיעין), ששייכות ליחידה ומתפרסמות רק דרך "שמור ומוכן לייבוא" שלה
+  // (ראו _unitOwnedDraftKeys), לא דרך "הפץ שינויים" של המנהל בכלל. כשהן נכללו כאן, כל שינוי
+  // לא-שמור של *כל* יחידה כלשהי (מצב שכמעט תמיד קיים בפועל) השאיר את כפתור המנהל אדום
+  // לצמיתות בלי שום דרך של המנהל לתקן את זה - הוא לא יכול לפרסם נתונים שאינם שלו (אפיון QA:
+  // "לוחץ על הפץ שינויים... לא משתנה לירוק, לא משנה מאיזה טבלה הוא עומד").
+  for (const tableId of ADMIN_OWNED_MODIEIN_TABLES) {
     checks.push(_hasUnpublishedDraft(getStorageKey(tableId, week, year)));
   }
 
@@ -1465,15 +1598,20 @@ async function _detectConcurrentPublish(draftKeys) {
   if (typeof DataService === 'undefined' || typeof DataService._isRemote !== 'function' || !DataService._isRemote()) {
     return false;
   }
-  for (const draftKey of draftKeys) {
+  // בבאצ'ים (ראו _runInBatches) ולא ברצף אחד-אחד ולא כולם-במקביל - מול שרת מרכזי אמיתי,
+  // "הפץ שינויים" בטבלה גדולה (הרבה מפתחות טיוטה - כל הפלוגות/הטבלאות) בדק כאן מפתח-אחר-מפתח
+  // ברצף, מה שהצטבר להשהיה ארוכה (עשרות שניות) לפני שההפצה בכלל מתחילה - נראה למשתמש כאילו
+  // הכפתור "לא מגיב"/"לא הופך לירוק" אחרי לחיצה (אפיון QA: "לוחץ על הפץ שינויים... לא משתנה
+  // לירוק"), אותה תבנית בדיוק כמו שכבר תוקנה בחיפוש נושא השבוע ובבדיקת hasAnySystemPendingChanges.
+  const results = await _runInBatches(draftKeys, 8, async (draftKey) => {
     const pubKey = draftKey + '_published';
     const localCached = localStorage.getItem(pubKey);
     let remote;
-    try { remote = await DataService.getItem(pubKey); } catch (e) { continue; }
+    try { remote = await DataService.getItem(pubKey); } catch (e) { return false; }
     const remoteStr = (remote !== null && remote !== undefined) ? JSON.stringify(remote) : null;
-    if (remoteStr !== null && remoteStr !== localCached) return true;
-  }
-  return false;
+    return remoteStr !== null && remoteStr !== localCached;
+  });
+  return results.some(Boolean);
 }
 
 /**
@@ -1494,7 +1632,7 @@ function _adminOwnedDraftKeys(week, year) {
     keys.push(getStorageKey(tableId, week, year));
     keys.push(getPendingImportKey(tableId, week, year));
   });
-  ['esukTable', 'hirgTable', 'pikudTable', 'tazamTable', 'bahalagTable'].forEach(tableId => {
+  ADMIN_OWNED_MODIEIN_TABLES.forEach(tableId => {
     keys.push(getStorageKey(tableId, week, year));
   });
   keys.push(getStorageKey('hipoktable', week, year));
@@ -1517,53 +1655,90 @@ function _unitOwnedDraftKeys(page, week, year) {
   return ownTableIds.map(id => getStorageKey(id, week, year)).concat(_sharedRequestListKeys(week, year));
 }
 
+/**
+ * מציגה/מסירה מצב "עסוק" על כפתור "הפץ שינויים"/"שמור ומוכן לייבוא" בזמן שהפעולה בפועל
+ * רצה (מול שרת מרכזי אמיתי זה יכול לקחת עשרות שניות - ראו הערה ב-globalExportManager) -
+ * בלי זה הכפתור נראה "מת" ולא עונה בזמן שההפצה עדיין מתבצעת ברקע, והמשתמש נוטה ללחוץ שוב
+ * או לחשוב שהפעולה נכשלה (אפיון QA: "לוחץ על הפץ שינויים... לא משתנה לירוק").
+ */
+function _setExportBtnBusy(busy, busyLabel) {
+  const btn = document.getElementById('global-export-btn');
+  if (!btn) return;
+  if (busy) {
+    if (btn.dataset.origLabel === undefined) btn.dataset.origLabel = btn.textContent;
+    btn.textContent = busyLabel;
+    btn.disabled = true;
+  } else {
+    if (btn.dataset.origLabel !== undefined) btn.textContent = btn.dataset.origLabel;
+    btn.disabled = false;
+  }
+}
+
 async function globalExportManager() {
   if (!confirm('האם אתה בטוח שברצונך להפיץ את כלל השינויים לשבוע זה? (פעולה זו תאשר את המצב הנוכחי ותנקה סימונים כתומים)')) return;
 
-  // רק מפתחות ששייכים בפועל למנהל (ראו _adminOwnedDraftKeys) - לא כל מפתח שמכיל את קידומת
-  // השבוע/שנה שקיים איכשהו ב-localStorage של הדפדפן הזה. בלי ההגבלה הזו, אם אותו דפדפן שימש
-  // בעבר (למשל לבדיקה) גם כדי להיכנס כיחידה, טיוטת דרישה של יחידה שטרם פרסמה אותה בעצמה
-  // הייתה מתפרסמת בטעות מתוך לחיצת "הפץ שינויים" של המנהל - בלי שהיחידה בכלל ידעה או אישרה
-  // זאת (אפיון QA).
-  const allowedKeys = new Set(_adminOwnedDraftKeys(currentWeek, currentYear));
-  const draftKeysSnapshot = Object.keys(localStorage).filter(key => allowedKeys.has(key));
+  // רשימת המפתחות השייכים בפועל למנהל (ראו _adminOwnedDraftKeys) - **כל** מפתח ברשימה הזו
+  // נשלף ישירות (fetchTableData, מול שרת מרכזי אם קיים) ומופץ, בלי תלות בשאלה אם המכשיר/
+  // העמוד הנוכחי כבר טען/שמר אותו בעבר בהפעלה הזו. בעבר הרשימה סוננה גם דרך
+  // Object.keys(localStorage) - כלומר מפתח ששייך למנהל אבל שהדפדפן הזה מעולם לא טען באמת
+  // (למשל המנהל פתח היום רק את עמוד "מענה רפואי" ומעולם לא ביקר השבוע בעמוד קשר/אופטיקה/
+  // מודיעין/חדר"ג/שק"ם באותה הפעלה) היה נשמט בשקט מההפצה - למרות שהוא "שייך" למנהל ו-
+  // hasAnySystemPendingChanges (שבודק תמיד מול השרת, לא מול localStorage) ממשיך לזהות אותו
+  // כלא-מופץ, כך שהכפתור נשאר אדום לצמיתות אחרי הפצה "מלאה" כביכול (אפיון QA: "לוחץ על הפץ
+  // שינויים בטבלאות הגדולות... לא משתנה לירוק", "לא משנה מאיזה טבלה הוא עומד"). ה-allowlist
+  // עצמו (לא הסינון מול localStorage) הוא ההגנה מפני דליפת טיוטה של תפקיד אחר - ראו
+  // ההיסטוריה בהערה שהייתה כאן קודם.
+  const draftKeysSnapshot = _adminOwnedDraftKeys(currentWeek, currentYear);
 
-  if (await _detectConcurrentPublish(draftKeysSnapshot)) {
-    if (!confirm('שים לב: נראה שמשתמש/מכשיר אחר כבר הפיץ שינויים לשבוע זה מאז שהעמוד הזה נטען לאחרונה. המשך ההפצה עלול לדרוס את השינוי הזה. לרענן ולבדוק קודם מומלץ.\n\nלהמשיך בכל זאת ולהפיץ?')) return;
-  }
-
-  for (const key of draftKeysSnapshot) {
-    const data = localStorage.getItem(key);
-    if (typeof DataService !== 'undefined') {
-      await DataService.setItem(`${key}_published`, JSON.parse(data));
+  _setExportBtnBusy(true, 'בודק שינויים מקבילים...');
+  try {
+    if (await _detectConcurrentPublish(draftKeysSnapshot)) {
+      _setExportBtnBusy(false);
+      if (!confirm('שים לב: נראה שמשתמש/מכשיר אחר כבר הפיץ שינויים לשבוע זה מאז שהעמוד הזה נטען לאחרונה. המשך ההפצה עלול לדרוס את השינוי הזה. לרענן ולבדוק קודם מומלץ.\n\nלהמשיך בכל זאת ולהפיץ?')) return;
+      _setExportBtnBusy(true, 'מפיץ שינויים...');
     } else {
-      localStorage.setItem(`${key}_published`, data);
+      _setExportBtnBusy(true, 'מפיץ שינויים...');
     }
+
+    // בבאצ'ים (לא ברצף אחד-אחד) - ראו הערה זהה ב-_detectConcurrentPublish. שולפים כל מפתח
+    // עם fetchTableData (לא localStorage.getItem ישיר) כדי לקבל את הערך האמיתי גם אם המכשיר
+    // הזה לא טען אותו קודם באותה הפעלה (ראו ההערה מעל draftKeysSnapshot).
+    await _runInBatches(draftKeysSnapshot, 8, async (key) => {
+      const data = await fetchTableData(key);
+      if (data === null || data === undefined) return;
+      if (typeof DataService !== 'undefined') {
+        await DataService.setItem(`${key}_published`, data);
+      } else {
+        localStorage.setItem(`${key}_published`, JSON.stringify(data));
+      }
+    });
+
+    // 2. Remove orange highlights
+    document.querySelectorAll('.conflict-overlap').forEach(el => {
+      el.classList.remove('conflict-overlap');
+    });
+
+    // 2.5 מרוקנים את רשימות האינדקסים הממתינים בטבלאות המשולבות (קשר/אופטיקה) - ראו
+    // MASTER_COMBINED_TABLES - כדי שהסימון הכתום שם יתאפס גם הוא עם ההפצה. חשוב לעשות זאת
+    // *לפני* updatePublishIndicator, אחרת הבדיקה הגלובלית עדיין תמצא את הרשימה הישנה.
+    MASTER_COMBINED_TABLES.forEach(tableId => savePendingImportIndexes(tableId, currentWeek, currentYear, []));
+
+    if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
+
+    // 3. Trigger save again so the orange class removal is saved (רק חדר"ג/שק"ם - קשר/אופטיקה/מודיעין/
+    // מענים רפואיים לא נשמרים דרך פונקציית save ייעודית; סימון הכתום שלהם מחושב חי מהשוואת draft מול published
+    // ומתעדכן ממילא בטעינה/עדכון הבא, לא צריך "שמירה חוזרת" מפורשת).
+    if (typeof saveHadragTables === 'function') saveHadragTables();
+    if (typeof saveShekemTables === 'function') saveShekemTables();
+
+    if (typeof addNotification === 'function') {
+      addNotification(`📢 המנהל הפיץ שינויים לשבוע ${currentWeek} (${currentYear})`, 'distribute');
+    }
+
+    alert('השינויים הופצו בהצלחה!');
+  } finally {
+    _setExportBtnBusy(false);
   }
-
-  // 2. Remove orange highlights
-  document.querySelectorAll('.conflict-overlap').forEach(el => {
-    el.classList.remove('conflict-overlap');
-  });
-
-  // 2.5 מרוקנים את רשימות האינדקסים הממתינים בטבלאות המשולבות (קשר/אופטיקה) - ראו
-  // MASTER_COMBINED_TABLES - כדי שהסימון הכתום שם יתאפס גם הוא עם ההפצה. חשוב לעשות זאת
-  // *לפני* updatePublishIndicator, אחרת הבדיקה הגלובלית עדיין תמצא את הרשימה הישנה.
-  MASTER_COMBINED_TABLES.forEach(tableId => savePendingImportIndexes(tableId, currentWeek, currentYear, []));
-
-  if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
-
-  // 3. Trigger save again so the orange class removal is saved (רק חדר"ג/שק"ם - קשר/אופטיקה/מודיעין/
-  // מענים רפואיים לא נשמרים דרך פונקציית save ייעודית; סימון הכתום שלהם מחושב חי מהשוואת draft מול published
-  // ומתעדכן ממילא בטעינה/עדכון הבא, לא צריך "שמירה חוזרת" מפורשת).
-  if (typeof saveHadragTables === 'function') saveHadragTables();
-  if (typeof saveShekemTables === 'function') saveShekemTables();
-
-  if (typeof addNotification === 'function') {
-    addNotification(`📢 המנהל הפיץ שינויים לשבוע ${currentWeek} (${currentYear})`, 'distribute');
-  }
-
-  alert('השינויים הופצו בהצלחה!');
 }
 
 /**
@@ -1572,6 +1747,10 @@ async function globalExportManager() {
  * ולייבא (בשום פעולה - גם רק חדר"ג/שק"ם/מענה רפואי, לא משנה איזה חלק בעמוד היחידה נמצא
  * כרגע פתוח) בלי לתעד קודם על מה השבוע, תמיד - גם אם אין באותו שבוע שום עדכון חדש בקשר/
  * אופטיקה עצמם. מספיק תא אחד מלא בשורה (לא כל העמודות) כדי לא להכביד.
+ * יוצא מהכלל: טבלה (קשר או אופטיקה בנפרד) שאין בה בכלל שום ערך (מלבד שורת הנושא עצמה) לא
+ * נדרשת לנושא שבוע - אין טעם לחייב תיעוד על שבוע שלטבלה הזו אין בו בכלל מה לדווח (בקשת
+ * המשתמש). הבדיקה נעשית לכל טבלה בנפרד - קשר עם ערכים ואופטיקה ריקה, למשל, עדיין תדרוש
+ * נושא רק בקשר.
  * טבלה שלא קיימת כרגע ב-DOM (לא נטענה) לא נבדקת - אין מה לחסום על סמך משהו שלא קיים.
  * @returns {Promise<{ok: boolean, missing: string[]}>}
  */
@@ -1585,6 +1764,11 @@ async function _getUnitKesherOpticTopicStatus() {
     const table = document.getElementById(id);
     const topicRow = table ? table.querySelector('tbody tr.topic-row') : null;
     if (!topicRow) continue;
+
+    const hasAnyData = Array.from(table.querySelectorAll('tbody tr:not(.topic-row):not(.special-note-row) .cell-input'))
+      .some(input => input.value.trim() !== '');
+    if (!hasAnyData) continue;
+
     const filled = Array.from(topicRow.querySelectorAll('.topic-textarea')).some(ta => ta.value.trim() !== '');
     if (!filled) missing.push(name);
   }
@@ -1615,33 +1799,46 @@ async function globalExportUnit() {
   // כמנהל, טיוטת מנהל שטרם הופצה (למשל שיבוץ ישיר בחדר"ג) הייתה מתפרסמת בטעות מתוך לחיצת
   // "שמור ומוכן לייבוא" של היחידה - בלי שהמנהל בכלל לחץ "הפץ שינויים" (אפיון QA: "שיבוץ
   // המנהל הופיע אפילו שהוא לא הפיץ אותו").
+  // רשימת המפתחות השייכים בפועל ליחידה הזו (ראו _unitOwnedDraftKeys) - נשלפים ישירות עם
+  // fetchTableData (לא סינון מול Object.keys(localStorage)) - ראו הערה זהה ומפורטת יותר
+  // ב-globalExportManager.
   const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
-  const allowedKeys = new Set(_unitOwnedDraftKeys(page, currentWeek, currentYear));
-  const draftKeysSnapshot = Object.keys(localStorage).filter(key => allowedKeys.has(key));
+  const draftKeysSnapshot = _unitOwnedDraftKeys(page, currentWeek, currentYear);
 
-  if (await _detectConcurrentPublish(draftKeysSnapshot)) {
-    if (!confirm('שים לב: נראה שהנתונים האלה כבר עודכנו במקביל ממכשיר/משתמש אחר מאז שהעמוד הזה נטען. שמירה עכשיו עלולה לדרוס את העדכון הזה. לרענן ולבדוק קודם מומלץ.\n\nלהמשיך בכל זאת ולשמור?')) return;
-  }
-
-  for (const key of draftKeysSnapshot) {
-    const data = localStorage.getItem(key);
-    if (typeof DataService !== 'undefined') {
-      await DataService.setItem(`${key}_published`, JSON.parse(data));
+  _setExportBtnBusy(true, 'בודק שינויים מקבילים...');
+  try {
+    if (await _detectConcurrentPublish(draftKeysSnapshot)) {
+      _setExportBtnBusy(false);
+      if (!confirm('שים לב: נראה שהנתונים האלה כבר עודכנו במקביל ממכשיר/משתמש אחר מאז שהעמוד הזה נטען. שמירה עכשיו עלולה לדרוס את העדכון הזה. לרענן ולבדוק קודם מומלץ.\n\nלהמשיך בכל זאת ולשמור?')) return;
+      _setExportBtnBusy(true, 'שומר...');
     } else {
-      localStorage.setItem(`${key}_published`, data);
+      _setExportBtnBusy(true, 'שומר...');
     }
+
+    // בבאצ'ים (לא ברצף אחד-אחד) - ראו הערה זהה ב-globalExportManager/_detectConcurrentPublish.
+    await _runInBatches(draftKeysSnapshot, 8, async (key) => {
+      const data = await fetchTableData(key);
+      if (data === null || data === undefined) return;
+      if (typeof DataService !== 'undefined') {
+        await DataService.setItem(`${key}_published`, data);
+      } else {
+        localStorage.setItem(`${key}_published`, JSON.stringify(data));
+      }
+    });
+
+    document.querySelectorAll('.conflict-overlap').forEach(el => el.classList.remove('conflict-overlap'));
+    if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
+
+    if (typeof addNotification === 'function') {
+      const notifyPage = (window.location.pathname.split('/').pop() || '').toLowerCase();
+      const unitName = (typeof UNIT_TITLE_MAP !== 'undefined' && UNIT_TITLE_MAP[notifyPage]) || 'יחידה';
+      addNotification(`✅ ${unitName} שמרה נתונים מוכנים לייבוא לשבוע ${currentWeek} (${currentYear})`, 'unit-ready');
+    }
+
+    alert('הנתונים נשמרו ומוכנים לייבוא!');
+  } finally {
+    _setExportBtnBusy(false);
   }
-
-  document.querySelectorAll('.conflict-overlap').forEach(el => el.classList.remove('conflict-overlap'));
-  if (typeof updatePublishIndicator === 'function') await updatePublishIndicator();
-
-  if (typeof addNotification === 'function') {
-    const page = (window.location.pathname.split('/').pop() || '').toLowerCase();
-    const unitName = (typeof UNIT_TITLE_MAP !== 'undefined' && UNIT_TITLE_MAP[page]) || 'יחידה';
-    addNotification(`✅ ${unitName} שמרה נתונים מוכנים לייבוא לשבוע ${currentWeek} (${currentYear})`, 'unit-ready');
-  }
-
-  alert('הנתונים נשמרו ומוכנים לייבוא!');
 }
 
 /* ================================
@@ -1825,12 +2022,37 @@ async function saveHipokData() {
   }
 }
 
+// מגינה מפני שתי קריאות חופפות ל-loadHipokData בו-זמנית - אותה סיבה בדיוק כמו ה-in-flight
+// guard על loadTableData (ראו שם): שתי קריאות חופפות (למשל מחזור רענון תקופתי שמתנגש עם
+// טעינה/שמירה אחרת שעוד לא הסתיימה מול שרת מרכזי אמיתי) עלולות לקרוא state שונה זו מזו
+// ולהחיל className שונה על אותו תא לסירוגין - נראה כהבהוב (אפיון QA: "מענה רפואי מרצד").
+let _loadHipokDataInFlight = false;
+let _loadHipokDataRerunArgs = null;
+
+async function loadHipokData(week, year) {
+  if (_loadHipokDataInFlight) {
+    _loadHipokDataRerunArgs = { week, year };
+    return;
+  }
+  _loadHipokDataInFlight = true;
+  try {
+    await _loadHipokDataImpl(week, year);
+  } finally {
+    _loadHipokDataInFlight = false;
+    if (_loadHipokDataRerunArgs) {
+      const rerun = _loadHipokDataRerunArgs;
+      _loadHipokDataRerunArgs = null;
+      loadHipokData(rerun.week, rerun.year);
+    }
+  }
+}
+
 /**
  * טוענת את נתוני טבלת המענים הרפואיים עבור שבוע ושנה נתונים ומעדכנת את שדות הטבלה והצבעים.
  * @param {number} week - מספר השבוע
  * @param {number} year - השנה
  */
-async function loadHipokData(week, year) {
+async function _loadHipokDataImpl(week, year) {
   const table = document.getElementById('hipoktable');
   if (!table) return;
 
@@ -1857,17 +2079,26 @@ async function loadHipokData(week, year) {
   document.querySelectorAll('#hipoktable .time-input').forEach((el, i) => {
     el.value = (data && data['time_' + i] !== undefined) ? data['time_' + i] : '';
   });
+  // מחשבים את מחלקת ה-CSS היעד במלואה לפני נגיעה ב-DOM, ומחילים (className =) רק אם היא
+  // בפועל שונה מהנוכחית - לא מרוקנים תמיד ואז בונים מחדש. ריקון-ואז-בנייה-מחדש תמיד (גם
+  // כשהתוצאה הסופית זהה) עדיין גורם להבהוב חזותי אמיתי בצבע התא (יש רגע קצר בלי המחלקה
+  // בכלל) בכל מחזור רענון - אותה סיבה בדיוק שכבר תוקנה במקומות אחרים (ראו _renderDataChanged
+  // ברחבי הקובץ), רק שכאן זה קרה דרך className ולא דרך בנייה מחדש של DOM (אפיון QA: "מענה
+  // רפואי מרצד בטבלה הגדולה").
   document.querySelectorAll('#hipoktable .cell-wrapper').forEach((wrapper, i) => {
-    wrapper.className = 'cell-wrapper';
-    if (!data) return;
-    const taskVal = data['task_' + i];
-    const timeVal = data['time_' + i];
-    if ((taskVal && taskVal.trim() !== '') || (timeVal && timeVal.trim() !== '')) {
-      wrapper.classList.add('imported');
+    const classes = ['cell-wrapper'];
+    if (data) {
+      const taskVal = data['task_' + i];
+      const timeVal = data['time_' + i];
+      if ((taskVal && taskVal.trim() !== '') || (timeVal && timeVal.trim() !== '')) {
+        classes.push('imported');
+      }
+      if (typeof ALL_HIPOK_COLORS !== 'undefined' && data['color_' + i]) {
+        classes.push(data['color_' + i]);
+      }
     }
-    if (typeof ALL_HIPOK_COLORS !== 'undefined' && data['color_' + i]) {
-      wrapper.classList.add(data['color_' + i]);
-    }
+    const targetClassName = classes.join(' ');
+    if (wrapper.className !== targetClassName) wrapper.className = targetClassName;
   });
 }
 
@@ -2178,6 +2409,14 @@ function addNewRow(tableId, autoSave = true) {
   if (!table) return;
   const tbody = table.tBodies[0];
   if (!tbody.rows.length) return;
+  // טבלת מודיעין עם מבנה עמודות דינמי: השורה החדשה נבנית מתוכנית העמודות הנוכחית (כולל פלוגות
+  // שנוספו, בלי אלה שהוסרו) ולא משכפול מספר קלטים קבוע.
+  const coDesc = _coDesc(tableId);
+  if (coDesc && coDesc.kind === 'modiein' && table._coPlan) {
+    tbody.insertAdjacentHTML('beforeend', _coModieinRowHtml(coDesc, table._coPlan, tbody.rows.length, table));
+    if (autoSave) saveCurrentWeek();
+    return;
+  }
   let referenceRow = tbody.rows[1] || tbody.rows[0];
   const inputsCount = referenceRow.querySelectorAll('.cell-input').length;
   const newRow = document.createElement('tr');
@@ -2228,11 +2467,16 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
   const data = await fetchTableData(key);
   if (!data) { alert(`אין נתונים מאושרים (לא בוצע ייצוא) לשבוע ${currentWeek}`); return; }
   
-  if (!sourceCols) {
-    const sourceTable = document.getElementById(sourceTableId);
-    sourceCols = sourceTable ? sourceTable.tBodies[0].rows[0].cells.length - 1 : 7;
-  }
-  
+  // טבלת מנהל משולבת: הפלוגות של הגדוד הזה (כולל חדשות) נמצאות לפי מפתח אחסון ולא לפי אינדקס
+  // עמודה - אחרי הוספה/הסרת פלוגות מיקום העמודות בטבלה משתנה. עמודת הבסיס הראשונה של הגדוד
+  // בטבלת היעד (d0) נגזרת ממתאר הטבלה (כפרמטר targetStartCol הישן נשאר לתאימות בלבד).
+  const coDesc = _coDesc(targetTableId);
+  const mapEntry = (SUB_TABLE_MAPS[targetTableId] || []).find(m => m.sourceTableId === sourceTableId);
+  const seg = coDesc && coDesc.segs ? coDesc.segs.find(s => mapEntry && s.bn === mapEntry.bn) : null;
+  if (!sourceCols) sourceCols = mapEntry ? mapEntry.sourceCols : 7;
+  const segD0 = seg ? seg.d0 : (targetStartCol - 1);
+  const targetDataCols = coDesc ? coDesc.dataCols : (target.tBodies[0].rows[0].cells.length - 1);
+
   // Get manager's published data to compare
   const managerPublishedKey = getStorageKey(targetTableId, currentWeek, currentYear) + '_published';
   const managerPublishedData = await fetchTableData(managerPublishedKey) || {};
@@ -2245,30 +2489,35 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
     ? new Set(await loadPendingImportIndexes(targetTableId, currentWeek, currentYear))
     : null;
 
-  const targetRows = target.tBodies[0].rows;
+  const inputByKey = new Map();
+  (coDesc ? _coKeyedInputs(target, coDesc) : []).forEach(o => inputByKey.set(String(o.key), o.input));
   Object.entries(data).forEach(([indexStr, value]) => {
-    if (value === undefined || value === null || value.trim() === '') return;
-    const index = parseInt(indexStr);
-    const row = Math.floor(index / sourceCols);
-    const col = index % sourceCols;
-    if (!targetRows[row]) return;
-    const targetColIdx = targetStartCol + col;
-    const targetCell = targetRows[row].cells[targetColIdx];
-    if (targetCell) {
-      const input = targetCell.querySelector('.cell-input');
-      if (input) {
-        input.value = value;
-        // Compare with manager's published data
-        const globalIndex = row * (targetRows[0].cells.length - 1) + (targetColIdx - 1);
-        const publishedVal = managerPublishedData[globalIndex] || '';
-        if (value !== publishedVal) {
-          targetCell.classList.add('conflict-overlap');
-          if (pendingSet) pendingSet.add(globalIndex);
-        } else {
-          targetCell.classList.remove('conflict-overlap');
-          if (pendingSet) pendingSet.delete(globalIndex);
-        }
-      }
+    if (value === undefined || value === null || String(value).trim() === '') return;
+    // פלוגה שנוספה: אותו מפתח בדיוק בטבלת היחידה ובטבלת המנהל (x<מזהה>_<שורה>).
+    // פלוגה מקורית: מפתח מספרי של היחידה (שורה*עמודות-יחידה + עמודה) -> מפתח בטבלת המנהל.
+    const px = _coParseExtraKey(indexStr);
+    let targetKey;
+    if (px) {
+      targetKey = indexStr;
+    } else {
+      const index = parseInt(indexStr);
+      if (isNaN(index)) return;
+      const row = Math.floor(index / sourceCols);
+      const col = index % sourceCols;
+      targetKey = row * targetDataCols + segD0 + col;
+    }
+    const input = inputByKey.get(String(targetKey));
+    if (!input) return; // הפלוגה לא קיימת בטבלת המנהל בשבוע הזה (הוסרה / מחוץ לטווח) או שורה שלא קיימת
+    const targetCell = input.closest('td');
+    input.value = value;
+    // Compare with manager's published data
+    const publishedVal = managerPublishedData[targetKey] || '';
+    if (value !== publishedVal) {
+      if (targetCell) targetCell.classList.add('conflict-overlap');
+      if (pendingSet) pendingSet.add(targetKey);
+    } else {
+      if (targetCell) targetCell.classList.remove('conflict-overlap');
+      if (pendingSet) pendingSet.delete(targetKey);
     }
   });
   if (pendingSet) savePendingImportIndexes(targetTableId, currentWeek, currentYear, [...pendingSet]);
@@ -2276,9 +2525,8 @@ async function importFromSubTable(sourceTableId, targetTableId, targetStartCol, 
   const ackKey = getAckStorageKey(targetTableId, currentWeek, currentYear);
   const ackData = (await fetchTableData(ackKey)) || {};
   Object.entries(data).forEach(([indexStr, value]) => {
-    const idx = parseInt(indexStr);
     const subVal = value !== undefined && value !== null ? String(value).trim() : '';
-    ackData[`${sourceTableId}_${idx}`] = subVal;
+    ackData[`${sourceTableId}_${indexStr}`] = subVal;
   });
   persist(ackKey, ackData);
 
@@ -2303,22 +2551,16 @@ async function importDirectToTable(sourceTableId, targetTableId) {
   const data = await fetchTableData(key);
   if (!data) { alert(`אין נתונים מאושרים (לא בוצע שמירה לייבוא) לשבוע ${currentWeek}`); return; }
   
-  const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
-  if (keysWithData.length > 0) {
-    const maxIndex = Math.max(...keysWithData.map(Number));
-    const inputsPerRow = target.tBodies[0].rows[1].querySelectorAll('.cell-input').length;
-    if (inputsPerRow > 0 && maxIndex >= 0) {
-      const requiredRows = Math.floor(maxIndex / inputsPerRow) + 1;
-      while (target.tBodies[0].rows.length < requiredRows) { addNewRow(targetTableId, false); }
-    }
+  // מספר השורות הנדרש נגזר מכל המפתחות (כולל פלוגות שנוספו), והשדות ממולאים לפי מפתח אחסון.
+  const coDesc = _coDesc(targetTableId);
+  if (coDesc) {
+    const requiredRows = _coModieinRowsNeeded(coDesc, data, 2);
+    while (target.tBodies[0].rows.length < requiredRows) { addNewRow(targetTableId, false); }
+    _coKeyedInputs(target, coDesc).forEach(({ input, key }) => {
+      const v = data[key];
+      if (v !== undefined && v !== null && String(v).trim() !== '') input.value = v;
+    });
   }
-
-  const targetInputs = target.querySelectorAll('.cell-input');
-  targetInputs.forEach((input, idx) => {
-    if (data[idx] !== undefined && data[idx].trim() !== '') {
-      input.value = data[idx];
-    }
-  });
 
   const tbody = target.tBodies[0];
   const lastRow = tbody.lastElementChild;
@@ -2405,6 +2647,1086 @@ function getRowsForWeek(category, week, year) {
   }
 
   return category === 'kesher' ? [...DEFAULT_KESHER_ROWS] : [...DEFAULT_OPTIC_ROWS];
+}
+
+/* =========================================================
+   פלוגות דינמיות - הוספה/הסרה של פלוגה ע"י המנהל
+   ---------------------------------------------------------
+   העיקרון: הנתונים הקיימים (מפתחות מספריים לפי מיקום) לא זזים ולא עוברים מיגרציה.
+   - "ספר פלוגות" (COMPANY_ROSTER_KEY, קובץ אחד ב-SharePoint) מתעד פלוגות שנוספו (גדוד, שם,
+     טווח שבועות) ופלוגות מקוריות שהוסרו (מאיזה שבוע והלאה).
+   - לכל שבוע מחושב "מבנה עמודות" (getCompanyLayout) מתוך הספר; טבלאות קשר/אופטיקה/מודיעין
+     (מנהל + יחידה + הקצאות) נבנות לפיו.
+   - תא של פלוגה מקורית שומר את אותו מפתח מספרי כמו תמיד (שורה*עמודות + עמודה); תא של פלוגה
+     שנוספה שומר מפתח טקסטואלי x<מזהה>_<שורה> באותו אובייקט שבועי - ולכן העתקת שבוע, הדבקה
+     לכל השנה, פרסום, ייבוא וכו' (שמעתיקים את האובייקט כולו) עובדים ללא שינוי.
+   - פלוגה שהוסרה פשוט לא נבנית מהשבוע שנקבע והלאה (העמודה לא קיימת ב-DOM ולכן לא נכללת
+     בסכומים); נתוני שבועות קודמים נשמרים.
+========================================================= */
+const COMPANY_ROSTER_KEY = 'companyRoster';
+const CO_BN_ORDER = ['esuk', 'hirg', 'pikud', 'tazam', 'bahalag'];
+const CO_BN_NAMES = {
+  esuk: 'בא"ח איסו"ק', hirg: 'בא"ח חיר"ג', pikud: 'גדוד הפיקוד', tazam: 'ענף תצ"מ', bahalag: 'מפח"ט'
+};
+const CO_BN_EMOJI = { esuk: '🟡', hirg: '🟢', pikud: '🔵', tazam: '🟣', bahalag: '🟠' };
+
+// הפלוגות המקוריות של כל גדוד, כפי שהן מופיעות בכותרות. hq = מספר עמודות המפקדה שמקדימות את
+// הפלוגות בטבלאות קשר/אופטיקה (בא"ח איסו"ק בלבד: הכנ"ס / סמג"ד) - עמודות מפקדה אינן "פלוגה"
+// ולכן אינן ניתנות להסרה. בטבלאות מודיעין אין עמודת מפקדה (modiein קצר ב-hq עמודות).
+const CO_BASE = {
+  esuk: {
+    hq: 1,
+    kesher: ['הכנ"ס', 'א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳'],
+    optic: ['סמג"ד', 'א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳'],
+    modiein: ['אומץ', 'ברק', 'גולן', 'דביר', 'הראל', 'ונוס']
+  },
+  hirg: {
+    hq: 0,
+    kesher: ['קרקל', 'ברדלס', 'אריות הירדן', 'פנתר', 'לביא', 'יגואר'],
+    optic: ['קרקל', 'ברדלס', 'אריות הירדן', 'פנתר', 'לביא', 'יגואר'],
+    modiein: ['קרקל', 'ברדלס', 'אריות הירדן', 'פנתר', 'לביא', 'יגואר']
+  },
+  pikud: {
+    hq: 0,
+    kesher: ['מפג"ד', 'קקא"ס נגב', 'קמ"א תבור', 'קמ"כ מצדה', 'קק"צ מגן', 'קמ"כ ירדן', 'הכנה לשדה'],
+    optic: ['מפג"ד', 'קקא"ס נגב', 'קמ"א תבור', 'קמ"כ מצדה', 'קק"צ מגן', 'קמ"כ ירדן', 'הכנה לשדה'],
+    modiein: ['מפג"ד', 'קקא"ס נגב', 'קמ"א תבור', 'קמ"כ מצדה', 'קק"צ מגן', 'קמ"כ ירדן', 'הכנה לשדה']
+  },
+  tazam: {
+    hq: 0,
+    kesher: ['קמ"א רותם', 'קקא"ס חרמון', 'טל', 'יהל', 'כחל', 'קמ"ד', 'מקצועות', 'הכנה למעוז'],
+    optic: ['קמ"א רותם', 'קקא"ס חרמון', 'טל', 'יהל', 'כחל', 'קמ"ד', 'מקצועות', 'הכנה למעוז'],
+    modiein: ['קמ"א רותם', 'קקא"ס חרמון', 'טל', 'יהל', 'כחל', 'קמ"ד', 'מקצועות', 'הכנה למעוז']
+  },
+  bahalag: {
+    hq: 0,
+    kesher: ['מפח"ט'], optic: ['מפח"ט'], modiein: ['מפח"ט']
+  }
+};
+
+// מזהי הטבלאות של כל גדוד: n = מספר עמודות בסיס בקשר/אופטיקה, nM = במודיעין.
+const CO_UNIT_TABLES = [
+  { bn: 'esuk', n: 7, nM: 6, kesher: 'esukkeshertable', optic: 'esukoptictable', req: 'reqesukTable', adm: 'esukTable',
+    hkK: 'haktzaot-esuk-kesher-table', hkO: 'haktzaot-esuk-optic-table', hkM: 'haktzaot-esuk-table' },
+  { bn: 'hirg', n: 6, nM: 6, kesher: 'kkeshertable', optic: 'koptictable', req: 'reqhirgTable', adm: 'hirgTable',
+    hkK: 'haktzaot-hirg-kesher-table', hkO: 'haktzaot-hirg-optic-table', hkM: 'haktzaot-hirg-table' },
+  { bn: 'pikud', n: 7, nM: 7, kesher: 'pkeshertable', optic: 'poptictable', req: 'reqpikudTable', adm: 'pikudTable',
+    hkK: 'haktzaot-pikud-kesher-table', hkO: 'haktzaot-pikud-optic-table', hkM: 'haktzaot-pikud-table' },
+  { bn: 'tazam', n: 8, nM: 8, kesher: 'tkeshertable', optic: 'toptictable', req: 'reqtazamTable', adm: 'tazamTable',
+    hkK: 'haktzaot-tazam-kesher-table', hkO: 'haktzaot-tazam-optic-table', hkM: 'haktzaot-tazam-table' },
+  { bn: 'bahalag', n: 1, nM: 1, kesher: 'bkeshertable', optic: 'boptictable', req: 'reqbahalagTable', adm: 'bahalagTable',
+    hkK: 'haktzaot-bahalag-kesher-table', hkO: 'haktzaot-bahalag-optic-table', hkM: 'haktzaot-bahalag-table' }
+];
+
+/**
+ * מתארי הטבלאות שמבנה העמודות שלהן תלוי ברשימת הפלוגות:
+ *  master  - טבלת קשר/אופטיקה הגדולה של המנהל (כל הגדודים; d0 = אינדקס נתונים ראשון של הגדוד,
+ *            n = מספר עמודות בסיס, sum = עמודות דרישה/וויסות/עודף של הגדוד (קשר בלבד), tot = סיכומים)
+ *  unit    - טבלת דרישות קשר/אופטיקה של גדוד בודד
+ *  modiein - טבלת מודיעין (דרישות היחידה / טבלת המנהל)
+ *  hk      - טבלת הקצאות (קריאה בלבד) בעמוד היחידה
+ */
+const CO_DESCS = (function () {
+  const d = {};
+  d.keshertable = {
+    id: 'keshertable', kind: 'master', cat: 'kesher', dataCols: 48, hasSum: true,
+    segs: [
+      { bn: 'esuk', d0: 0, n: 7, sum: [7, 8, 9] },
+      { bn: 'hirg', d0: 10, n: 6, sum: [16, 17, 18] },
+      { bn: 'pikud', d0: 19, n: 7, sum: [26, 27, 28] },
+      { bn: 'tazam', d0: 29, n: 8, sum: [37, 38, 39] },
+      { bn: 'bahalag', d0: 40, n: 1, sum: [41, 42, 43] }
+    ],
+    tot: [44, 45, 46, 47], totRoles: ['tu', 'fail', 'treg', 'exc']
+  };
+  d.optictable = {
+    id: 'optictable', kind: 'master', cat: 'optic', dataCols: 33, hasSum: false,
+    segs: [
+      { bn: 'esuk', d0: 0, n: 7 },
+      { bn: 'hirg', d0: 7, n: 6 },
+      { bn: 'pikud', d0: 13, n: 7 },
+      { bn: 'tazam', d0: 20, n: 8 },
+      { bn: 'bahalag', d0: 28, n: 1 }
+    ],
+    tot: [29, 30, 31, 32], totRoles: ['tu', 'fail', 'treg', 'exc']
+  };
+  CO_UNIT_TABLES.forEach(u => {
+    d[u.kesher] = { id: u.kesher, kind: 'unit', cat: 'kesher', bn: u.bn, baseN: u.n, dataCols: u.n };
+    d[u.optic] = { id: u.optic, kind: 'unit', cat: 'optic', bn: u.bn, baseN: u.n, dataCols: u.n };
+    d[u.req] = { id: u.req, kind: 'modiein', cat: 'modiein', bn: u.bn, baseN: u.nM };
+    d[u.adm] = { id: u.adm, kind: 'modiein', cat: 'modiein', bn: u.bn, baseN: u.nM };
+    d[u.hkK] = { id: u.hkK, kind: 'hk', cat: 'kesher', bn: u.bn, baseN: u.n };
+    d[u.hkO] = { id: u.hkO, kind: 'hk', cat: 'optic', bn: u.bn, baseN: u.n };
+    d[u.hkM] = { id: u.hkM, kind: 'hk', cat: 'modiein', bn: u.bn, baseN: u.nM };
+  });
+  return d;
+})();
+
+function _coDesc(tableId) { return CO_DESCS[tableId] || null; }
+
+/** מפתח סדר כרונולוגי של שבוע (שנה*100 + שבוע) - להשוואת טווחי שבועות. */
+function _coOrd(w, y) { return y * 100 + w; }
+
+function _coPrevWeek(w, y) {
+  return w > 1 ? { w: w - 1, y } : { w: getWeeksInYear(y - 1), y: y - 1 };
+}
+
+function _coWeekLabel(wk) { return `שבוע ${wk.w} (${wk.y})`; }
+
+/* ---------- ספר הפלוגות (נשמר ב-SharePoint כקובץ אחד: companyRoster.txt) ---------- */
+
+function _coEmptyRoster() { return { seq: 0, added: [], removedBase: [] }; }
+
+function _coValidWk(x) {
+  return !!x && Number.isInteger(+x.w) && Number.isInteger(+x.y) && +x.w >= 1 && +x.w <= 60 && +x.y >= 2000 && +x.y <= 2200;
+}
+
+/** מנרמלת אובייקט שנטען מהאחסון (או null) למבנה תקין, ומתעלמת מרשומות פגומות. */
+function _coNormalizeRoster(r) {
+  const out = _coEmptyRoster();
+  if (!r || typeof r !== 'object') return out;
+  out.seq = Number(r.seq) || 0;
+  (Array.isArray(r.added) ? r.added : []).forEach(c => {
+    if (!c || !CO_BN_NAMES[c.bn] || !_coValidWk(c.from) || !/^\d+$/.test(String(c.id))) return;
+    if (c.to && !_coValidWk(c.to)) return;
+    if (c.to && _coOrd(+c.to.w, +c.to.y) < _coOrd(+c.from.w, +c.from.y)) return;
+    out.added.push({
+      id: String(c.id), bn: c.bn, name: String(c.name || '').trim().slice(0, 30),
+      from: { w: +c.from.w, y: +c.from.y }, to: c.to ? { w: +c.to.w, y: +c.to.y } : null
+    });
+    out.seq = Math.max(out.seq, +c.id);
+  });
+  (Array.isArray(r.removedBase) ? r.removedBase : []).forEach(b => {
+    if (!b || !CO_BN_NAMES[b.bn] || !Number.isInteger(+b.j) || !_coValidWk(b.from)) return;
+    if (+b.j < CO_BASE[b.bn].hq || +b.j >= CO_BASE[b.bn].kesher.length) return;
+    if (b.to && !_coValidWk(b.to)) return;
+    if (b.to && _coOrd(+b.to.w, +b.to.y) < _coOrd(+b.from.w, +b.from.y)) return;
+    out.removedBase.push({ bn: b.bn, j: +b.j, from: { w: +b.from.w, y: +b.from.y }, to: b.to ? { w: +b.to.w, y: +b.to.y } : null });
+  });
+  return out;
+}
+
+/** האם פלוגה מקורית (גדוד bn, עמודה j) מוסתרת בשבוע שמפתחו ord - לפי טווחי ההסרה בספר. */
+function _coIsHiddenAt(roster, bn, j, ord) {
+  return roster.removedBase.some(b => b.bn === bn && b.j === j
+    && ord >= _coOrd(b.from.w, b.from.y) && (!b.to || ord <= _coOrd(b.to.w, b.to.y)));
+}
+
+/** ממזגת טווחי הסרה חופפים/צמודים של אותה פלוגה מקורית לטווח אחד (שומרת את הרשימה קצרה ונקייה). */
+function _coMergeRemovedBase(list) {
+  const out = [];
+  const groups = {};
+  list.forEach(b => { (groups[b.bn + ':' + b.j] = groups[b.bn + ':' + b.j] || []).push(b); });
+  Object.keys(groups).forEach(k => {
+    const arr = groups[k].slice().sort((a, b) => _coOrd(a.from.w, a.from.y) - _coOrd(b.from.w, b.from.y));
+    let cur = null;
+    arr.forEach(b => {
+      if (!cur) { cur = { ...b }; return; }
+      const curEnd = cur.to ? _coOrd(cur.to.w, cur.to.y) : Infinity;
+      const nextStart = _coOrd(b.from.w, b.from.y);
+      // חופף או צמוד (השבוע שאחרי סוף הטווח הנוכחי)
+      const adjacentLimit = cur.to ? _coOrd(_coAddWeeks(cur.to, 1).w, _coAddWeeks(cur.to, 1).y) : Infinity;
+      if (nextStart <= curEnd || nextStart <= adjacentLimit) {
+        const bEnd = b.to ? _coOrd(b.to.w, b.to.y) : Infinity;
+        if (bEnd > curEnd) cur.to = b.to;
+      } else { out.push(cur); cur = { ...b }; }
+    });
+    if (cur) out.push(cur);
+  });
+  return out;
+}
+
+let _coRosterCache = { raw: undefined, roster: _coEmptyRoster() };
+let _coLayoutCache = {};
+
+/** קוראת סינכרונית את ספר הפלוגות מהמטמון המקומי (מתעדכן מהשרת ב-refreshCompanyRoster). */
+function getCompanyRoster() {
+  let raw = null;
+  try { raw = localStorage.getItem(COMPANY_ROSTER_KEY); } catch (e) { raw = null; }
+  if (raw === _coRosterCache.raw) return _coRosterCache.roster;
+  let parsed = null;
+  try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+  _coRosterCache = { raw, roster: _coNormalizeRoster(parsed) };
+  _coLayoutCache = {};
+  return _coRosterCache.roster;
+}
+
+/** מרעננת מהשרת (אם מוגדר) את ספר הפלוגות לפני שטבלאות נבנות - ראו updateUIForWeek. */
+async function refreshCompanyRoster() {
+  // שינוי ספר שעדיין ממתין בתור הסנכרון (השמירה לשרת נכשלה) הוא הגרסה העדכנית - לא דורסים אותו
+  // בגרסה הישנה מהשרת (אחרת הפלוגה "נעלמת" מהתצוגה עד שהתור ישוגר).
+  if (typeof DataService !== 'undefined' && DataService._syncQueue
+      && Object.prototype.hasOwnProperty.call(DataService._syncQueue, COMPANY_ROSTER_KEY)) {
+    try { localStorage.setItem(COMPANY_ROSTER_KEY, JSON.stringify(DataService._syncQueue[COMPANY_ROSTER_KEY])); } catch (e) {}
+    return;
+  }
+  try { await fetchTableData(COMPANY_ROSTER_KEY); } catch (e) { /* נשארים עם המטמון המקומי */ }
+}
+
+/**
+ * מבנה הפלוגות בשבוע נתון: לכל גדוד - הפלוגות שנוספו ופעילות בשבוע הזה (extras) ואינדקסי
+ * הפלוגות המקוריות שהוסרו עד אליו (hidden; אינדקס = עמודה בטבלת קשר/אופטיקה של הגדוד).
+ */
+function getCompanyLayout(week, year) {
+  const roster = getCompanyRoster();
+  const ck = week + '_' + year;
+  if (_coLayoutCache[ck]) return _coLayoutCache[ck];
+  const ord = _coOrd(week, year);
+  const out = {};
+  CO_BN_ORDER.forEach(bn => { out[bn] = { extras: [], hidden: new Set() }; });
+  roster.added.forEach(c => {
+    const toOrd = c.to ? _coOrd(c.to.w, c.to.y) : Infinity;
+    if (ord >= _coOrd(c.from.w, c.from.y) && ord <= toOrd) out[c.bn].extras.push({ id: c.id, name: c.name });
+  });
+  roster.removedBase.forEach(b => {
+    if (_coIsHiddenAt(roster, b.bn, b.j, ord)) out[b.bn].hidden.add(b.j);
+  });
+  _coLayoutCache[ck] = out;
+  return out;
+}
+
+/* ---------- בניית "תוכנית עמודות" לטבלה לפי המבנה של שבוע ---------- */
+
+/**
+ * מחזירה {cols, sig}. כל פריט ב-cols:
+ *  co  - עמודת פלוגה: {t:'co', bn, x:false, j, d} (מקורית; d = אינדקס הנתונים) או {t:'co', bn, x:true, id, name}
+ *  sum - עמודת דרישה/וויסות/עודף של גדוד (master קשר): {t:'sum', bn, role, d}
+ *  tot - עמודת סיכום כללי (master): {t:'tot', role, d}
+ * sep = עמודה שאחריה קו הפרדה מודגש (סוף קבוצת גדוד).
+ */
+function _coBuildPlan(desc, layout) {
+  const cols = [];
+  const segList = desc.kind === 'master'
+    ? desc.segs
+    : [{ bn: desc.bn, d0: 0, n: desc.baseN }];
+
+  segList.forEach(seg => {
+    const L = layout[seg.bn];
+    const hq = CO_BASE[seg.bn].hq;
+    const items = [];
+    for (let j = 0; j < seg.n; j++) {
+      const jk = desc.cat === 'modiein' ? j + hq : j; // hidden מאונדקס לפי עמודות קשר/אופטיקה
+      if (L.hidden.has(jk)) continue;
+      items.push({ t: 'co', bn: seg.bn, x: false, j, d: seg.d0 + j });
+    }
+    L.extras.forEach(e => items.push({ t: 'co', bn: seg.bn, x: true, id: e.id, name: e.name }));
+    if (items.length) items[items.length - 1].sep = true;
+    items.forEach(it => cols.push(it));
+    if (desc.hasSum && seg.sum) {
+      ['dem', 'reg', 'sur'].forEach((role, k) => {
+        cols.push({ t: 'sum', bn: seg.bn, role, d: seg.sum[k], sep: k === 2 });
+      });
+    }
+  });
+  if (desc.kind === 'master') {
+    desc.tot.forEach((d, k) => cols.push({ t: 'tot', role: desc.totRoles[k], d }));
+  }
+
+  const bns = desc.kind === 'master' ? CO_BN_ORDER : [desc.bn];
+  const sig = bns.map(bn => {
+    const L = layout[bn];
+    return bn + ':' + L.extras.map(e => e.id + '=' + e.name).join(',') + '/' + Array.from(L.hidden).sort((a, b) => a - b).join(',');
+  }).join('|');
+  return { cols, sig };
+}
+
+function _coCellClasses(item) {
+  const c = ['co-cell'];
+  if (item.t === 'co') { c.push('co-c', 'co-bn-' + item.bn); if (item.x) c.push('co-xtd'); }
+  else if (item.t === 'sum') c.push('co-sum', 'co-bn-' + item.bn);
+  else c.push('co-tot');
+  if (item.sep) c.push('co-sep');
+  return c.join(' ');
+}
+
+function _coCellRole(item) { return item.t === 'co' ? 'co' : item.role; }
+function _coItemCk(item) { return item.t === 'co' ? (item.x ? 'x' + item.id : 'b' + item.j) : ''; }
+
+/** HTML של תא נתונים אחד (קלט רגיל, או textarea בשורות נושא שבוע/הערות). */
+function _coCellHtml(item, textarea) {
+  const attrs = item.x ? `data-xc="${item.id}"` : `data-d="${item.d}"`;
+  const field = textarea
+    ? `<textarea class="cell-input topic-textarea" rows="1" ${attrs}></textarea>`
+    : `<input type="text" class="cell-input" ${attrs}>`;
+  const bnAttr = item.bn ? ` data-bn="${item.bn}"` : '';
+  const ckAttr = item.t === 'co' ? ` data-ck="${_coItemCk(item)}"` : '';
+  return `<td class="${_coCellClasses(item)}" data-role="${_coCellRole(item)}"${bnAttr}${ckAttr}>${field}</td>`;
+}
+
+/** מפתח האחסון של שדה קלט בשורה r (נשען על data-d / data-xc / data-lbl של השדה). */
+function _coKeyFor(desc, input, r) {
+  const xc = input.dataset.xc;
+  if (xc !== undefined) return 'x' + xc + '_' + r;
+  if (desc.kind === 'modiein') {
+    const N = desc.baseN;
+    if (input.dataset.lbl !== undefined) return N + (r - 1) * (N + 1);
+    const m = +input.dataset.d;
+    return r === 0 ? m : N + (r - 1) * (N + 1) + 1 + m;
+  }
+  return r * desc.dataCols + (+input.dataset.d);
+}
+
+/** כל שדות הקלט של הטבלה עם מפתח האחסון שלהם: [{input, key, r}] */
+function _coKeyedInputs(table, desc) {
+  const out = [];
+  const tbody = table.tBodies[0];
+  if (!tbody) return out;
+  Array.from(tbody.rows).forEach((tr, r) => {
+    tr.querySelectorAll('.cell-input').forEach(input => out.push({ input, key: _coKeyFor(desc, input, r), r }));
+  });
+  return out;
+}
+
+/** כמה שורות נדרשות בטבלת מודיעין כדי להכיל את כל הערכים הלא-ריקים באובייקט הנתונים. */
+function _coModieinRowsNeeded(desc, data, minRows) {
+  const N = desc.baseN;
+  let rows = minRows;
+  if (!data) return rows;
+  Object.keys(data).forEach(k => {
+    const v = data[k];
+    if (v === undefined || v === null || String(v).trim() === '') return;
+    let r;
+    const m = /^x\d+_(\d+)$/.exec(k);
+    if (m) r = +m[1];
+    else if (/^\d+$/.test(k)) { const idx = +k; r = idx < N ? 0 : 1 + Math.floor((idx - N) / (N + 1)); }
+    else return;
+    rows = Math.max(rows, r + 1);
+  });
+  return rows;
+}
+
+/** מפרקת מפתח של פלוגה שנוספה ("x12_3") ל-{id, r}; null אם זה לא מפתח כזה. */
+function _coParseExtraKey(k) {
+  const m = /^x(\d+)_(\d+)$/.exec(String(k));
+  return m ? { id: m[1], r: +m[2] } : null;
+}
+
+/* ---------- כותרות (thead) ---------- */
+
+/** שומרת עותק נקי של שורות הכותרת המקוריות (לפני כל שינוי) - הבסיס לבנייה מחדש בכל שינוי מבנה. */
+function _coCapturePristine(table) {
+  if (table._coPristine) return;
+  const rows = table.tHead ? Array.from(table.tHead.rows) : [];
+  table._coPristine = {
+    r0: rows.length > 1 ? Array.from(rows[0].cells).map(c => c.cloneNode(true)) : null,
+    r1: rows.length ? Array.from(rows[rows.length - 1].cells).map(c => c.cloneNode(true)) : []
+  };
+}
+
+/**
+ * בונה מחדש את שורות הכותרת לפי התוכנית: עמודות שהוסרו נעלמות, פלוגות חדשות נכנסות בסוף קבוצת
+ * הגדוד שלהן, וה-colspan של כותרות הגדוד מתעדכן. התא הראשון בכל שורה (שבוע / "פלוגה") נשאר
+ * אותו אלמנט חי (כולל שדה מספר השבוע ומאזיניו).
+ */
+function _coRebuildHead(table, desc, plan) {
+  const thead = table.tHead;
+  if (!thead || !thead.rows.length) return;
+  _coCapturePristine(table);
+  const P = table._coPristine;
+  const rows = thead.rows;
+  const nameRow = rows[rows.length - 1];
+  const groupRow = rows.length > 1 ? rows[0] : null;
+
+  const segList = desc.kind === 'master' ? desc.segs : [{ bn: desc.bn, d0: 0, n: desc.baseN }];
+  const protoByBn = {};
+  segList.forEach(seg => { protoByBn[seg.bn] = P.r1[1 + seg.d0]; });
+
+  const decorate = (th, item) => {
+    th.classList.add('co-th');
+    if (item.bn) th.classList.add('co-bn-' + item.bn);
+    if (item.t === 'co') th.classList.add('co-c');
+    else if (item.t === 'sum') th.classList.add('co-sum');
+    else th.classList.add('co-tot');
+    if (item.sep) th.classList.add('co-sep');
+    return th;
+  };
+
+  const nameThs = plan.cols.map(item => {
+    let th;
+    if (item.t === 'co' && item.x) {
+      th = (protoByBn[item.bn] || P.r1[1]).cloneNode(true);
+      th.textContent = item.name;
+      th.classList.add('co-xth');
+    } else {
+      th = P.r1[1 + item.d].cloneNode(true);
+    }
+    return decorate(th, item);
+  });
+  nameRow.replaceChildren(nameRow.cells[0], ...nameThs);
+
+  if (!groupRow) return;
+  const coCount = bn => plan.cols.filter(c => c.t === 'co' && c.bn === bn).length;
+  if (desc.kind === 'master') {
+    const heads = [];
+    let idx = 1;
+    desc.segs.forEach(seg => {
+      const head = P.r0[idx++].cloneNode(true);
+      head.colSpan = coCount(seg.bn);
+      head.classList.add('co-bh', 'co-bn-' + seg.bn);
+      heads.push(head);
+      if (desc.hasSum) {
+        const sumHead = P.r0[idx++].cloneNode(true);
+        sumHead.classList.add('co-sep'); // סוף קבוצת הגדוד - קו הפרדה מודגש
+        heads.push(sumHead);
+      } else {
+        head.classList.add('co-sep');
+      }
+    });
+    heads.push(P.r0[idx++].cloneNode(true));
+    groupRow.replaceChildren(groupRow.cells[0], ...heads);
+  } else if (P.r0 && P.r0.length === 1) {
+    groupRow.cells[0].colSpan = 1 + coCount(desc.bn);
+  } else if (groupRow.cells.length >= 2) {
+    groupRow.cells[1].colSpan = coCount(desc.bn);
+  }
+}
+
+/**
+ * נקראת כשמבנה העמודות של טבלה נבנה מחדש. אם זו לא הבנייה הראשונה של הטבלה (כלומר המבנה השתנה
+ * תוך כדי עבודה - למשל מנהל אחר הוסיף/הסיר פלוגה והרענון האוטומטי קלט את זה), היסטוריית
+ * הביטול/ביצוע-חוזר מתאפסת: היא ממופה לפי מיקום שדה בטבלה, והמיקומים השתנו.
+ */
+function _coNoteRebuild(table) {
+  // האיפוס עצמו נעשה רק אחרי שהטבלה נטענה מחדש בנתונים (ראו סוף _loadTableDataImpl) - לא כאן,
+  // כשהיא עדיין ריקה, אחרת מצב הבסיס של הביטול היה "טבלה ריקה".
+  if (table._coBuiltOnce) table._coRebase = true;
+  table._coBuiltOnce = true;
+}
+
+/* ---------- טבלאות מודיעין (שורות דינמיות) ---------- */
+
+function _coModieinRowHtml(desc, plan, r, table) {
+  const cos = plan.cols.filter(c => c.t === 'co');
+  let html = '';
+  if (r === 0) {
+    html += `<td class="${table._coLabelCls || ''}">נושא שבוע</td>`;
+  } else {
+    html += `<td><input type="text" class="cell-input" data-lbl="1"></td>`;
+  }
+  cos.forEach(item => {
+    const attrs = item.x ? `data-xc="${item.id}"` : `data-d="${item.d}"`;
+    html += `<td data-role="co" data-bn="${item.bn}" data-ck="${_coItemCk(item)}"><input type="text" class="cell-input" ${attrs}></td>`;
+  });
+  return `<tr>${html}</tr>`;
+}
+
+/** מוודאת שמבנה העמודות של טבלת מודיעין תואם לשבוע (בונה מחדש רק כשמשהו השתנה). */
+function _coEnsureModieinStructure(table, desc, week, year) {
+  const layout = getCompanyLayout(week, year);
+  const plan = _coBuildPlan(desc, layout);
+  if (!table._coPristine) {
+    _coCapturePristine(table);
+    const firstRow = table.tBodies[0] && table.tBodies[0].rows[0];
+    table._coLabelCls = firstRow && firstRow.cells[0] ? firstRow.cells[0].className : '';
+  }
+  if (table._coPlan && table._coPlan.sig === plan.sig) return plan;
+  table._coPlan = plan;
+  table._coReady = false;
+  _coRebuildHead(table, desc, plan);
+  _coNoteRebuild(table);
+  table.tBodies[0].innerHTML = _coModieinRowHtml(desc, plan, 0, table) + _coModieinRowHtml(desc, plan, 1, table);
+  return plan;
+}
+
+/** מוודאת שכותרת טבלת הקצאות (קריאה בלבד) תואמת לשבוע; מחזירה את התוכנית. */
+function _coEnsureHkHead(table, desc, week, year) {
+  const layout = getCompanyLayout(week, year);
+  const plan = _coBuildPlan(desc, layout);
+  _coCapturePristine(table);
+  if (!table._coPlan || table._coPlan.sig !== plan.sig) {
+    table._coPlan = plan;
+    _coRebuildHead(table, desc, plan);
+  }
+  return plan;
+}
+
+/* ---------- השוואה יציבה (ללא תלות בסדר מפתחות) ---------- */
+function _stableStringify(obj) {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(_stableStringify).join(',') + ']';
+  return '{' + Object.keys(obj).sort().map(k => JSON.stringify(k) + ':' + _stableStringify(obj[k])).join(',') + '}';
+}
+
+/* ---------- ניהול הפלוגות: חלונות "הוסף פלוגה" / "הסר פלוגה" (מנהל בלבד) ---------- */
+
+function _coIsAdmin() {
+  return typeof AUTH !== 'undefined' && typeof AUTH.isAdmin === 'function' && AUTH.isAdmin();
+}
+
+function _coCloseModal() {
+  const m = document.getElementById('co-modal-overlay');
+  if (m) m.remove();
+}
+
+function _coOpenModal(innerHtml) {
+  _coCloseModal();
+  const ov = document.createElement('div');
+  ov.id = 'co-modal-overlay';
+  ov.className = 'co-modal-overlay';
+  ov.innerHTML = `<div class="co-modal" dir="rtl" role="dialog"><button type="button" class="co-modal-close" onclick="_coCloseModal()" title="סגור">&times;</button>${innerHtml}</div>`;
+  ov.addEventListener('mousedown', (e) => { if (e.target === ov) _coCloseModal(); });
+  document.body.appendChild(ov);
+  return ov.querySelector('.co-modal');
+}
+
+/** מוסיפה k שבועות לשבוע נתון (עם מעבר שנה). */
+function _coAddWeeks(wk, k) {
+  let w = wk.w, y = wk.y;
+  for (let i = 0; i < k; i++) {
+    w++;
+    if (w > getWeeksInYear(y)) { w = 1; y++; }
+  }
+  for (let i = 0; i > k; i--) {
+    w--;
+    if (w < 1) { y--; w = getWeeksInYear(y); }
+  }
+  return { w, y };
+}
+
+/** מבנה הפלוגות של שבוע לפי ספר נתון (לא בהכרח זה השמור) - לבדיקת תקינות לפני שמירה. */
+function _coLayoutFromRoster(roster, week, year) {
+  const ord = _coOrd(week, year);
+  const out = {};
+  CO_BN_ORDER.forEach(bn => { out[bn] = { extras: [], hidden: new Set() }; });
+  roster.added.forEach(c => {
+    const toOrd = c.to ? _coOrd(c.to.w, c.to.y) : Infinity;
+    if (ord >= _coOrd(c.from.w, c.from.y) && ord <= toOrd) out[c.bn].extras.push({ id: c.id, name: c.name });
+  });
+  roster.removedBase.forEach(b => {
+    if (_coIsHiddenAt(roster, b.bn, b.j, ord)) out[b.bn].hidden.add(b.j);
+  });
+  return out;
+}
+
+/** מספר הפלוגות (לא כולל מפקדה) שגדוד מציג בשבוע לפי ספר נתון. */
+function _coCompanyCount(layout, bn) {
+  const base = CO_BASE[bn];
+  let n = 0;
+  for (let j = base.hq; j < base.kesher.length; j++) if (!layout[bn].hidden.has(j)) n++;
+  return n + layout[bn].extras.length;
+}
+
+/**
+ * בודקת שבכל שבוע מהשבוע הנתון ואילך (שנתיים קדימה) נשארת בכל גדוד לפחות פלוגה אחת - גדוד בלי
+ * אף פלוגה היה משאיר קבוצת עמודות ריקה בטבלאות. מחזירה את הגדוד הראשון שנפגע (או null).
+ */
+function _coFindEmptyBattalion(roster, fromWk, span) {
+  const n = span || 104;
+  for (let k = 0; k <= n; k++) {
+    const wk = _coAddWeeks(fromWk, k);
+    const layout = _coLayoutFromRoster(roster, wk.w, wk.y);
+    for (const bn of CO_BN_ORDER) {
+      if (_coCompanyCount(layout, bn) < 1) return { bn, wk };
+    }
+  }
+  return null;
+}
+
+function _coNameKey(s) {
+  return String(s || '').replace(/[​-‏‪-‮⁦-⁩﻿]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+async function _coSaveRoster(roster) {
+  if (typeof DataService !== 'undefined') return await DataService.setItem(COMPANY_ROSTER_KEY, roster);
+  try { localStorage.setItem(COMPANY_ROSTER_KEY, JSON.stringify(roster)); } catch (e) { return false; }
+  return true;
+}
+
+/* מנעול: פעולת ניהול פלוגות אחת בכל רגע (מונע כפל הוספה בלחיצה כפולה/הרצה מקבילה). */
+let _coBusy = false;
+async function _coLocked(fn, ...args) {
+  if (_coBusy) return;
+  _coBusy = true;
+  try { return await fn(...args); } finally { _coBusy = false; }
+}
+function _coApplyAdd(spec) { return _coLocked(_coApplyAddImpl, spec); }
+function _coApplyRemove(spec) { return _coLocked(_coApplyRemoveImpl, spec); }
+function _coApplyEdit(id, spec) { return _coLocked(_coApplyEditImpl, id, spec); }
+function _coApplyRestore(bn, j, wk) { return _coLocked(_coApplyRestoreImpl, bn, j, wk); }
+
+/* --- הוספה --- */
+let _coAddState = null;
+
+function openAddCompanyModal() {
+  if (!_coIsAdmin()) { alert('הוספת פלוגה זמינה למנהל בלבד.'); return; }
+  const wk = { w: currentWeek, y: currentYear };
+  _coAddState = { bn: null, name: '', mode: 'perm', from: wk, to: _coAddWeeks(wk, 3) };
+  _coAddStep1();
+}
+
+function _coAddStep1() {
+  const btns = CO_BN_ORDER.map(bn =>
+    `<button type="button" class="co-bn-btn co-bn-btn-${bn}" onclick="_coAddPickBn('${bn}')">${CO_BN_EMOJI[bn]} ${escapeHtml(CO_BN_NAMES[bn])}</button>`
+  ).join('');
+  _coOpenModal(`
+    <h3 class="co-modal-title">הוספת פלוגה</h3>
+    <p class="co-modal-sub">שלב 1 מתוך 3: לאיזה גדוד להוסיף את הפלוגה?</p>
+    <div class="co-bn-grid">${btns}</div>
+  `);
+}
+
+function _coAddPickBn(bn) {
+  _coAddState.bn = bn;
+  _coAddStep2();
+}
+
+function _coAddStep2() {
+  const st = _coAddState;
+  const modal = _coOpenModal(`
+    <h3 class="co-modal-title">הוספת פלוגה - ${escapeHtml(CO_BN_NAMES[st.bn])}</h3>
+    <p class="co-modal-sub">שלב 2 מתוך 3: שם הפלוגה החדשה</p>
+    <input type="text" id="co-name-input" class="co-input" maxlength="30" placeholder="למשל: ז׳" autocomplete="off">
+    <div class="co-modal-actions">
+      <button type="button" class="co-btn co-btn-secondary" onclick="_coAddStep1()">חזור</button>
+      <button type="button" class="co-btn co-btn-primary" onclick="_coAddNameNext()">המשך</button>
+    </div>
+  `);
+  const input = modal.querySelector('#co-name-input');
+  input.value = st.name;
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') _coAddNameNext(); });
+  setTimeout(() => input.focus(), 0);
+}
+
+function _coAddNameNext() {
+  const input = document.getElementById('co-name-input');
+  const name = _coNameKey(input ? input.value : '');
+  if (!name) { alert('יש להזין שם לפלוגה.'); return; }
+  _coAddState.name = name;
+  _coAddStep3();
+}
+
+function _coAddStep3() {
+  const st = _coAddState;
+  const limited = st.mode === 'limited';
+  const modal = _coOpenModal(`
+    <h3 class="co-modal-title">הוספת פלוגה - ${escapeHtml(CO_BN_NAMES[st.bn])} - ${escapeHtml(st.name)}</h3>
+    <p class="co-modal-sub">שלב 3 מתוך 3: למשך כמה זמן הפלוגה קיימת?</p>
+    <label class="co-radio"><input type="radio" name="co-mode" value="perm" ${limited ? '' : 'checked'}> קבועה - מהשבוע שנבחר ואילך, ללא הגבלה</label>
+    <label class="co-radio"><input type="radio" name="co-mode" value="limited" ${limited ? 'checked' : ''}> לתקופה מוגבלת של שבועות</label>
+    <div class="co-weeks-row">
+      <span>משבוע</span>
+      <input type="number" id="co-from-w" class="co-input co-input-sm" min="1" max="${getWeeksInYear(st.from.y)}" value="${st.from.w}">
+      <span>שנה</span>
+      <input type="number" id="co-from-y" class="co-input co-input-md" min="2000" max="2200" value="${st.from.y}">
+    </div>
+    <div class="co-weeks-row" id="co-to-row" style="display:${limited ? 'flex' : 'none'};">
+      <span>עד שבוע (כולל)</span>
+      <input type="number" id="co-to-w" class="co-input co-input-sm" min="1" max="${getWeeksInYear(st.to.y)}" value="${st.to.w}">
+      <span>שנה</span>
+      <input type="number" id="co-to-y" class="co-input co-input-md" min="2000" max="2200" value="${st.to.y}">
+    </div>
+    <p class="co-modal-note" id="co-range-note"></p>
+    <div class="co-modal-actions">
+      <button type="button" class="co-btn co-btn-secondary" onclick="_coAddStep2()">חזור</button>
+      <button type="button" class="co-btn co-btn-primary" id="co-confirm-add" onclick="_coAddConfirm()">הוסף פלוגה</button>
+    </div>
+  `);
+  const refreshNote = () => {
+    const mode = modal.querySelector('input[name="co-mode"]:checked').value;
+    modal.querySelector('#co-to-row').style.display = mode === 'limited' ? 'flex' : 'none';
+    const f = { w: +modal.querySelector('#co-from-w').value, y: +modal.querySelector('#co-from-y').value };
+    const t = { w: +modal.querySelector('#co-to-w').value, y: +modal.querySelector('#co-to-y').value };
+    modal.querySelector('#co-range-note').textContent = mode === 'limited'
+      ? `הפלוגה תופיע מ${_coWeekLabel(f)} עד ${_coWeekLabel(t)} (כולל).`
+      : `הפלוגה תופיע מ${_coWeekLabel(f)} ואילך, ללא הגבלה.`;
+  };
+  modal.addEventListener('input', refreshNote);
+  modal.addEventListener('change', refreshNote);
+  refreshNote();
+}
+
+function _coAddConfirm() {
+  const modal = document.querySelector('#co-modal-overlay .co-modal');
+  if (!modal) return;
+  const st = _coAddState;
+  const mode = modal.querySelector('input[name="co-mode"]:checked').value;
+  const from = { w: +modal.querySelector('#co-from-w').value, y: +modal.querySelector('#co-from-y').value };
+  const to = { w: +modal.querySelector('#co-to-w').value, y: +modal.querySelector('#co-to-y').value };
+  const okWk = (x) => Number.isInteger(x.w) && Number.isInteger(x.y) && x.w >= 1 && x.w <= getWeeksInYear(x.y) && x.y >= 2000 && x.y <= 2200;
+  if (!okWk(from)) { alert('שבוע/שנת ההתחלה אינם תקינים (שבוע 1-' + getWeeksInYear(from.y) + ').'); return; }
+  if (mode === 'limited') {
+    if (!okWk(to)) { alert('שבוע/שנת הסיום אינם תקינים (שבוע 1-' + getWeeksInYear(to.y) + ').'); return; }
+    if (_coOrd(to.w, to.y) < _coOrd(from.w, from.y)) { alert('שבוע הסיום חייב להיות אחרי שבוע ההתחלה (או שווה לו).'); return; }
+  }
+  st.mode = mode; st.from = from; st.to = to;
+  const btn = document.getElementById('co-confirm-add');
+  if (btn) { btn.disabled = true; btn.textContent = 'שומר...'; }
+  _coApplyAdd({ bn: st.bn, name: st.name, from, to: mode === 'limited' ? to : null });
+}
+
+async function _coApplyAddImpl(spec) {
+  try {
+    spec = { ...spec, name: _coNameKey(spec.name).slice(0, 30) };
+    if (!spec.name) { alert('יש להזין שם לפלוגה.'); return; }
+    // שומרים קודם את מה שמוצג כרגע (לפי המבנה הנוכחי), ורק אחר כך משנים את המבנה
+    await saveCurrentWeek();
+    const roster = _coNormalizeRoster(await fetchTableData(COMPANY_ROSTER_KEY));
+
+    // אין להוסיף פלוגה בשם זהה לפלוגה קיימת בגדוד באותה תקופה
+    const key = _coNameKey(spec.name);
+    const base = CO_BASE[spec.bn];
+    const baseNames = base.kesher.slice(base.hq).concat(base.modiein);
+    if (baseNames.some(n => _coNameKey(n) === key)) {
+      alert(`כבר קיימת פלוגה בשם "${spec.name}" ב${CO_BN_NAMES[spec.bn]}.`);
+      if (_coAddState) _coAddStep2(); else _coCloseModal();
+      return;
+    }
+    const newFrom = _coOrd(spec.from.w, spec.from.y);
+    const newTo = spec.to ? _coOrd(spec.to.w, spec.to.y) : Infinity;
+    const clash = roster.added.some(c => c.bn === spec.bn && _coNameKey(c.name) === key
+      && _coOrd(c.from.w, c.from.y) <= newTo && (c.to ? _coOrd(c.to.w, c.to.y) : Infinity) >= newFrom);
+    if (clash) {
+      alert(`כבר קיימת פלוגה בשם "${spec.name}" ב${CO_BN_NAMES[spec.bn]} בתקופה חופפת.`);
+      if (_coAddState) _coAddStep2(); else _coCloseModal();
+      return;
+    }
+
+    roster.seq += 1;
+    roster.added.push({ id: String(roster.seq), bn: spec.bn, name: spec.name, from: spec.from, to: spec.to });
+    const ok = await _coSaveRoster(roster);
+    _coCloseModal();
+    await updateUIForWeek();
+    if (typeof resetUndoHistory === 'function') resetUndoHistory();
+    if (typeof addNotification === 'function') {
+      addNotification(`🏷️ המנהל הוסיף פלוגה "${spec.name}" ל${CO_BN_NAMES[spec.bn]}`, 'distribute');
+    }
+    const range = spec.to ? `מ${_coWeekLabel(spec.from)} עד ${_coWeekLabel(spec.to)}` : `מ${_coWeekLabel(spec.from)} ואילך`;
+    alert(`הפלוגה "${spec.name}" נוספה ל${CO_BN_NAMES[spec.bn]} (${range}) - בטבלאות קשר, אופטיקה ומודיעין, בדרישות ובהקצאות.`
+      + (ok ? '' : '\n\nשים לב: השמירה בשרת עדיין לא הושלמה - השינוי נשמר מקומית וייסנכרן אוטומטית כשהחיבור יחזור.'));
+  } catch (err) {
+    console.error('add company failed', err);
+    _coCloseModal();
+    alert('הוספת הפלוגה נכשלה. נסה שוב.');
+  }
+}
+
+/* --- עריכה / שחזור / סיכום --- */
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('co-modal-overlay')) _coCloseModal();
+});
+
+/** תיאור טווח קריא של פלוגה שנוספה. */
+function _coRangeText(c) {
+  return c.to ? `${_coWeekLabel(c.from)} עד ${_coWeekLabel(c.to)}` : `${_coWeekLabel(c.from)} ואילך`;
+}
+
+/** סטטוס פלוגה שנוספה ביחס לשבוע הנצפה. */
+function _coStatusText(c, ord) {
+  const f = _coOrd(c.from.w, c.from.y);
+  const t = c.to ? _coOrd(c.to.w, c.to.y) : Infinity;
+  if (ord < f) return 'עתידית';
+  if (ord > t) return 'הסתיימה';
+  return 'פעילה השבוע';
+}
+
+async function openCompaniesSummaryModal() {
+  if (!_coIsAdmin()) { alert('סיכום הפלוגות זמין למנהל בלבד.'); return; }
+  const roster = _coNormalizeRoster(await fetchTableData(COMPANY_ROSTER_KEY));
+  const wk = { w: currentWeek, y: currentYear };
+  const ord = _coOrd(wk.w, wk.y);
+  const groups = CO_BN_ORDER.map(bn => {
+    const added = roster.added.filter(c => c.bn === bn);
+    const removed = roster.removedBase.filter(b => b.bn === bn);
+    const base = CO_BASE[bn];
+    const addedRows = added.map(c => `
+      <div class="co-rm-row">
+        <span class="co-rm-name">${escapeHtml(c.name)}</span>
+        <span class="co-rm-tag">${escapeHtml(_coRangeText(c))} · ${escapeHtml(_coStatusText(c, ord))}</span>
+        <button type="button" class="co-btn co-btn-secondary co-btn-sm" onclick="openEditCompanyModal('${c.id}')">ערוך</button>
+      </div>`).join('');
+    const removedRows = removed.map(b => {
+      const alias = base.hq ? ` (${base.modiein[b.j - base.hq]})` : '';
+      const label = base.kesher[b.j] + alias;
+      const rangeTxt = b.to ? `${_coWeekLabel(b.from)} עד ${_coWeekLabel(b.to)}` : `${_coWeekLabel(b.from)} ואילך`;
+      return `
+      <div class="co-rm-row">
+        <span class="co-rm-name">${escapeHtml(label)}</span>
+        <span class="co-rm-tag">מוסתרת: ${escapeHtml(rangeTxt)}</span>
+        <button type="button" class="co-btn co-btn-primary co-btn-sm" onclick="openRestoreCompanyModal('${bn}', ${b.j})">שחזר</button>
+      </div>`;
+    }).join('');
+    const body = (addedRows + removedRows) || '<div class="co-rm-empty">אין שינויים בגדוד הזה</div>';
+    return `<div class="co-rm-group co-rm-group-${bn}"><div class="co-rm-group-title">${CO_BN_EMOJI[bn]} ${escapeHtml(CO_BN_NAMES[bn])}</div>${body}</div>`;
+  }).join('');
+  _coOpenModal(`
+    <h3 class="co-modal-title">סיכום פלוגות</h3>
+    <p class="co-modal-sub">פלוגות שנוספו (ניתן לערוך שם וטווח) ופלוגות מקוריות שהוסתרו (ניתן לשחזר). השבוע הנצפה: ${escapeHtml(_coWeekLabel(wk))}.</p>
+    <div class="co-rm-list">${groups}</div>
+  `);
+}
+
+/** קוראת את הספר מהמטמון המקומי (סינכרוני) - לפתיחת חלון עריכה. */
+function _coRosterLocal() {
+  return getCompanyRoster();
+}
+
+/* --- עריכת פלוגה שנוספה --- */
+function openEditCompanyModal(id) {
+  const roster = _coRosterLocal();
+  const c = roster.added.find(x => x.id === String(id));
+  if (!c) { alert('הפלוגה לא נמצאה.'); return; }
+  const limited = !!c.to;
+  const to = c.to || _coAddWeeks(c.from, 3);
+  const modal = _coOpenModal(`
+    <h3 class="co-modal-title">עריכת פלוגה - ${escapeHtml(CO_BN_NAMES[c.bn])}</h3>
+    <p class="co-modal-sub">שינוי שם משפיע על כל השבועות (הנתונים נשמרים). קיצור הטווח מוחק את נתוני הפלוגה בשבועות שיוצאו ממנו בשמירה הבאה שלהם.</p>
+    <input type="text" id="co-edit-name" class="co-input" maxlength="30" autocomplete="off">
+    <label class="co-radio"><input type="radio" name="co-edit-mode" value="perm" ${limited ? '' : 'checked'}> קבועה - ללא הגבלת סיום</label>
+    <label class="co-radio"><input type="radio" name="co-edit-mode" value="limited" ${limited ? 'checked' : ''}> לתקופה מוגבלת</label>
+    <div class="co-weeks-row"><span>משבוע</span>
+      <input type="number" id="co-edit-from-w" class="co-input co-input-sm" min="1" max="52" value="${c.from.w}">
+      <span>שנה</span><input type="number" id="co-edit-from-y" class="co-input co-input-md" min="2000" max="2200" value="${c.from.y}"></div>
+    <div class="co-weeks-row" id="co-edit-to-row" style="display:${limited ? 'flex' : 'none'};"><span>עד שבוע (כולל)</span>
+      <input type="number" id="co-edit-to-w" class="co-input co-input-sm" min="1" max="52" value="${to.w}">
+      <span>שנה</span><input type="number" id="co-edit-to-y" class="co-input co-input-md" min="2000" max="2200" value="${to.y}"></div>
+    <div class="co-modal-actions">
+      <button type="button" class="co-btn co-btn-secondary" onclick="openCompaniesSummaryModal()">חזור</button>
+      <button type="button" class="co-btn co-btn-primary" id="co-edit-save" onclick="_coEditConfirm('${c.id}')">שמור שינויים</button>
+    </div>
+  `);
+  modal.querySelector('#co-edit-name').value = c.name;
+  modal.addEventListener('change', () => {
+    const mode = modal.querySelector('input[name="co-edit-mode"]:checked').value;
+    modal.querySelector('#co-edit-to-row').style.display = mode === 'limited' ? 'flex' : 'none';
+  });
+}
+
+function _coEditConfirm(id) {
+  const modal = document.querySelector('#co-modal-overlay .co-modal');
+  if (!modal) return;
+  const name = _coNameKey(modal.querySelector('#co-edit-name').value);
+  const mode = modal.querySelector('input[name="co-edit-mode"]:checked').value;
+  const from = { w: +modal.querySelector('#co-edit-from-w').value, y: +modal.querySelector('#co-edit-from-y').value };
+  const to = { w: +modal.querySelector('#co-edit-to-w').value, y: +modal.querySelector('#co-edit-to-y').value };
+  const okWk = (x) => Number.isInteger(x.w) && Number.isInteger(x.y) && x.w >= 1 && x.w <= getWeeksInYear(x.y) && x.y >= 2000 && x.y <= 2200;
+  if (!name) { alert('יש להזין שם לפלוגה.'); return; }
+  if (!okWk(from)) { alert('שבוע/שנת ההתחלה אינם תקינים (שבוע 1-' + getWeeksInYear(from.y) + ').'); return; }
+  if (mode === 'limited') {
+    if (!okWk(to)) { alert('שבוע/שנת הסיום אינם תקינים (שבוע 1-' + getWeeksInYear(to.y) + ').'); return; }
+    if (_coOrd(to.w, to.y) < _coOrd(from.w, from.y)) { alert('שבוע הסיום חייב להיות אחרי שבוע ההתחלה (או שווה לו).'); return; }
+  }
+  const btn = document.getElementById('co-edit-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'שומר...'; }
+  _coApplyEdit(id, { name, from, to: mode === 'limited' ? to : null });
+}
+
+async function _coApplyEditImpl(id, spec) {
+  try {
+    spec = { ...spec, name: _coNameKey(spec.name).slice(0, 30) };
+    if (!spec.name) { alert('יש להזין שם לפלוגה.'); return; }
+    await saveCurrentWeek();
+    const roster = _coNormalizeRoster(await fetchTableData(COMPANY_ROSTER_KEY));
+    const c = roster.added.find(x => x.id === String(id));
+    if (!c) { alert('הפלוגה כבר לא קיימת.'); _coCloseModal(); await updateUIForWeek(); return; }
+    const key = _coNameKey(spec.name);
+    const base = CO_BASE[c.bn];
+    if (base.kesher.slice(base.hq).concat(base.modiein).some(n => _coNameKey(n) === key)) {
+      alert(`כבר קיימת פלוגה בשם "${spec.name}" ב${CO_BN_NAMES[c.bn]}.`); openEditCompanyModal(id); return;
+    }
+    const newFrom = _coOrd(spec.from.w, spec.from.y);
+    const newTo = spec.to ? _coOrd(spec.to.w, spec.to.y) : Infinity;
+    const clash = roster.added.some(o => o.id !== c.id && o.bn === c.bn && _coNameKey(o.name) === key
+      && _coOrd(o.from.w, o.from.y) <= newTo && (o.to ? _coOrd(o.to.w, o.to.y) : Infinity) >= newFrom);
+    if (clash) { alert(`כבר קיימת פלוגה בשם "${spec.name}" ב${CO_BN_NAMES[c.bn]} בתקופה חופפת.`); openEditCompanyModal(id); return; }
+
+    const oldFrom = { ...c.from };
+    const before = JSON.stringify({ n: c.name, f: c.from, t: c.to });
+    c.name = spec.name; c.from = spec.from; c.to = spec.to;
+    if (before === JSON.stringify({ n: c.name, f: c.from, t: c.to })) { _coCloseModal(); return; }
+
+    // השינוי לא יכול להשאיר גדוד בלי פלוגות בשבוע כלשהו - בודקים מהשבוע המוקדם מבין הישן/החדש,
+    // לאורך כל הטווח המושפע ועוד שנתיים קדימה.
+    const earliest = _coOrd(oldFrom.w, oldFrom.y) < newFrom ? oldFrom : spec.from;
+    const lastYear = Math.max(spec.to ? spec.to.y : spec.from.y, currentYear);
+    const weeksSpan = (lastYear - earliest.y + 1) * 53 + 110;
+    const empty = _coFindEmptyBattalion(roster, earliest, weeksSpan);
+    if (empty) {
+      alert(`לא ניתן לשמור: ב${CO_BN_NAMES[empty.bn]} לא תישאר אף פלוגה ב${_coWeekLabel(empty.wk)}.`);
+      openEditCompanyModal(id);
+      return;
+    }
+
+    const ok = await _coSaveRoster(roster);
+    _coCloseModal();
+    await updateUIForWeek();
+    if (typeof resetUndoHistory === 'function') resetUndoHistory();
+    if (typeof addNotification === 'function') {
+      addNotification(`🏷️ המנהל עדכן את הפלוגה "${spec.name}" ב${CO_BN_NAMES[c.bn]} (${_coRangeText(c)})`, 'distribute');
+    }
+    alert(`הפלוגה "${spec.name}" עודכנה (${_coRangeText(c)}).`
+      + (ok ? '' : '\n\nשים לב: השמירה בשרת עדיין לא הושלמה - השינוי נשמר מקומית וייסנכרן אוטומטית כשהחיבור יחזור.'));
+  } catch (err) {
+    console.error('edit company failed', err);
+    _coCloseModal();
+    alert('עדכון הפלוגה נכשל. נסה שוב.');
+  }
+}
+
+/* --- שחזור פלוגה מקורית שהוסתרה --- */
+function openRestoreCompanyModal(bn, j) {
+  const base = CO_BASE[bn];
+  const alias = base.hq ? ` (${base.modiein[j - base.hq]})` : '';
+  const label = base.kesher[j] + alias;
+  const wk = { w: currentWeek, y: currentYear };
+  _coOpenModal(`
+    <h3 class="co-modal-title">שחזור פלוגה - ${escapeHtml(label)}</h3>
+    <p class="co-modal-sub">הפלוגה תחזור לטבלאות של ${escapeHtml(CO_BN_NAMES[bn])} (קשר, אופטיקה ומודיעין) מהשבוע שתבחר ואילך. נתוניה בשבועות שנשמרו מאז ההסרה נמחקו - העמודה תחזור ריקה.</p>
+    <div class="co-weeks-row"><span>החל משבוע</span>
+      <input type="number" id="co-restore-w" class="co-input co-input-sm" min="1" max="52" value="${wk.w}">
+      <span>שנה</span><input type="number" id="co-restore-y" class="co-input co-input-md" min="2000" max="2200" value="${wk.y}"></div>
+    <div class="co-modal-actions">
+      <button type="button" class="co-btn co-btn-secondary" onclick="openCompaniesSummaryModal()">חזור</button>
+      <button type="button" class="co-btn co-btn-primary" id="co-restore-ok" onclick="_coRestoreConfirm('${bn}', ${j})">שחזר</button>
+    </div>
+  `);
+}
+
+function _coRestoreConfirm(bn, j) {
+  const w = +document.getElementById('co-restore-w').value, y = +document.getElementById('co-restore-y').value;
+  if (!(Number.isInteger(w) && Number.isInteger(y) && w >= 1 && w <= getWeeksInYear(y) && y >= 2000 && y <= 2200)) {
+    alert('שבוע/שנה אינם תקינים (שבוע 1-' + getWeeksInYear(y) + ').'); return;
+  }
+  const btn = document.getElementById('co-restore-ok');
+  if (btn) { btn.disabled = true; btn.textContent = 'שומר...'; }
+  _coApplyRestore(bn, j, { w, y });
+}
+
+async function _coApplyRestoreImpl(bn, j, wk) {
+  try {
+    await saveCurrentWeek();
+    const roster = _coNormalizeRoster(await fetchTableData(COMPANY_ROSTER_KEY));
+    const ord = _coOrd(wk.w, wk.y);
+    const next = [];
+    roster.removedBase.forEach(b => {
+      if (b.bn !== bn || b.j !== j) { next.push(b); return; }
+      const f = _coOrd(b.from.w, b.from.y);
+      const t = b.to ? _coOrd(b.to.w, b.to.y) : Infinity;
+      if (t < ord) { next.push(b); return; }            // הסתיים לפני שבוע השחזור - לא נוגעים
+      if (f >= ord) return;                               // כולו מהשבוע הזה ואילך - נמחק
+      next.push({ ...b, to: _coAddWeeks(wk, -1) });       // נחתך: נשאר מוסתר רק עד השבוע שלפני
+    });
+    roster.removedBase = next;
+    const ok = await _coSaveRoster(roster);
+    _coCloseModal();
+    await updateUIForWeek();
+    if (typeof resetUndoHistory === 'function') resetUndoHistory();
+    const label = CO_BASE[bn].kesher[j];
+    if (typeof addNotification === 'function') {
+      addNotification(`🏷️ המנהל שחזר את הפלוגה "${label}" ב${CO_BN_NAMES[bn]} (מ${_coWeekLabel(wk)})`, 'distribute');
+    }
+    alert(`הפלוגה "${label}" שוחזרה מ${_coWeekLabel(wk)} ואילך.`
+      + (ok ? '' : '\n\nשים לב: השמירה בשרת עדיין לא הושלמה - השינוי נשמר מקומית וייסנכרן אוטומטית כשהחיבור יחזור.'));
+  } catch (err) {
+    console.error('restore company failed', err);
+    _coCloseModal();
+    alert('שחזור הפלוגה נכשל. נסה שוב.');
+  }
+}
+
+/* --- הסרה --- */
+
+/** רשימת הפלוגות שניתן להסיר: מקוריות שעוד מוצגות בשבוע הנצפה + שנוספו ועוד לא הסתיימו עד השבוע הנצפה. */
+function _coCollectRemovable(roster, wk) {
+  const ord = _coOrd(wk.w, wk.y);
+  const out = [];
+  CO_BN_ORDER.forEach(bn => {
+    const base = CO_BASE[bn];
+    for (let j = base.hq; j < base.kesher.length; j++) {
+      if (_coIsHiddenAt(roster, bn, j, ord)) continue;
+      const alias = base.hq ? ` (${base.modiein[j - base.hq]})` : '';
+      const sched = roster.removedBase.find(b => b.bn === bn && b.j === j && _coOrd(b.from.w, b.from.y) > ord);
+      out.push({ type: 'base', bn, j, label: base.kesher[j] + alias, tag: sched ? `קבועה (הסרה מתוזמנת מ${_coWeekLabel(sched.from)})` : 'קבועה' });
+    }
+    roster.added.filter(c => c.bn === bn).forEach(c => {
+      const toOrd = c.to ? _coOrd(c.to.w, c.to.y) : Infinity;
+      if (toOrd < ord) return; // כבר הסתיימה
+      if (c.to && toOrd === ord && _coOrd(c.from.w, c.from.y) <= ord) return; // מסתיימת בדיוק בשבוע הנצפה - אין מה להסיר
+      const tag = c.to ? `זמנית: ${_coWeekLabel(c.from)} - ${_coWeekLabel(c.to)}` : `קבועה (מ${_coWeekLabel(c.from)})`;
+      out.push({ type: 'added', bn, id: c.id, label: c.name, tag });
+    });
+  });
+  return out;
+}
+
+async function openRemoveCompanyModal() {
+  if (!_coIsAdmin()) { alert('הסרת פלוגה זמינה למנהל בלבד.'); return; }
+  const roster = _coNormalizeRoster(await fetchTableData(COMPANY_ROSTER_KEY));
+  const wk = { w: currentWeek, y: currentYear };
+  const items = _coCollectRemovable(roster, wk);
+  window._coRemoveItems = items;
+  const groups = CO_BN_ORDER.map(bn => {
+    const rows = items.map((it, idx) => ({ it, idx })).filter(o => o.it.bn === bn).map(o => `
+      <div class="co-rm-row">
+        <span class="co-rm-name">${escapeHtml(o.it.label)}</span>
+        <span class="co-rm-tag">${escapeHtml(o.it.tag)}</span>
+        <button type="button" class="co-btn co-btn-danger co-btn-sm" onclick="_coRemoveAsk(${o.idx})">הסר</button>
+      </div>`).join('');
+    return `<div class="co-rm-group co-rm-group-${bn}"><div class="co-rm-group-title">${CO_BN_EMOJI[bn]} ${escapeHtml(CO_BN_NAMES[bn])}</div>${rows || '<div class="co-rm-empty">אין פלוגות</div>'}</div>`;
+  }).join('');
+  _coOpenModal(`
+    <h3 class="co-modal-title">הסרת פלוגה</h3>
+    <p class="co-modal-sub">הפלוגה שתבחר תוסר מהשבוע שאחרי ${escapeHtml(_coWeekLabel(wk))} (${escapeHtml(_coWeekLabel(_coAddWeeks(wk, 1)))}) והלאה - מטבלאות קשר, אופטיקה ומודיעין, מהדרישות ומההקצאות, ולא תיכלל בסכומים. ב${escapeHtml(_coWeekLabel(wk))} ובשבועות קודמים היא נשארת עם כל נתוניה.</p>
+    <div class="co-rm-list">${groups}</div>
+  `);
+}
+
+function _coRemoveAsk(idx) {
+  const it = (window._coRemoveItems || [])[idx];
+  if (!it) return;
+  const wk = { w: currentWeek, y: currentYear };
+  const nextWk = _coAddWeeks(wk, 1);
+  if (!confirm(`להסיר את הפלוגה "${it.label}" של ${CO_BN_NAMES[it.bn]} מ${_coWeekLabel(nextWk)} והלאה?\n\nהיא תימחק מטבלאות קשר, אופטיקה ומודיעין (מנהל ויחידה, דרישות והקצאות) ולא תיכלל בסכומים ובעמודות הגדודיות מהשבוע הזה והלאה.\nב${_coWeekLabel(wk)} ובשבועות קודמים היא נשארת עם כל הנתונים שלה.\n\nשים לב: הנתונים שלה בשבועות שהיא מוסרת מהם יימחקו בשמירה הבאה של אותם שבועות, ולא ניתן לשחזר אותם (שחזור פלוגה מחזיר את העמודה בלבד, ריקה).`)) return;
+  _coApplyRemove(it);
+}
+
+async function _coApplyRemoveImpl(spec) {
+  try {
+    await saveCurrentWeek();
+    const roster = _coNormalizeRoster(await fetchTableData(COMPANY_ROSTER_KEY));
+    const wk = { w: currentWeek, y: currentYear };
+    const ord = _coOrd(wk.w, wk.y);
+    // ההסרה חלה מהשבוע *שאחרי* השבוע הנצפה: בשבוע הנצפה ובשבועות קודמים הפלוגה והנתונים שלה נשארים.
+    const nextWk = _coAddWeeks(wk, 1);
+    const nextOrd = _coOrd(nextWk.w, nextWk.y);
+    let label = spec.label;
+
+    if (spec.type === 'added') {
+      const c = roster.added.find(x => x.id === spec.id);
+      if (!c) { alert('הפלוגה כבר לא קיימת.'); _coCloseModal(); await updateUIForWeek(); return; }
+      label = c.name;
+      if (_coOrd(c.from.w, c.from.y) > ord) {
+        // הפלוגה מתחילה רק אחרי השבוע הנצפה - אין שבוע עד אליו שבו היא קיימת: מבטלים אותה לגמרי
+        roster.added = roster.added.filter(x => x !== c);
+      } else if (!c.to || _coOrd(c.to.w, c.to.y) > ord) {
+        c.to = wk; // הפלוגה נשארת כולל השבוע הנצפה, ונעלמת מהשבוע שאחריו
+      }
+    } else {
+      // טווח הסרה חדש מהשבוע הבא ואילך; טווחים חופפים/צמודים של אותה פלוגה ממוזגים
+      roster.removedBase.push({ bn: spec.bn, j: spec.j, from: nextWk, to: null });
+      roster.removedBase = _coMergeRemovedBase(roster.removedBase);
+    }
+
+    const empty = _coFindEmptyBattalion(roster, nextWk);
+    if (empty) {
+      alert(`לא ניתן להסיר: ב${CO_BN_NAMES[empty.bn]} לא תישאר אף פלוגה ב${_coWeekLabel(empty.wk)}. יש להוסיף פלוגה אחרת לפני ההסרה.`);
+      return;
+    }
+
+    const ok = await _coSaveRoster(roster);
+    _coCloseModal();
+    await updateUIForWeek();
+    if (typeof resetUndoHistory === 'function') resetUndoHistory();
+    if (typeof addNotification === 'function') {
+      addNotification(`🏷️ המנהל הסיר את הפלוגה "${label}" מ${CO_BN_NAMES[spec.bn]} (מ${_coWeekLabel(nextWk)})`, 'distribute');
+    }
+    alert(`הפלוגה "${label}" הוסרה מ${_coWeekLabel(nextWk)} והלאה. ב${_coWeekLabel(wk)} ובשבועות קודמים היא נשארת עם נתוניה.`
+      + (ok ? '' : '\n\nשים לב: השמירה בשרת עדיין לא הושלמה - השינוי נשמר מקומית וייסנכרן אוטומטית כשהחיבור יחזור.'));
+  } catch (err) {
+    console.error('remove company failed', err);
+    _coCloseModal();
+    alert('הסרת הפלוגה נכשלה. נסה שוב.');
+  }
 }
 
 /* ================================
@@ -2506,9 +3828,19 @@ function renderDynamicTableStructure(tableId, week, year) {
   // לכל הטבלה (קלטים כולל) "להיעלם" לרגע ולהיבנות מחדש שוב ושוב (אפיון QA: "הנתונים נעלמים
   // לרגע כל כמה שניות"). מילוי הערכים עצמם ממשיך לקרות תמיד ב-loadTableData אחרי הפונקציה
   // הזו, גם כשהמבנה לא נבנה מחדש.
-  const rowsSignature = JSON.stringify(rowsList);
+  // מבנה העמודות (פלוגות שנוספו / הוסרו) חלק מהחתימה - שינוי בו בונה מחדש גם את הכותרת וגם הגוף.
+  const coDesc = _coDesc(tableId);
+  const coPlan = coDesc ? _coBuildPlan(coDesc, getCompanyLayout(week, year)) : null;
+  const rowsSignature = JSON.stringify(rowsList) + (coPlan ? '#' + coPlan.sig : '');
   if (tbody.dataset.rowsSignature === rowsSignature) return;
   tbody.dataset.rowsSignature = rowsSignature;
+
+  if (coPlan) {
+    table._coPlan = coPlan;
+    table._coReady = false;
+    _coRebuildHead(table, coDesc, coPlan);
+    _coNoteRebuild(table);
+  }
 
   let tbodyHtml = '';
   const totalCols = dataCols + 1;
@@ -2538,11 +3870,15 @@ function renderDynamicTableStructure(tableId, week, year) {
       : '';
 
     let tds = `<td class="test"><span class="row-name-text">${escapeHtml(rowName)}</span> ${dragHandleHtml}${deleteBtnHtml}</td>`;
-    for (let i = 1; i < totalCols; i++) {
-      if (isTopicRow || isSpecialNoteRow) {
-        tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
-      } else {
-        tds += `<td><input type="text" class="cell-input"></td>`;
+    if (coPlan) {
+      coPlan.cols.forEach(item => { tds += _coCellHtml(item, isTopicRow || isSpecialNoteRow); });
+    } else {
+      for (let i = 1; i < totalCols; i++) {
+        if (isTopicRow || isSpecialNoteRow) {
+          tds += `<td><textarea class="cell-input topic-textarea" rows="1"></textarea></td>`;
+        } else {
+          tds += `<td><input type="text" class="cell-input"></td>`;
+        }
       }
     }
     if (hasUnitTotalColumn(tableId)) {
@@ -2635,13 +3971,14 @@ async function reorderCategoryRow(category, fromIndex, toIndex) {
 
   // מיפוי מחדש של הנתונים לכל הטבלאות בקטגוריה
   const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
-  tableList.forEach(t => {
-    ['', '_published'].forEach(suffix => {
+  // oldRow -> newRow (להמרת מפתחות של פלוגות שנוספו: x<מזהה>_<שורה>)
+  const newRowOf = {};
+  order.forEach((oldRow, newRow) => { newRowOf[oldRow] = newRow; });
+  for (const t of tableList) {
+    for (const suffix of ['', '_published']) {
       const key = getStorageKey(t.id, currentWeek, currentYear) + suffix;
-      const raw = localStorage.getItem(key);
-      if (!raw) return;
-      let data;
-      try { data = JSON.parse(raw); } catch (e) { return; }
+      const data = await fetchTableData(key);
+      if (!data) continue;
       const newData = {};
       order.forEach((oldRow, newRow) => {
         for (let c = 0; c < t.dataCols; c++) {
@@ -2650,9 +3987,13 @@ async function reorderCategoryRow(category, fromIndex, toIndex) {
           if (data[oldIdx] !== undefined) newData[newIdx] = data[oldIdx];
         }
       });
+      Object.keys(data).forEach(k => {
+        const px = _coParseExtraKey(k);
+        if (px && newRowOf[px.r] !== undefined) newData['x' + px.id + '_' + newRowOf[px.r]] = data[k];
+      });
       persist(key, newData);
-    });
-  });
+    }
+  }
 
   // רענון טבלת המנהל הנוכחית
   const masterId = category === 'kesher' ? 'keshertable' : 'optictable';
@@ -2668,67 +4009,99 @@ function promptAddItemRow(category) {
   addItemRow(category, itemName.trim());
 }
 
-function addItemRow(category, itemName) {
+// אוספת לרשימה שטוחה של {week, year} כל השבועות מהשבוע הנוכחי ועד סוף השנה הבאה - טווח
+// ה"מכאן ואילך" ששינוי מבנה שורה (הוספה/מחיקה) חל עליו (ראו addItemRow/deleteRowItem).
+function _weeksFromCurrentOnward() {
+  const out = [];
+  for (let y = currentYear; y <= currentYear + 1; y++) {
+    const startW = (y === currentYear) ? currentWeek : 1;
+    for (let w = startW; w <= getWeeksInYear(y); w++) out.push({ w, y });
+  }
+  return out;
+}
+
+/**
+ * שינוי מבנה שורה (הוספה/מחיקה) חייב לקרוא ולכתוב את נתוני הטבלה דרך fetchTableData/persist
+ * (מודעים לשרת מרכזי) ולא ישירות מ-localStorage - אחרת שבוע עתידי שהמכשיר הזה מעולם לא טען
+ * באופן מקומי (סביר מאוד עבור שבועות רחוקים) נשמט בשקט מהמיפוי-מחדש: רשימת השורות שלו
+ * מתעדכנת (דרך ירושה/fallback), אבל הנתונים הקיימים בשרת נשארים באינדקסים הישנים - כלומר
+ * אחרי הוספת/מחיקת שורה, ערכים שהוזנו מראש לשבוע עתידי "זזים" לשורה הלא נכונה ברגע שהשבוע
+ * הזה נטען. אומת ישירות בסימולציה: יחידה מילאה שבוע+5 בדפדפן אחד, מנהל (בדפדפן/פרופיל אחר,
+ * שמעולם לא טען את השבוע הזה) הוסיף אמצעי - נתוני שבוע+5 בשרת נשארו לגמרי לא ממופים מחדש.
+ * מטפלת גם ב-_published (כמו reorderCategoryRow) - בלעדיה, המיפוי-מחדש של הטיוטה מצליח אבל
+ * הגרסה שפורסמה נשארת במבנה הישן, מה שגורם לכל תא אחרי נקודת ההוספה/מחיקה להיראות "השתנה
+ * מאז הפרסום" בטעות (סימון כתום שגוי בכל הטבלה).
+ */
+async function _remapRowStructureForward(category, transform) {
   const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
+  const weeks = _weeksFromCurrentOnward();
 
-  const snapshots = {};
+  const rowListSnapshots = {};
   const hasExplicitSave = {};
-  for (let y = currentYear; y <= currentYear + 1; y++) {
-    const startW = (y === currentYear) ? currentWeek : 1;
-    for (let w = startW; w <= getWeeksInYear(y); w++) {
-      const key = getRowsStorageKey(category, w, y);
-      snapshots[`${w}_${y}`] = [...getRowsForWeek(category, w, y)];
-      hasExplicitSave[`${w}_${y}`] = (localStorage.getItem(key) !== null);
+  await _runInBatches(weeks, 8, async ({ w, y }) => {
+    const key = getRowsStorageKey(category, w, y);
+    const remote = await fetchTableData(key);
+    hasExplicitSave[`${w}_${y}`] = remote !== null && remote !== undefined;
+    rowListSnapshots[`${w}_${y}`] = remote || getRowsForWeek(category, w, y);
+  });
+
+  const rowListWrites = [];
+  const dataTasks = [];
+  for (const { w, y } of weeks) {
+    const currentList = rowListSnapshots[`${w}_${y}`];
+    const { newList, insertIdx } = transform(currentList);
+    if (!newList) continue; // transform מחזירה null אם אין שינוי רלוונטי לשבוע הזה (למשל אמצעי שכבר לא קיים)
+
+    if ((w === currentWeek && y === currentYear) || hasExplicitSave[`${w}_${y}`]) {
+      rowListWrites.push({ key: getRowsStorageKey(category, w, y), data: newList });
     }
-  }
-
-  for (let y = currentYear; y <= currentYear + 1; y++) {
-    const startW = (y === currentYear) ? currentWeek : 1;
-    for (let w = startW; w <= getWeeksInYear(y); w++) {
-      const currentList = snapshots[`${w}_${y}`];
-      
-      let insertIdx = currentList.length;
-      if (category === 'kesher' && currentList[currentList.length - 1] === "הערות משיכה\\זיכוי") {
-        insertIdx = currentList.length - 1;
-      }
-      
-      const newList = [...currentList];
-      newList.splice(insertIdx, 0, itemName);
-      
-      if ((w === currentWeek && y === currentYear) || hasExplicitSave[`${w}_${y}`]) {
-        persist(getRowsStorageKey(category, w, y), newList);
-      }
-
-      tableList.forEach(t => {
-        const key = getStorageKey(t.id, w, y);
-        const savedRaw = localStorage.getItem(key);
-        if (savedRaw) {
-          const oldData = JSON.parse(savedRaw);
-          const newData = {};
-          const cols = t.dataCols;
-
-          Object.keys(oldData).forEach(idxStr => {
-            const idx = parseInt(idxStr);
-            const r = Math.floor(idx / cols);
-            const c = idx % cols;
-            if (r < insertIdx) {
-              newData[idx] = oldData[idx];
-            } else {
-              const newIdx = (r + 1) * cols + c;
-              newData[newIdx] = oldData[idx];
-            }
-          });
-
-          persist(key, newData);
-        }
+    tableList.forEach(t => {
+      ['', '_published'].forEach(suffix => {
+        dataTasks.push({ key: getStorageKey(t.id, w, y) + suffix, cols: t.dataCols, insertIdx });
       });
-    }
+    });
   }
+
+  await _runInBatches(rowListWrites, 8, async ({ key, data }) => persist(key, data));
+
+  await _runInBatches(dataTasks, 8, async ({ key, cols, insertIdx }) => {
+    const oldData = await fetchTableData(key);
+    if (!oldData) return;
+    const newData = {};
+    Object.keys(oldData).forEach(idxStr => {
+      // מפתח של פלוגה שנוספה (x<מזהה>_<שורה>) - רק מספר השורה משתנה, העמודה היא המזהה עצמו.
+      const px = _coParseExtraKey(idxStr);
+      if (px) {
+        const newRx = insertIdx(px.r);
+        if (newRx !== null) newData['x' + px.id + '_' + newRx] = oldData[idxStr];
+        return;
+      }
+      const idx = parseInt(idxStr);
+      if (isNaN(idx)) return;
+      const r = Math.floor(idx / cols);
+      const c = idx % cols;
+      const newR = insertIdx(r);
+      if (newR !== null) newData[newR * cols + c] = oldData[idxStr];
+    });
+    persist(key, newData);
+  });
+}
+
+async function addItemRow(category, itemName) {
+  await _remapRowStructureForward(category, (currentList) => {
+    let insertAt = currentList.length;
+    if (category === 'kesher' && currentList[currentList.length - 1] === "הערות משיכה\\זיכוי") {
+      insertAt = currentList.length - 1;
+    }
+    const newList = [...currentList];
+    newList.splice(insertAt, 0, itemName);
+    return { newList, insertIdx: (r) => (r < insertAt ? r : r + 1) };
+  });
 
   updateUIForWeek();
 }
 
-function deleteRowItem(category, rowIndex) {
+async function deleteRowItem(category, rowIndex) {
   const currentList = getRowsForWeek(category, currentWeek, currentYear);
   const itemName = currentList[rowIndex];
   if (!itemName) return;
@@ -2748,60 +4121,12 @@ function deleteRowItem(category, rowIndex) {
     return;
   }
 
-  const tableList = category === 'kesher' ? KESHER_TABLE_LIST : OPTIC_TABLE_LIST;
-
-  const snapshots = {};
-  const hasExplicitSave = {};
-  for (let y = currentYear; y <= currentYear + 1; y++) {
-    const startW = (y === currentYear) ? currentWeek : 1;
-    for (let w = startW; w <= getWeeksInYear(y); w++) {
-      const key = getRowsStorageKey(category, w, y);
-      snapshots[`${w}_${y}`] = [...getRowsForWeek(category, w, y)];
-      hasExplicitSave[`${w}_${y}`] = (localStorage.getItem(key) !== null);
-    }
-  }
-
-  for (let y = currentYear; y <= currentYear + 1; y++) {
-    const startW = (y === currentYear) ? currentWeek : 1;
-    for (let w = startW; w <= getWeeksInYear(y); w++) {
-      const listW = snapshots[`${w}_${y}`];
-      const targetIdx = listW.indexOf(itemName);
-      if (targetIdx === -1) continue;
-
-      const newList = listW.filter((_, idx) => idx !== targetIdx);
-      
-      if ((w === currentWeek && y === currentYear) || hasExplicitSave[`${w}_${y}`]) {
-        persist(getRowsStorageKey(category, w, y), newList);
-      }
-
-      tableList.forEach(t => {
-        const key = getStorageKey(t.id, w, y);
-        const savedRaw = localStorage.getItem(key);
-        if (savedRaw) {
-          const oldData = JSON.parse(savedRaw);
-          const newData = {};
-          const cols = t.dataCols;
-
-          Object.keys(oldData).forEach(idxStr => {
-            const idx = parseInt(idxStr);
-            const r = Math.floor(idx / cols);
-            const c = idx % cols;
-            
-            if (r === targetIdx) return;
-            
-            if (r < targetIdx) {
-              newData[idx] = oldData[idx];
-            } else if (r > targetIdx) {
-              const newIdx = (r - 1) * cols + c;
-              newData[newIdx] = oldData[idx];
-            }
-          });
-
-          persist(key, newData);
-        }
-      });
-    }
-  }
+  await _remapRowStructureForward(category, (listW) => {
+    const targetIdx = listW.indexOf(itemName);
+    if (targetIdx === -1) return { newList: null };
+    const newList = listW.filter((_, idx) => idx !== targetIdx);
+    return { newList, insertIdx: (r) => (r === targetIdx ? null : (r < targetIdx ? r : r - 1)) };
+  });
 
   updateUIForWeek();
 }
@@ -2831,11 +4156,18 @@ async function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbody
     names = await getRowsForWeek('optic', currentWeek, currentYear);
   }
 
+  // טבלת הקצאות של גדוד: עמודות הפלוגות (כולל פלוגות שנוספו, בלי אלה שהוסרו) נקבעות לפי
+  // מבנה הפלוגות של השבוע - ראו "פלוגות דינמיות". הכותרת נבנית מחדש לפי אותה תוכנית.
+  const hkTable = tbody.closest('table');
+  const hkDesc = hkTable ? _coDesc(hkTable.id) : null;
+  const hkPlan = hkDesc ? _coEnsureHkHead(hkTable, hkDesc, currentWeek, currentYear) : null;
+  const hkCols = hkPlan ? hkPlan.cols.filter(c => c.t === 'co') : null;
+
   // מדלגים על ריקון+בנייה מחדש של כל השורות אם הנתונים זהים למה שכבר מוצג - ראו
   // _renderDataChanged. בלי זה טבלת ההקצאות (קשר/אופטיקה בעמוד יחידה) "נעלמת ומופיעה" בכל
   // מחזור רענון אוטומטי (כל כמה שניות) כשתצוגת "הקצאות" פתוחה, גם כשלא השתנה כלום - אותה
   // תבנית בדיוק כמו loadHadragTables/loadShekemTables/renderHaktzaotModieinUnit (אפיון QA: "מרצד").
-  if (!_renderDataChanged('haktzaot_' + tbodyId, { data, names })) return;
+  if (!_renderDataChanged('haktzaot_' + tbodyId, { data, names, sig: hkPlan ? hkPlan.sig : '' })) return;
 
   tbody.innerHTML = '';
   let hasAny = false;
@@ -2844,11 +4176,21 @@ async function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbody
     let hasValue = false;
     const values = [];
 
-    for (let col = startCol; col <= endCol; col++) {
-      const globalIndex = rowIndex * (totalCols - 1) + (col - 1);
-      const val = data[globalIndex] || '';
-      values.push(val);
-      if (val !== '') hasValue = true;
+    if (hkCols) {
+      hkCols.forEach(c => {
+        // פלוגה מקורית: אותו אינדקס מספרי כמו תמיד בטבלת המנהל; פלוגה שנוספה: x<מזהה>_<שורה>
+        const k = c.x ? ('x' + c.id + '_' + rowIndex) : (rowIndex * (totalCols - 1) + (startCol - 1 + c.j));
+        const val = data[k] || '';
+        values.push(val);
+        if (val !== '') hasValue = true;
+      });
+    } else {
+      for (let col = startCol; col <= endCol; col++) {
+        const globalIndex = rowIndex * (totalCols - 1) + (col - 1);
+        const val = data[globalIndex] || '';
+        values.push(val);
+        if (val !== '') hasValue = true;
+      }
     }
 
     if (!hasValue) return;
@@ -2863,7 +4205,7 @@ async function buildHaktzaotRows(data, names, totalCols, startCol, endCol, tbody
   });
 
   if (!hasAny) {
-    const colSpan = (endCol - startCol + 2);
+    const colSpan = hkCols ? (hkCols.length + 1) : (endCol - startCol + 2);
     tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;">אין נתונים לשבוע זה</td></tr>`;
   }
 }
@@ -2888,17 +4230,24 @@ async function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
 
-  // מדלגים על כל מגע ב-DOM אם הנתונים המפורסמים זהים לגמרי למה שכבר מוצג - ראו _renderDataChanged
-  if (!_renderDataChanged('modiein_' + tbodyId, data)) return;
+  // עמודות הפלוגות לשבוע הזה (מקוריות שלא הוסרו + חדשות) - ראו "פלוגות דינמיות". הכותרת של
+  // טבלת ההקצאות נבנית מחדש לפי אותה תוכנית.
+  const hkTable = tbody.closest('table');
+  const hkDesc = hkTable ? _coDesc(hkTable.id) : null;
+  const hkPlan = hkDesc ? _coEnsureHkHead(hkTable, hkDesc, reqWeek, reqYear) : null;
+  const cos = hkPlan
+    ? hkPlan.cols.filter(c => c.t === 'co')
+    : Array.from({ length: companyCount }, (_, m) => ({ t: 'co', x: false, j: m, d: m }));
+  const N = companyCount;
+  const keyOf = (c, r) => (c.x ? 'x' + c.id + '_' + r : (r === 0 ? c.d : N + (r - 1) * (N + 1) + 1 + c.d));
 
-  const emptyHtml = `<tr><td colspan="${companyCount + 1}" style="text-align:center;">אין נתונים מאושרים לשבוע זה</td></tr>`;
+  // מדלגים על כל מגע ב-DOM אם הנתונים המפורסמים זהים לגמרי למה שכבר מוצג - ראו _renderDataChanged
+  if (!_renderDataChanged('modiein_' + tbodyId, { data, sig: hkPlan ? hkPlan.sig : '' })) return;
+
+  const emptyHtml = `<tr><td colspan="${cos.length + 1}" style="text-align:center;">אין נתונים מאושרים לשבוע זה</td></tr>`;
   if (!data) { tbody.innerHTML = emptyHtml; return; }
 
-  const keysWithData = Object.keys(data).filter(k => data[k] && data[k].trim() !== '');
-  if (keysWithData.length === 0) { tbody.innerHTML = emptyHtml; return; }
-
-  const maxIndex = Math.max(...keysWithData.map(Number));
-  const requiredRows = maxIndex < companyCount ? 1 : 2 + Math.floor((maxIndex - companyCount) / (companyCount + 1));
+  const requiredRows = _coModieinRowsNeeded({ baseN: N }, data, 1);
 
   // בונים את כל השורות ב-HTML לפני נגיעה ב-DOM (במעבר אחד, לא appendChild מצטבר) - כדי
   // שהחלפת התוכן תהיה אטומית ולא תגרום להבהוב מיותר.
@@ -2907,21 +4256,23 @@ async function renderHaktzaotModieinUnit(sourceTableId, tbodyId, companyCount = 
     if (r === 0) {
       let rowHtml = `<td class="test">נושא שבוע</td>`;
       let rowHasData = false;
-      for (let c = 0; c < companyCount; c++) {
-        const val = data[c] || '';
+      cos.forEach(c => {
+        const val = data[keyOf(c, 0)] || '';
         if (val) rowHasData = true;
         rowHtml += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;
-      }
+      });
       if (rowHasData) rowsHtml += `<tr class="special-row">${rowHtml}</tr>`;
     } else {
       let isEmpty = true;
-      let rowHtml = '';
-      for (let c = 0; c < companyCount + 1; c++) {
-        const idx = companyCount + (r - 1) * (companyCount + 1) + c;
-        const val = data[idx] || '';
+      // העמודה הראשונה בשורות הרגילות היא שדה חופשי (תיאור השורה) - נשמרת תמיד, בלי קשר לפלוגות
+      const labelVal = data[N + (r - 1) * (N + 1)] || '';
+      if (labelVal !== '') isEmpty = false;
+      let rowHtml = `<td style="text-align:center; font-weight:bold;">${escapeHtml(labelVal)}</td>`;
+      cos.forEach(c => {
+        const val = data[keyOf(c, r)] || '';
         if (val !== '') isEmpty = false;
         rowHtml += `<td style="text-align:center; font-weight:bold;">${escapeHtml(val)}</td>`;
-      }
+      });
       if (!isEmpty) rowsHtml += `<tr>${rowHtml}</tr>`;
     }
   }
@@ -2973,14 +4324,22 @@ function _applyNegativeHighlight(input) {
  * מריצה נוסחאות וחישובי סיכום, דרישה, ויסות ועודפים עבור שורה בטבלת קשר.
  * @param {HTMLTableRowElement} row - שורת הטבלה
  */
+// תא קלט של עמודה לפי תפקידה (data-role) וגדודה (data-bn) בשורה של טבלה משולבת - במקום אינדקס
+// עמודה קבוע: מיקום העמודות משתנה כשמוסיפים/מסירים פלוגות (ראו "פלוגות דינמיות").
+function _coRowInput(row, role, bn) {
+  const td = row.querySelector(bn ? `td[data-role="${role}"][data-bn="${bn}"]` : `td[data-role="${role}"]`);
+  return td ? td.querySelector('.cell-input') : null;
+}
+
 function recalcKesherRow(row) {
-  const groups = [
-    { companyCols: [1, 2, 3, 4, 5, 6, 7], demandCol: 8, regCol: 9, surplusCol: 10 },
-    { companyCols: [11, 12, 13, 14, 15, 16], demandCol: 17, regCol: 18, surplusCol: 19 },
-    { companyCols: [20, 21, 22, 23, 24, 25, 26], demandCol: 27, regCol: 28, surplusCol: 29 },
-    { companyCols: [30, 31, 32, 33, 34, 35, 36, 37], demandCol: 38, regCol: 39, surplusCol: 40 },
-    { companyCols: [41], demandCol: 42, regCol: 43, surplusCol: 44 }
-  ];
+  // כל גדוד: עמודות הפלוגות שלו (כולל פלוגות שנוספו, ללא אלה שהוסרו) + עמודות דרישה/וויסות/עודף
+  const groups = CO_BN_ORDER.map(bn => ({
+    bn,
+    companyInputs: Array.from(row.querySelectorAll(`td[data-role="co"][data-bn="${bn}"] .cell-input`)),
+    demandInput: _coRowInput(row, 'dem', bn),
+    regInput: _coRowInput(row, 'reg', bn),
+    surplusInput: _coRowInput(row, 'sur', bn)
+  }));
 
   let totalRegulatedAll = 0;
   let hasAnyCompanyInputOverall = false;
@@ -2989,8 +4348,7 @@ function recalcKesherRow(row) {
     let groupDemand = 0;
     let hasGroupCompanyInput = false;
 
-    group.companyCols.forEach(colIdx => {
-      const input = row.cells[colIdx]?.querySelector('.cell-input');
+    group.companyInputs.forEach(input => {
       if (input && input.value.trim() !== '') {
         const val = parseFloat(input.value);
         if (!isNaN(val)) {
@@ -3011,14 +4369,11 @@ function recalcKesherRow(row) {
 
     totalRegulatedAll += groupDemand;
 
-    const demandInput = row.cells[group.demandCol]?.querySelector('.cell-input');
+    const { demandInput, regInput, surplusInput } = group;
     if (demandInput) {
       demandInput.value = hasGroupCompanyInput ? groupDemand : '';
     }
 
-    const regInput = row.cells[group.regCol]?.querySelector('.cell-input');
-    const surplusInput = row.cells[group.surplusCol]?.querySelector('.cell-input');
-    
     if (surplusInput && regInput) {
       const regValRaw = regInput.value ? regInput.value.trim() : '';
       if (regValRaw !== '' && !isNaN(parseFloat(regValRaw))) {
@@ -3033,13 +4388,8 @@ function recalcKesherRow(row) {
     }
   });
 
-  const totalUnitCol = 45;
-  const failCol = 46;
-  const totalRegulatedCol = 47;
-  const excessCol = 48;
-
-  const totalUnitInput = row.cells[totalUnitCol]?.querySelector('.cell-input');
-  const failInput = row.cells[failCol]?.querySelector('.cell-input');
+  const totalUnitInput = _coRowInput(row, 'tu');
+  const failInput = _coRowInput(row, 'fail');
 
   const totalUnitRaw = totalUnitInput ? totalUnitInput.value.trim() : '';
   const failRaw = failInput ? failInput.value.trim() : '';
@@ -3049,12 +4399,12 @@ function recalcKesherRow(row) {
 
   const hasBaseData = totalUnitRaw !== '' || failRaw !== '' || hasAnyCompanyInputOverall;
 
-  const totalRegInput = row.cells[totalRegulatedCol]?.querySelector('.cell-input');
+  const totalRegInput = _coRowInput(row, 'treg');
   if (totalRegInput) {
     totalRegInput.value = hasAnyCompanyInputOverall ? totalRegulatedAll : '';
   }
 
-  const excessInput = row.cells[excessCol]?.querySelector('.cell-input');
+  const excessInput = _coRowInput(row, 'exc');
   if (excessInput) {
     if (hasBaseData) {
       excessInput.value = totalUnit - fail - totalRegulatedAll;
@@ -3074,8 +4424,15 @@ function recalcRow(row, config) {
   const { startCol, endCol, totalUnitCol, failCol, totalRegulatedCol, availableCol, excessCol } = config;
   let sum = 0, hasAnyValue = false;
 
-  for (let i = startCol; i <= endCol; i++) {
-    const input = row.cells[i]?.querySelector('.cell-input');
+  // שורה בטבלה משולבת שנבנתה לפי תוכנית עמודות (אופטיקה): העמודות נמצאות לפי תפקידן (data-role),
+  // לא לפי אינדקס קבוע - ראו "פלוגות דינמיות". שורה בלי data-role (טבלאות אחרות) - התנהגות ישנה.
+  const roleBased = !!row.querySelector('td[data-role]');
+  const companyInputs = roleBased
+    ? Array.from(row.querySelectorAll('td[data-role="co"] .cell-input'))
+    : Array.from({ length: Math.max(0, endCol - startCol + 1) }, (_, k) => row.cells[startCol + k]?.querySelector('.cell-input'));
+  const cellInput = (role, col) => roleBased ? _coRowInput(row, role) : (col === undefined ? null : row.cells[col]?.querySelector('.cell-input'));
+
+  for (const input of companyInputs) {
     if (input && input.value.trim() !== '') {
       const val = parseFloat(input.value);
       if (!isNaN(val)) {
@@ -3092,21 +4449,21 @@ function recalcRow(row, config) {
     }
   }
 
-  const totalUnitInput = row.cells[totalUnitCol]?.querySelector('.cell-input');
-  const failInput = row.cells[failCol]?.querySelector('.cell-input');
-  
+  const totalUnitInput = cellInput('tu', totalUnitCol);
+  const failInput = cellInput('fail', failCol);
+
   const totalUnitRaw = totalUnitInput ? totalUnitInput.value.trim() : '';
   const failRaw = failInput ? failInput.value.trim() : '';
-  
+
   const totalUnit = (totalUnitRaw !== '' && !isNaN(parseFloat(totalUnitRaw))) ? parseFloat(totalUnitRaw) : 0;
   const fail = (failRaw !== '' && !isNaN(parseFloat(failRaw))) ? parseFloat(failRaw) : 0;
 
   const hasBaseData = totalUnitRaw !== '' || failRaw !== '' || hasAnyValue;
 
-  const totalRegInput = row.cells[totalRegulatedCol]?.querySelector('.cell-input');
+  const totalRegInput = cellInput('treg', totalRegulatedCol);
   if (totalRegInput) totalRegInput.value = hasAnyValue ? sum : '';
 
-  const availableInput = row.cells[availableCol]?.querySelector('.cell-input');
+  const availableInput = cellInput('avail', availableCol);
   if (availableInput) {
     if (totalUnitRaw !== '' || failRaw !== '') {
       availableInput.value = totalUnit - fail;
@@ -3116,7 +4473,7 @@ function recalcRow(row, config) {
     _applyNegativeHighlight(availableInput);
   }
 
-  const excessInput = row.cells[excessCol]?.querySelector('.cell-input');
+  const excessInput = cellInput('exc', excessCol);
   if (excessInput) {
     if (hasBaseData) {
       excessInput.value = totalUnit - fail - sum;
@@ -3139,7 +4496,7 @@ function recalcAll(tableId, config) {
   for (let row of table.tBodies[0].rows) {
     if (row.sectionRowIndex === 0 || row.cells[0]?.querySelector('textarea')) continue;
     
-    if (tableId === 'keshertable' && row.cells.length >= 49) {
+    if (tableId === 'keshertable' && row.querySelector('td[data-role]')) {
       recalcKesherRow(row);
     } else if (config) {
       recalcRow(row, config);
@@ -3198,18 +4555,18 @@ function initTableListeners() {
 
 const SUB_TABLE_MAPS = {
   keshertable: [
-    { sourceTableId: 'esukkeshertable', targetStartCol: 1, sourceCols: 7 },
-    { sourceTableId: 'kkeshertable', targetStartCol: 11, sourceCols: 6 },
-    { sourceTableId: 'pkeshertable', targetStartCol: 20, sourceCols: 7 },
-    { sourceTableId: 'tkeshertable', targetStartCol: 30, sourceCols: 8 },
-    { sourceTableId: 'bkeshertable', targetStartCol: 41, sourceCols: 1 }
+    { sourceTableId: 'esukkeshertable', bn: 'esuk', targetStartCol: 1, sourceCols: 7 },
+    { sourceTableId: 'kkeshertable', bn: 'hirg', targetStartCol: 11, sourceCols: 6 },
+    { sourceTableId: 'pkeshertable', bn: 'pikud', targetStartCol: 20, sourceCols: 7 },
+    { sourceTableId: 'tkeshertable', bn: 'tazam', targetStartCol: 30, sourceCols: 8 },
+    { sourceTableId: 'bkeshertable', bn: 'bahalag', targetStartCol: 41, sourceCols: 1 }
   ],
   optictable: [
-    { sourceTableId: 'esukoptictable', targetStartCol: 1, sourceCols: 7 },
-    { sourceTableId: 'koptictable', targetStartCol: 8, sourceCols: 6 },
-    { sourceTableId: 'poptictable', targetStartCol: 14, sourceCols: 7 },
-    { sourceTableId: 'toptictable', targetStartCol: 21, sourceCols: 8 },
-    { sourceTableId: 'boptictable', targetStartCol: 29, sourceCols: 1 }
+    { sourceTableId: 'esukoptictable', bn: 'esuk', targetStartCol: 1, sourceCols: 7 },
+    { sourceTableId: 'koptictable', bn: 'hirg', targetStartCol: 8, sourceCols: 6 },
+    { sourceTableId: 'poptictable', bn: 'pikud', targetStartCol: 14, sourceCols: 7 },
+    { sourceTableId: 'toptictable', bn: 'tazam', targetStartCol: 21, sourceCols: 8 },
+    { sourceTableId: 'boptictable', bn: 'bahalag', targetStartCol: 29, sourceCols: 1 }
   ]
 };
 
@@ -3257,18 +4614,22 @@ function checkRequirementChanges(tableId) {
     const subSavedRaw = localStorage.getItem(subKey);
     const subData = subSavedRaw ? JSON.parse(subSavedRaw) : {};
 
+    const coDesc = _coDesc(tableId);
+    const seg = coDesc && coDesc.segs ? coDesc.segs.find(s => s.bn === config.bn) : null;
     for (let r = 0; r < targetRows.length; r++) {
       const row = targetRows[r];
       if (r === 0 || row.classList.contains('topic-row') || row.classList.contains('special-note-row') || row.cells[0]?.querySelector('textarea')) {
         continue;
       }
-      for (let c = 0; c < config.sourceCols; c++) {
-        const subIndex = r * config.sourceCols + c;
-        const subVal = subData[subIndex] !== undefined ? String(subData[subIndex]).trim() : '';
-        const targetCell = row.cells[config.targetStartCol + c];
-        if (!targetCell) continue;
+      // תאי הפלוגות של הגדוד הזה בשורה (מקוריות + חדשות; בלי אלה שהוסרו) לפי תפקיד/גדוד, לא
+      // לפי אינדקס עמודה קבוע. מפתח הנתון ביחידה: מקורית = שורה*עמודות+עמודה, חדשה = x<מזהה>_<שורה>.
+      row.querySelectorAll(`td[data-role="co"][data-bn="${config.bn}"]`).forEach(targetCell => {
         const input = targetCell.querySelector('.cell-input');
-        if (!input) continue;
+        if (!input) return;
+        const subIndex = input.dataset.xc !== undefined
+          ? 'x' + input.dataset.xc + '_' + r
+          : r * config.sourceCols + (+input.dataset.d - (seg ? seg.d0 : 0));
+        const subVal = subData[subIndex] !== undefined ? String(subData[subIndex]).trim() : '';
 
         input.dataset.subTableId = config.sourceTableId;
         input.dataset.subIndex = subIndex;
@@ -3295,7 +4656,7 @@ function checkRequirementChanges(tableId) {
           targetCell.classList.remove('req-changed-td');
           input.removeAttribute('title');
         }
-      }
+      });
     }
   });
 }
@@ -3441,6 +4802,8 @@ function paintBlockedCell(tbody, day, startRow, span, text) {
   }
 }
 
+let reqBlockTextPersistTimer = null;
+
 /** מציירת בלוק "ממתין לאישור" של היחידה - ידית גרירה, אייקון מחיקה, textarea לעריכת הטקסט. */
 function paintPendingBlock(tbody, block, idx) {
   const cell = tbody.querySelector(`td.req-cell[data-row="${block.startRow}"][data-col="${block.day}"]`);
@@ -3477,6 +4840,12 @@ function paintPendingBlock(tbody, block, idx) {
     // רישום מדורג (לא מיידי) - כמו הקלדה בתאי הגריד של המנהל (generateTimeSlots) - כדי
     // שכל תו לא ייצור צעד ביטול נפרד, אבל Ctrl+Z עדיין יחזיר טקסט שהוקלד ולא רק פעולות בדידות.
     if (typeof _recordUndoChange === 'function') _recordUndoChange();
+    // שמירת הטיוטה (לא ציור מחדש - זה היה מאבד פוקוס/מיקום סמן באמצע הקלדה) בדיליי קצר,
+    // כדי שטקסט שהוקלד בבלוק חדש (בלי reqId עדיין) לא ילך לאיבוד במעבר לעמוד/שבוע אחר לפני
+    // ששמרו בפועל (ראו _persistUnitStagedDraft/getUnitStagedDraftKey).
+    clearTimeout(reqBlockTextPersistTimer);
+    const persistType = tbody.id.includes('shekem') ? 'shekem' : 'hadrag';
+    reqBlockTextPersistTimer = setTimeout(() => _persistUnitStagedDraft(persistType), 400);
   });
   // ממקדים את reqSelectedCell גם דרך פוקוס רגיל על תיבת הטקסט (לא רק קליק ימני) - כדי ש-Ctrl+C
   // יעבוד באופן טבעי מיד אחרי לחיצה/הקלדה בבלוק, בלי צורך לעבור דרך תפריט קליק ימני קודם.
@@ -3519,6 +4888,8 @@ async function paintUnitRequestGrid(type) {
     if (typeof updateGlobalExportButtonStatus === 'function') updateGlobalExportButtonStatus();
     return;
   }
+
+  _persistUnitStagedDraft(type);
 
   for (const facility of facilities) {
     const tbody = document.getElementById('req-body-' + facility);
@@ -3621,8 +4992,14 @@ async function loadUnitRequestGridState(type) {
     };
   });
 
-  if (isHadrag) hadragStagedBlocks = staged;
-  else shekemStagedBlocks = staged;
+  // בלוקים שנוצרו/הוזזו בגריד אך עדיין לא נשמרו בפועל (אין להם reqId, ולכן לא מופיעים כלל
+  // ב-allRequests למעלה) - נשמרים בנפרד (ראו getUnitStagedDraftKey/paintUnitRequestGrid) כדי
+  // שמעבר לעמוד/שבוע אחר וחזרה לא ימחק אותם, ומוחזרים כאן לגריד.
+  const draftBlocks = await loadUnitStagedDraft(type, unitClass, reqWeek, reqYear);
+  if (reqWeek !== currentWeek || reqYear !== currentYear) return;
+
+  if (isHadrag) hadragStagedBlocks = [...staged, ...draftBlocks];
+  else shekemStagedBlocks = [...staged, ...draftBlocks];
 
   await paintUnitRequestGrid(type);
 }
@@ -4096,6 +5473,15 @@ async function commitHadragStagedBlocks() {
   });
 
   await saveHadragRequests(requests, currentWeek, currentYear);
+  // מרוקנים במפורש את אחסון הטיוטה (ראו getUnitStagedDraftKey/_persistUnitStagedDraft) - כל
+  // הבלוקים שהיו בה הפכו הרגע לרשומות בקשה אמיתיות (עם reqId). בלי הריקון המפורש הזה,
+  // loadUnitRequestGridState (שרץ מיד אחרי, דרך renderHadragRequestsList) היה טוען את
+  // הטיוטה הישנה בנוסף לרשומה שכבר קיימת עכשיו ב-allRequests - ומשכפל את אותו בלוק פעמיים.
+  const commitPage = window.location.pathname.split('/').pop();
+  const commitUnitClass = PAGE_UNIT_MAP[commitPage];
+  if (commitUnitClass) {
+    await DataService.setItem(getUnitStagedDraftKey('hadrag', commitUnitClass, currentWeek, currentYear), []);
+  }
   if (typeof renderHadragRequestsList === 'function') await renderHadragRequestsList();
   return true;
 }
@@ -4134,8 +5520,54 @@ async function commitShekemStagedBlocks() {
   });
 
   await saveShekemRequests(requests, currentWeek, currentYear);
+  // מרוקנים במפורש את אחסון הטיוטה - ראו הערה מפורטת ב-commitHadragStagedBlocks.
+  const commitPage = window.location.pathname.split('/').pop();
+  const commitUnitClass = PAGE_UNIT_MAP[commitPage];
+  if (commitUnitClass) {
+    await DataService.setItem(getUnitStagedDraftKey('shekem', commitUnitClass, currentWeek, currentYear), []);
+  }
   if (typeof renderShekemRequestsList === 'function') await renderShekemRequestsList();
   return true;
+}
+
+/**
+ * מפתח האחסון של "טיוטת בלוקים ממתינים" של יחידה - בלוקים שנוצרו/הוזזו בגריד הבקשות שלה
+ * אך עדיין לא נשמרו בפועל (אין להם reqId, ולכן לא קיימים ברשימת הבקשות עצמה בכלל). בלי
+ * המפתח הזה, מעבר לעמוד/שבוע אחר וחזרה היה מוחק לגמרי בלוק כזה - loadUnitRequestGridState
+ * בונה את hadragStagedBlocks/shekemStagedBlocks מחדש רק מתוך רשימת הבקשות השמורות, שלבלוק
+ * שטרם נשמר אין בה כלל ייצוג (אפיון QA: "השיבוץ נמחק... אני רוצה שהוא ישאר, פשוט עוד לא
+ * ישלח עד שלוחצים שמור"). ראו _persistUnitStagedDraft/_loadUnitStagedDraft.
+ * @param {'hadrag'|'shekem'} type
+ * @param {string} unitClass
+ * @param {number} week
+ * @param {number} year
+ * @returns {string}
+ */
+function getUnitStagedDraftKey(type, unitClass, week, year) {
+  return `${type}StagedDraft_${unitClass}_week${week}_year${year}`;
+}
+
+/** טוענת את בלוקי הטיוטה הממתינים (בלי reqId) שנשמרו עבור יחידה/שבוע/שנה נתונים - ריק אם אין. */
+async function loadUnitStagedDraft(type, unitClass, week, year) {
+  const list = await DataService.getItem(getUnitStagedDraftKey(type, unitClass, week, year));
+  return Array.isArray(list) ? list : [];
+}
+
+/**
+ * שומרת את חלקו של הגריד שעדיין לא נשמר בפועל (בלוקים בלי reqId) לאחסון בר-קיימא - קריאה
+ * "חסרת מגע" ב-DOM בכוונה (לא קוראת ל-paintUnitRequestGrid), כדי שאפשר יהיה לקרוא לה גם
+ * תוך כדי הקלדה בבלוק (ראו paintPendingBlock) בלי לגרום לבנייה-מחדש של הגריד שהייתה מאבדת
+ * פוקוס/מיקום סמן באמצע הקלדה. "מנוקה" אוטומטית אחרי שמירה בפועל - ברגע שלכל הבלוקים יש
+ * reqId, ה-uncommitted מתרוקן ונשמר ריק, בלי צעד ניקוי נפרד.
+ * @param {'hadrag'|'shekem'} type
+ */
+function _persistUnitStagedDraft(type) {
+  const stagedArr = type === 'hadrag' ? hadragStagedBlocks : shekemStagedBlocks;
+  const currentPage = window.location.pathname.split('/').pop();
+  const unitClass = PAGE_UNIT_MAP[currentPage];
+  if (!unitClass) return;
+  const uncommitted = stagedArr.filter(b => !b.reqId);
+  DataService.setItem(getUnitStagedDraftKey(type, unitClass, currentWeek, currentYear), uncommitted);
 }
 
 /**
@@ -4916,7 +6348,7 @@ function addDirectEntry(type) {
   for (let r = startRow; r <= endRow; r++) {
     const cell = tbody.querySelector(`td.platoon-cell[data-row="${r}"][data-col="${day}"]`);
     if (!cell) continue;
-    if (cell.style.display === 'none' || cell.rowSpan > 1 || cell.classList.contains('merged') || ALL_COLOR_CLASSES.some(cls => cell.classList.contains(cls))) {
+    if (cell.style.display === 'none' || cell.rowSpan > 1 || cell.classList.contains('merged') || PERSISTABLE_CELL_CLASSES.some(cls => cell.classList.contains(cls))) {
       hasConflict = true;
     }
     const input = cell.querySelector('textarea');
@@ -4986,7 +6418,7 @@ document.addEventListener('mousedown', function(e) {
   
   const ta = cell.querySelector('textarea');
   const hasContent = ta && ta.value.trim() !== '';
-  const hasColor = ALL_COLOR_CLASSES.some(cls => cell.classList.contains(cls));
+  const hasColor = PERSISTABLE_CELL_CLASSES.some(cls => cell.classList.contains(cls));
 
   if (!hasContent && !hasColor && cell.style.display !== 'none') {
     isDragging = true;
@@ -5023,7 +6455,7 @@ function updateHadragDragExtent(clientY) {
     if (r > prevEndRow) {
       const ta = c.querySelector('textarea');
       const hasContent = ta && ta.value.trim() !== '';
-      const hasColor = ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls));
+      const hasColor = PERSISTABLE_CELL_CLASSES.some(cls => c.classList.contains(cls));
       if (c.rowSpan > 1 || hasContent || hasColor) break;
     }
     maxValidRow = r;
@@ -6180,7 +7612,7 @@ function pasteOrMoveBlock(targetCell, dataObj, preventOverwrite = false) {
       if (c.style.display === 'none') { hasConflict = true; break; }
       const ta = c.querySelector('textarea');
       if (ta && ta.value.trim() !== '') { hasConflict = true; break; }
-      if (typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
+      if (typeof PERSISTABLE_CELL_CLASSES !== 'undefined' && PERSISTABLE_CELL_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
     }
     if (hasConflict) {
       alert('לא ניתן לבצע: השטח חופף לשיבוץ קיים. נא לפנות את השעות תחילה.');
@@ -6279,7 +7711,7 @@ document.addEventListener('mouseover', function(e) {
   if (cell && typeof isDragging !== 'undefined' && !isDragging) {
     const ta = cell.querySelector('textarea');
     const hasContent = ta && ta.value.trim() !== '';
-    const hasColor = typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => cell.classList.contains(cls));
+    const hasColor = typeof PERSISTABLE_CELL_CLASSES !== 'undefined' && PERSISTABLE_CELL_CLASSES.some(cls => cell.classList.contains(cls));
     if (hasContent || hasColor) {
       cell.setAttribute('draggable', 'true');
     } else {
@@ -6412,7 +7844,7 @@ document.addEventListener('drop', function(e) {
     if (c.style.display === 'none') { hasConflict = true; break; }
     const ta = c.querySelector('textarea');
     if (ta && ta.value.trim() !== '') { hasConflict = true; break; }
-    if (typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
+    if (typeof PERSISTABLE_CELL_CLASSES !== 'undefined' && PERSISTABLE_CELL_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
   }
 
   if (hasConflict) {
@@ -6716,7 +8148,7 @@ document.addEventListener('mouseup', function(e) {
         if (c.style.display === 'none') { hasConflict = true; break; }
         const taCheck = c.querySelector('textarea');
         if (taCheck && taCheck.value.trim() !== '') { hasConflict = true; break; }
-        if (typeof ALL_COLOR_CLASSES !== 'undefined' && ALL_COLOR_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
+        if (typeof PERSISTABLE_CELL_CLASSES !== 'undefined' && PERSISTABLE_CELL_CLASSES.some(cls => c.classList.contains(cls))) { hasConflict = true; break; }
       }
     }
 
@@ -6881,10 +8313,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const td = e.target.closest('td');
         if (!td) return;
 
-        // אינדקס לפי סדר המסמך בפועל בתוך .cell-input (זהה למנגנון readTableData/הפרסום) -
-        // ולא חישוב שורה*עמודה, שמתפספס בטבלאות עם תא נוסף שאינו קלט (כמו עמודת סה"כ).
-        const globalIndex = Array.from(table.querySelectorAll('.cell-input')).indexOf(e.target);
-        if (globalIndex < 0) return;
+        // מפתח האחסון של השדה (זהה למנגנון readTableData/הפרסום): בטבלאות עם מבנה עמודות דינמי -
+        // המפתח הייחודי של השדה; בשאר - אינדקס לפי סדר המסמך בתוך .cell-input (ולא חישוב
+        // שורה*עמודה, שמתפספס בטבלאות עם תא נוסף שאינו קלט, כמו עמודת סה"כ).
+        const inputDesc = _coDesc(tableId);
+        const rowEl = e.target.closest('tr');
+        const globalIndex = inputDesc && rowEl
+          ? _coKeyFor(inputDesc, e.target, rowEl.sectionRowIndex)
+          : Array.from(table.querySelectorAll('.cell-input')).indexOf(e.target);
+        if (globalIndex === undefined || globalIndex === null || globalIndex < 0 || Number.isNaN(globalIndex)) return;
 
         const managerPublishedKey = getStorageKey(tableId, currentWeek, currentYear) + '_published';
         let managerPublishedData = {};

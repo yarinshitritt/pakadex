@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="style.css?v=110">
-  <title>PAKADEX - טבלאות אקסל</title>
+  <link rel="stylesheet" href="style.css?v=130">
+  <title>PAKADEX - טבלאות גאנט</title>
   <style>
     .excel-note {
       background: #f0f9ff; border: 1px solid #bae6fd; color: #075985;
@@ -72,7 +72,7 @@
     <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
 
       <div class="excel-note">
-        📅 הניווט מדלג 3 שבועות בכל פעם, אבל לכל שבוע יש כפתור וקובץ אקסל נפרדים משלו - תלחץ על מספר השבוע כדי לבחור אותו, ואז ניתן להעלות/לפתוח/למחוק את קובץ האקסל של אותו שבוע בלבד (הקובץ יורד למחשב ונפתח בתוכנת האקסל, לא בתוך האתר). העלאה/מחיקה של קובץ זמינה למנהלי מערכת בלבד.
+        📅 לכל שבוע יש כפתור וקובץ גאנט נפרדים משלו - תלחץ על מספר השבוע כדי לבחור אותו (הוא יעבור להתחלת הרשימה, ואחריו 2 השבועות הבאים), ואז ניתן להעלות/לפתוח/למחוק את קובץ הגאנט של אותו שבוע בלבד (הקובץ יורד למחשב ונפתח בתוכנת הגאנט, לא בתוך האתר). העלאה/מחיקה של קובץ זמינה למנהלי מערכת בלבד.
       </div>
 
       <div class="excel-weekbar">
@@ -92,17 +92,17 @@
         <div class="excel-empty" id="excelEmpty">
           <div class="big">📊</div>
           <div style="font-weight:800; font-size:18px; color:#64748b;">אין קובץ לשבוע זה</div>
-          <div style="margin-top:6px;">לחץ "העלה קובץ לשבוע זה" כדי לטעון גיליון אקסל מהמחשב.</div>
+          <div style="margin-top:6px;">לחץ "העלה קובץ לשבוע זה" כדי לטעון גיליון גאנט מהמחשב.</div>
         </div>
       </div>
 
     </div>
   </div>
 
-  <script src="config.js?v=110"></script>
-  <script src="sharepointService.js?v=110"></script>
-  <script src="auth.js?v=110"></script>
-  <script src="script.js?v=110"></script>
+  <script src="config.js?v=130"></script>
+  <script src="sharepointService.js?v=130"></script>
+  <script src="auth.js?v=130"></script>
+  <script src="script.js?v=130"></script>
 
   <script>
     // הניווט (הבא/הקודם) עדיין מדלג 3 שבועות בכל פעם - אבל כל שבוע בתוך הטווח מקבל כפתור
@@ -156,8 +156,14 @@
       await loadGroupFile();
     }
 
+    // בחירת שבוע מזיזה את תחילת הרשימה לשבוע שנבחר (הוא הופך לראשון, ואחריו 2 השבועות
+    // הבאים) - כלומר הרשימה "מתגלגלת" עם השבוע הנבחר, ולא רק מסמנת אותו בתוך טווח קבוע.
     async function selectWeek(week) {
-      selectedWeek = week;
+      baseWeek = week;
+      const maxWeek = (typeof getWeeksInYear === 'function') ? getWeeksInYear(curYear) : 52;
+      if (baseWeek < 1) baseWeek = 1;
+      if (baseWeek > maxWeek) baseWeek = maxWeek;
+      selectedWeek = baseWeek;
       await renderWeekButtons();
       await loadGroupFile();
     }
@@ -214,7 +220,7 @@
     }
 
     // מציגה קישור לפתיחת/הורדת הקובץ (לא מציגה את תוכנו באתר) - לחיצה מורידה את הקובץ
-    // למחשב, ומשם הוא נפתח בתוכנת האקסל של המשתמש כרגיל.
+    // למחשב, ומשם הוא נפתח בתוכנת הגאנט של המשתמש כרגיל.
     async function loadGroupFile() {
       const viewer = document.getElementById('excelViewer');
       const label = document.getElementById('fileNameLabel');
@@ -224,18 +230,18 @@
       const stored = await getStoredFile();
       if (!stored) {
         label.textContent = '';
-        viewer.innerHTML = '<div class="excel-empty"><div class="big">📊</div><div style="font-weight:800; font-size:18px; color:#64748b;">אין קובץ ל' + rangeText + '</div><div style="margin-top:6px;">' + (canManageExcel() ? 'לחץ "העלה קובץ לשבוע זה" כדי לטעון גיליון אקסל מהמחשב.' : 'המנהל טרם העלה קובץ לשבוע זה.') + '</div></div>';
+        viewer.innerHTML = '<div class="excel-empty"><div class="big">📊</div><div style="font-weight:800; font-size:18px; color:#64748b;">אין קובץ ל' + rangeText + '</div><div style="margin-top:6px;">' + (canManageExcel() ? 'לחץ "העלה קובץ לשבוע זה" כדי לטעון גיליון גאנט מהמחשב.' : 'המנהל טרם העלה קובץ לשבוע זה.') + '</div></div>';
         return;
       }
 
-      label.textContent = '📄 ' + (stored.name || 'קובץ אקסל');
+      label.textContent = '📄 ' + (stored.name || 'קובץ גאנט');
 
       viewer.innerHTML = `
         <div class="excel-empty">
           <div class="big">📗</div>
-          <div style="font-weight:800; font-size:18px; color:#334155;">${escapeHtml(stored.name) || 'קובץ אקסל'}</div>
-          <div style="margin-top:6px;">הקובץ נשמר עבור ${rangeText}. לחיצה על הכפתור תוריד אותו למחשב ותפתח אותו בתוכנת האקסל.</div>
-          <button class="open-file-btn" onclick="downloadCurrentFile()">📗 פתח באקסל</button>
+          <div style="font-weight:800; font-size:18px; color:#334155;">${escapeHtml(stored.name) || 'קובץ גאנט'}</div>
+          <div style="margin-top:6px;">הקובץ נשמר עבור ${rangeText}. לחיצה על הכפתור תוריד אותו למחשב ותפתח אותו בתוכנת הגאנט.</div>
+          <button class="open-file-btn" onclick="downloadCurrentFile()">📗 פתח בגאנט</button>
         </div>`;
     }
 
@@ -261,7 +267,7 @@
     async function deleteCurrentFile() {
       if (!canManageExcel()) return;
       if (!(await getStoredFile())) { alert('אין קובץ לשבוע זה.'); return; }
-      if (!confirm('למחוק את קובץ האקסל של שבוע ' + selectedWeek + '?')) return;
+      if (!confirm('למחוק את קובץ הגאנט של שבוע ' + selectedWeek + '?')) return;
       const key = excelKey(selectedWeek, curYear);
       if (typeof DataService !== 'undefined') { await DataService.setItem(key, null); }
       else { localStorage.removeItem(key); }

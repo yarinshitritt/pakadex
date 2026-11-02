@@ -951,3 +951,167 @@ body.readonly-mode .hipok-delete-btn,
 body.readonly-mode .hipok-choice-btn {
   display: none !important;
 }
+
+/* ================== ניהול פלוגות (הוסף / הסר פלוגה) - מנהל בלבד ==================
+   כפתורים בשורת הכלים (במיכל נפרד לצד כפתורי הקטגוריות) + חלונות הדו-שיח שלהם. */
+.company-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #1e293b;
+  padding: 4px;
+  border-radius: 10px;
+}
+.company-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.company-btn-add { background-color: #16a34a; }
+.company-btn-add:hover { background-color: #15803d; }
+.company-btn-remove { background-color: #dc2626; }
+.company-btn-remove:hover { background-color: #b91c1c; }
+
+.co-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.co-modal {
+  position: relative;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  width: min(560px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 22px 24px 18px;
+  direction: rtl;
+  text-align: right;
+}
+.co-modal-close {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  border: none;
+  background: none;
+  font-size: 26px;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+}
+.co-modal-close:hover { color: #0f172a; }
+.co-modal-title { margin: 0 0 4px; font-size: 19px; font-weight: 800; }
+.co-modal-sub { margin: 0 0 14px; color: #475569; font-size: 14px; }
+.co-modal-note { margin: 10px 0 0; color: #0369a1; font-size: 13px; font-weight: 600; min-height: 18px; }
+.co-modal-actions { display: flex; justify-content: flex-start; gap: 8px; margin-top: 16px; }
+
+.co-bn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.co-bn-btn {
+  padding: 14px 10px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #000000;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.co-bn-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+.co-bn-btn-esuk { background: #fbc02d; }
+.co-bn-btn-hirg { background: #66bb6a; }
+.co-bn-btn-pikud { background: #64b5f6; }
+.co-bn-btn-tazam { background: #ba68c8; }
+.co-bn-btn-bahalag { background: #ffa726; }
+
+.co-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.co-input:focus { outline: none; border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18); }
+.co-input-sm { width: 70px; text-align: center; }
+.co-input-md { width: 90px; text-align: center; }
+.co-radio { display: block; margin: 8px 0; font-size: 15px; cursor: pointer; }
+.co-radio input { margin-left: 8px; }
+.co-weeks-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; }
+
+.co-btn {
+  height: 38px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+.co-btn:disabled { opacity: 0.6; cursor: wait; }
+.co-btn-primary { background: #0284c7; color: #ffffff; }
+.co-btn-primary:hover { background: #0369a1; }
+.co-btn-secondary { background: #e2e8f0; color: #0f172a; }
+.co-btn-secondary:hover { background: #cbd5e1; }
+.co-btn-danger { background: #dc2626; color: #ffffff; }
+.co-btn-danger:hover { background: #b91c1c; }
+.co-btn-sm { height: 30px; padding: 0 14px; font-size: 13px; }
+
+.co-rm-list { display: flex; flex-direction: column; gap: 10px; }
+.co-rm-group { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.co-rm-group-title { padding: 6px 12px; font-weight: 800; font-size: 14px; background: #f1f5f9; }
+.co-rm-row { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-top: 1px solid #f1f5f9; }
+.co-rm-name { font-weight: 700; flex: 0 0 auto; min-width: 110px; }
+.co-rm-tag { flex: 1; color: #64748b; font-size: 12.5px; }
+.co-rm-empty { padding: 6px 12px; color: #94a3b8; font-size: 13px; }
+
+@media print { .company-actions, .co-modal-overlay { display: none !important; } }
+.company-btn-summary { background-color: #475569; }
+.company-btn-summary:hover { background-color: #334155; }
+
+/* פרטי קשר לתקלות - מוצגים לצד חיווי המשתמש (אודות המשתמש) בכותרת העליונה */
+.user-chip-wrap { display: flex; align-items: center; gap: 12px; }
+.support-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 3px 10px;
+  border-right: 2px solid #334155;
+}
+.support-note-title { color: #fbbf24; font-weight: 800; }
+.support-note-sep { color: #475569; }
+@media print { .support-note { display: none !important; } }
+
+/* "סודי" מרוכז בדיוק באמצע העמוד (ולא "באמצע הפנוי" בין הצדדים, שהיה זז לפי רוחב שאר הרכיבים).
+   בחלון צר, שבו הוא היה מתנגש בפרטי הקשר/הלוגו, חוזר למיקום הרגיל בזרימה. */
+.container1 { position: relative; }
+.container1 > .classification-banner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+@media (max-width: 1320px) {
+  .container1 > .classification-banner { position: static; transform: none; }
+}

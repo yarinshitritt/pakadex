@@ -330,11 +330,35 @@ const DataService = {
   _groupIdCache: {},
 
   /**
+   * מנקה מחרוזת השוואה משני מקורות "רעש" נפוצים בשמות שמערבבים לטינית ועברית (בדיוק
+   * המצב של "PAKADEX חברי"): תווי כיווניות בלתי-נראים לגמרי (LRM/RLM/הטבעות/בידודי
+   * כיווניות/BOM) ש-Windows/SharePoint לפעמים מטביעים אוטומטית כשמחברים טקסט LTR
+   * ו-RTL יחד כדי להבטיח תצוגה נכונה, וגם רווחים כפולים/מובילים/סוגרים - כל אלה
+   * בלתי-נראים לגמרי בצילום מסך אבל שוברים השוואת מחרוזות רגילה (===).
+   */
+  _normalizeGroupTitle(s) {
+    // ​-‏: zero-width space/non-joiner/joiner + LRM/RLM
+    // ‪-‮: LRE/RLE/PDF/LRO/RLO (הטבעות/דריסות כיווניות)
+    // ⁦-⁩: LRI/RLI/FSI/PDI (בידודי כיווניות)
+    // ﻿: BOM / zero-width no-break space
+    return String(s || '')
+      .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  },
+
+  /**
    * פותרת שם קבוצת SharePoint למספר ה-ID המספרי שלה, דרך רשימת כל קבוצות האתר
    * (_api/web/sitegroups - כתובת ASCII קבועה; השם בעברית מגיע רק בתוך גוף התשובה,
    * לא בתוך ה-URL של הבקשה) - כדי לאפשר קריאת sitegroups(ID) שאינה תלויה בכלל בשם
    * הקבוצה בתוך נתיב ה-URL. מוחזר null אם הקבוצה לא נמצאה או שהקריאה נכשלה, ואז
    * הקוד הקורא נופל בחזרה לנתיב getbyname הישן.
+   * ההשוואה עצמה מנורמלת (ראו _normalizeGroupTitle) ולא === גולמי - כי שם קבוצה
+   * שמערבב "PAKADEX" (לטיני) עם מילה עברית (למשל "PAKADEX חברי") נראה תקין וזהה
+   * לחלוטין בכל צילום מסך, אבל בפועל עלול להכיל תו כיווניות בלתי-נראה שהוטבע
+   * אוטומטית כשהקבוצה נוצרה - וגורם ל-=== רגיל להיכשל בשקט (אפיון QA בפועל: ניסיון
+   * אמיתי להוסיף משתמש נכשל עם add-http-500, כי ה-ID לא נפתר ונפלנו לנתיב ה-getbyname
+   * הישן שכבר ידוע ששובר על שם בעברית ב-URL - ראו ההערה למעלה).
    * @returns {Promise<number|null>}
    */
   async _resolveGroupId(groupName, digest) {
@@ -353,7 +377,8 @@ const DataService = {
       if (!res.ok) { this._groupIdCache[groupName] = null; return null; }
       const data = await res.json();
       const list = (data.d && data.d.results) || [];
-      const match = list.find(g => g.Title === groupName);
+      const target = this._normalizeGroupTitle(groupName);
+      const match = list.find(g => this._normalizeGroupTitle(g.Title) === target);
       const id = match ? match.Id : null;
       this._groupIdCache[groupName] = id;
       return id;

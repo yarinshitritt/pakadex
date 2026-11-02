@@ -176,26 +176,11 @@
   font-weight: 800 !important;
 }
 
-/* הפרדות אנכיות מודגשות בין יחידות בטבלת קשר - #keshertable בלבד (לא לדלוף לפי מיקום עמודה לטבלאות היחידה) */
-#keshertable th:nth-child(8), #keshertable td:nth-child(8),
-#keshertable th:nth-child(11), #keshertable td:nth-child(11),
-#keshertable th:nth-child(17), #keshertable td:nth-child(17),
-#keshertable th:nth-child(20), #keshertable td:nth-child(20),
-#keshertable th:nth-child(27), #keshertable td:nth-child(27),
-#keshertable th:nth-child(30), #keshertable td:nth-child(30),
-#keshertable th:nth-child(38), #keshertable td:nth-child(38),
-#keshertable th:nth-child(41), #keshertable td:nth-child(41),
-#keshertable th:nth-child(42), #keshertable td:nth-child(42),
-#keshertable th:nth-child(45), #keshertable td:nth-child(45) {
-  border-left: 2px solid #475569 !important;
-}
-
-/* הפרדות אנכיות מודגשות בין יחידות בטבלת אופטיקה - #optictable בלבד */
-#optictable th:nth-child(8), #optictable td:nth-child(8),
-#optictable th:nth-child(14), #optictable td:nth-child(14),
-#optictable th:nth-child(21), #optictable td:nth-child(21),
-#optictable th:nth-child(29), #optictable td:nth-child(29),
-#optictable th:nth-child(30), #optictable td:nth-child(30) {
+/* הפרדות אנכיות מודגשות בין גדודים בטבלאות המנהל (קשר + אופטיקה) - לפי מחלקה (co-sep, נקבעת
+   ב-JS על העמודה האחרונה בקבוצת כל גדוד), לא לפי מיקום עמודה: מיקום העמודות משתנה כשמוסיפים/
+   מסירים פלוגות. חל על #keshertable/#optictable בלבד (לא על טבלאות היחידה). */
+#keshertable th.co-sep, #keshertable td.co-sep,
+#optictable th.co-sep, #optictable td.co-sep {
   border-left: 2px solid #475569 !important;
 }
 
@@ -229,77 +214,47 @@
   max-width: 75px !important;
 }
 
-/* ================== צבעי קבוצות ויחידות בכותרות ================== */
-#keshertable thead tr:first-child th:nth-child(2) { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
-#keshertable thead tr:first-child th:nth-child(4) { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
-#keshertable thead tr:first-child th:nth-child(6) { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
-#keshertable thead tr:first-child th:nth-child(8) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
-#keshertable thead tr:first-child th:nth-child(10) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
+/* ================== צבעי קבוצות ויחידות בטבלאות המנהל (קשר + אופטיקה) ==================
+   הצבעים נקבעים לפי מחלקות שה-JS מצמיד לכל תא/כותרת (co-bn-<גדוד>, co-c, co-sum, co-tot,
+   co-bh), ולא לפי מיקום עמודה (nth-child) - מיקום העמודות משתנה כשמוסיפים/מסירים פלוגות
+   (ראו "פלוגות דינמיות" ב-script.js). חל על #keshertable/#optictable בלבד. */
 
-#optictable thead tr:first-child th:nth-child(2) { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
-#optictable thead tr:first-child th:nth-child(3) { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
-#optictable thead tr:first-child th:nth-child(4) { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
-#optictable thead tr:first-child th:nth-child(5) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
-#optictable thead tr:first-child th:nth-child(6) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
-#optictable thead tr:first-child th:nth-child(7) { background-color: #004d56 !important; color: #ffffff !important; font-weight: bold; }
+/* כותרות הגדודים (שורה עליונה) */
+#keshertable thead tr:first-child th.co-bh.co-bn-esuk, #optictable thead tr:first-child th.co-bh.co-bn-esuk { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
+#keshertable thead tr:first-child th.co-bh.co-bn-hirg, #optictable thead tr:first-child th.co-bh.co-bn-hirg { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
+#keshertable thead tr:first-child th.co-bh.co-bn-pikud, #optictable thead tr:first-child th.co-bh.co-bn-pikud { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
+#keshertable thead tr:first-child th.co-bh.co-bn-tazam, #optictable thead tr:first-child th.co-bh.co-bn-tazam { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
+#keshertable thead tr:first-child th.co-bh.co-bn-bahalag, #optictable thead tr:first-child th.co-bh.co-bn-bahalag { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
 
-/* כותרות סה"כ פנימיות בטבלת קשר (דרישה, וויסות גדודי, עודף) - #keshertable בלבד (לא לדלוף לטבלאות היחידה) */
-#keshertable thead tr:last-child th:nth-child(9), #keshertable thead tr:last-child th:nth-child(10), #keshertable thead tr:last-child th:nth-child(11),
-#keshertable thead tr:last-child th:nth-child(18), #keshertable thead tr:last-child th:nth-child(19), #keshertable thead tr:last-child th:nth-child(20),
-#keshertable thead tr:last-child th:nth-child(28), #keshertable thead tr:last-child th:nth-child(29), #keshertable thead tr:last-child th:nth-child(30),
-#keshertable thead tr:last-child th:nth-child(39), #keshertable thead tr:last-child th:nth-child(40), #keshertable thead tr:last-child th:nth-child(41),
-#keshertable thead tr:last-child th:nth-child(43), #keshertable thead tr:last-child th:nth-child(44), #keshertable thead tr:last-child th:nth-child(45) {
+/* כותרות הפלוגות (שורה תחתונה) */
+#keshertable thead tr:last-child th.co-c.co-bn-esuk, #optictable thead tr:last-child th.co-c.co-bn-esuk { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
+#keshertable thead tr:last-child th.co-c.co-bn-hirg, #optictable thead tr:last-child th.co-c.co-bn-hirg { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
+#keshertable thead tr:last-child th.co-c.co-bn-pikud, #optictable thead tr:last-child th.co-c.co-bn-pikud { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
+#keshertable thead tr:last-child th.co-c.co-bn-tazam, #optictable thead tr:last-child th.co-c.co-bn-tazam { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
+#keshertable thead tr:last-child th.co-c.co-bn-bahalag, #optictable thead tr:last-child th.co-c.co-bn-bahalag { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
+
+/* כותרות סה"כ פנימיות בטבלת קשר (דרישה, וויסות גדודי, עודף) */
+#keshertable thead tr:last-child th.co-sum {
   background-color: #008f9c !important;
   color: #000000 !important;
   font-weight: bold;
 }
 
 /* כותרות סה"כ כללי בסוף הטבלה */
-#keshertable thead tr:last-child th:nth-child(n+46):nth-child(-n+49),
-#optictable thead tr:last-child th:nth-child(n+31):nth-child(-n+34) {
+#keshertable thead tr:last-child th.co-tot,
+#optictable thead tr:last-child th.co-tot {
   background-color: #00555e !important;
   color: #000000 !important;
   font-weight: bold;
 }
 
-/* ================== צבעים - אופטיקה (35 עמודות - פסטל בהיר) - #optictable בלבד ================== */
-#optictable thead tr:last-child th:nth-child(n+2):nth-child(-n+8) { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
-#optictable tbody tr td:nth-child(n+2):nth-child(-n+8) { background-color: #fffde7 !important; }
-
-#optictable thead tr:last-child th:nth-child(n+9):nth-child(-n+14) { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
-#optictable tbody tr td:nth-child(n+9):nth-child(-n+14) { background-color: #e8f5e9 !important; }
-
-#optictable thead tr:last-child th:nth-child(n+15):nth-child(-n+21) { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
-#optictable tbody tr td:nth-child(n+15):nth-child(-n+21) { background-color: #e3f2fd !important; }
-
-#optictable thead tr:last-child th:nth-child(n+22):nth-child(-n+29) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
-#optictable tbody tr td:nth-child(n+22):nth-child(-n+29) { background-color: #f3e5f5 !important; }
-
-#optictable thead tr:last-child th:nth-child(30) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
-#optictable tbody tr td:nth-child(30) { background-color: #fff3e0 !important; }
-
-#optictable tbody tr td:nth-child(n+31):nth-child(-n+34) { background-color: #e0f7fa !important; }
-
-/* ================== צבעים - קשר (50 עמודות - פסטל בהיר) - #keshertable בלבד ================== */
-/* קבוצה 1: בא"ח איסו"ק (עמודות 2 עד 11) */
-#keshertable thead tr:last-child th:nth-child(n+2):nth-child(-n+8) { background-color: #fbc02d !important; color: #000000 !important; font-weight: bold; }
-#keshertable tbody tr td:nth-child(n+2):nth-child(-n+11) { background-color: #fffde7 !important; }
-
-/* קבוצה 2: בא"ח חיר"ג (עמודות 12 עד 20) */
-#keshertable thead tr:last-child th:nth-child(n+12):nth-child(-n+17) { background-color: #388e3c !important; color: #000000 !important; font-weight: bold; }
-#keshertable tbody tr td:nth-child(n+12):nth-child(-n+20) { background-color: #e8f5e9 !important; }
-
-/* קבוצה 3: גדוד הפיקוד (עמודות 21 עד 30) */
-#keshertable thead tr:last-child th:nth-child(n+21):nth-child(-n+27) { background-color: #1976d2 !important; color: #000000 !important; font-weight: bold; }
-#keshertable tbody tr td:nth-child(n+21):nth-child(-n+30) { background-color: #e3f2fd !important; }
-
-/* קבוצה 4: ענף תצ"מ (עמודות 31 עד 41) */
-#keshertable thead tr:last-child th:nth-child(n+31):nth-child(-n+38) { background-color: #8e24aa !important; color: #000000 !important; font-weight: bold; }
-#keshertable tbody tr td:nth-child(n+31):nth-child(-n+41) { background-color: #f3e5f5 !important; }
-
-/* קבוצה 5: מפח"ט (עמודות 42 עד 45) */
-#keshertable thead tr:last-child th:nth-child(42) { background-color: #f57c00 !important; color: #000000 !important; font-weight: bold; }
-#keshertable tbody tr td:nth-child(n+42):nth-child(-n+45) { background-color: #fff3e0 !important; }
+/* ================== צבעי תאי הגוף (פסטל בהיר) - לפי גדוד ================== */
+#keshertable tbody tr td.co-cell.co-bn-esuk, #optictable tbody tr td.co-cell.co-bn-esuk { background-color: #fffde7 !important; }
+#keshertable tbody tr td.co-cell.co-bn-hirg, #optictable tbody tr td.co-cell.co-bn-hirg { background-color: #e8f5e9 !important; }
+#keshertable tbody tr td.co-cell.co-bn-pikud, #optictable tbody tr td.co-cell.co-bn-pikud { background-color: #e3f2fd !important; }
+#keshertable tbody tr td.co-cell.co-bn-tazam, #optictable tbody tr td.co-cell.co-bn-tazam { background-color: #f3e5f5 !important; }
+#keshertable tbody tr td.co-cell.co-bn-bahalag, #optictable tbody tr td.co-cell.co-bn-bahalag { background-color: #fff3e0 !important; }
+#optictable tbody tr td.co-cell.co-tot { background-color: #e0f7fa !important; }
 
 /* 1. בא"ח איסו"ק (צהוב) */
 #esukkeshertable thead tr th,
@@ -402,11 +357,7 @@
 #haktzaot-bahalag-shekem-table tbody tr td { background-color: #fff3e0 !important; }
 
 /* הכהיה עדינה ויזואלית לעמודות הסיכום הפנימיות כדי להבדילן מעמודות הפלוגות - #keshertable בלבד */
-#keshertable tbody tr td:nth-child(9), #keshertable tbody tr td:nth-child(10), #keshertable tbody tr td:nth-child(11),
-#keshertable tbody tr td:nth-child(18), #keshertable tbody tr td:nth-child(19), #keshertable tbody tr td:nth-child(20),
-#keshertable tbody tr td:nth-child(28), #keshertable tbody tr td:nth-child(29), #keshertable tbody tr td:nth-child(30),
-#keshertable tbody tr td:nth-child(39), #keshertable tbody tr td:nth-child(40), #keshertable tbody tr td:nth-child(41),
-#keshertable tbody tr td:nth-child(43), #keshertable tbody tr td:nth-child(44), #keshertable tbody tr td:nth-child(45) {
+#keshertable tbody tr td.co-sum {
   filter: brightness(0.95);
 }
 

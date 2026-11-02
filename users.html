@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="style.css?v=110">
+  <link rel="stylesheet" href="style.css?v=130">
   <title>PAKADEX - ניהול הרשאות</title>
   <style>
     .users-wrap { width: 100%; }
@@ -151,7 +151,6 @@
         <div class="users-card-header">
           <h2>👥 משתמשי המערכת</h2>
           <div style="display:flex; align-items:center; gap:10px;">
-            <button class="clear-btn" onclick="syncAllUsersToSharePoint()" title="מוסיף את כל המשתמשים הרשומים כאן (כולל כאלה שנוספו לפני התכונה הזו) לקבוצת ההרשאות ב-SharePoint">🔄 סנכרן הרשאות SharePoint לכולם</button>
             <div class="search-box">
               <input type="text" id="searchPnField" inputmode="numeric" placeholder="חיפוש לפי מספר אישי..." autocomplete="off" oninput="renderUsers()">
               <span class="search-icon">🔍</span>
@@ -175,10 +174,10 @@
     </div>
   </div>
 
-  <script src="config.js?v=110"></script>
-  <script src="sharepointService.js?v=110"></script>
-  <script src="auth.js?v=110"></script>
-  <script src="script.js?v=110"></script>
+  <script src="config.js?v=130"></script>
+  <script src="sharepointService.js?v=130"></script>
+  <script src="auth.js?v=130"></script>
+  <script src="script.js?v=130"></script>
 
   <script>
     // מסך זה פתוח למנהל בלבד
@@ -269,25 +268,9 @@
 
       if (!res.ok) { showMsg(res.error, true); return; }
 
-      // מנסים גם להוסיף אותו בפועל לקבוצת ההרשאות של SharePoint - כדי שהוספה כאן
-      // (ב"אתר שלנו") תספיק ולא תידרש הוספה ידנית נפרדת בהרשאות ה-SharePoint עצמן.
-      // זו פעולה נפרדת לגמרי מ-AUTH.saveUser (שרק כותבת לרשימת המשתמשים הפנימית של
-      // האפליקציה) - ראו את התיעוד ב-DataService.addUserToSharePointGroup. אם נכשלת
-      // (למשל כי למשתמש המחובר עכשיו אין הרשאת "ניהול הרשאות" באתר) - מציגים זאת
-      // בברור במקום להעמיד פנים שהכל הושלם.
-      let msg = `ההרשאה נשמרה עבור מספר אישי ${res.user.pn}.`;
-      let msgIsError = false;
-      if (typeof DataService !== 'undefined' && typeof DataService.addUserToSharePointGroup === 'function') {
-        const spRes = await DataService.addUserToSharePointGroup(res.user.pn);
-        if (spRes.ok) {
-          msg += ` נוסף גם בהצלחה לקבוצת ההרשאות ב-SharePoint (${spRes.matchedName}).`;
-        } else if (spRes.error !== 'not-sharepoint') {
-          const groupName = (typeof CONFIG !== 'undefined' && CONFIG.SHAREPOINT && CONFIG.SHAREPOINT.EDITOR_GROUP_NAME) || 'קבוצת ההרשאות';
-          msg += ` שים לב: ההוספה האוטומטית להרשאות ה-SharePoint נכשלה (${spRes.error}) - יש להוסיף אותו ידנית לקבוצת "${groupName}".`;
-          msgIsError = true;
-        }
-      }
-      showMsg(msg, msgIsError, 8000);
+      // ההוספה להרשאות ה-SharePoint נעשית ידנית בנפרד על ידי המנהל (ההוספה האוטומטית
+      // הוסרה בבקשת המשתמש) - כאן נשמרת רק רשימת המשתמשים הפנימית של האפליקציה.
+      showMsg(`ההרשאה נשמרה עבור מספר אישי ${res.user.pn}.`, false, 8000);
 
       // אם המשתמש שנערך הוא בעל הסשן הנוכחי (למשל מנהל שמעדכן/מוריד את ההרשאה של עצמו) -
       // יש לרענן את הסשן מיד, אחרת ההרשאות הישנות (כולל admin) ימשיכו לחול עד יציאה ידנית.
@@ -374,41 +357,6 @@
             </td>
           </tr>`;
       }).join('');
-    }
-
-    /**
-     * מוסיפה בבת אחת את כל המשתמשים הרשומים ברשימה הפנימית של PAKADEX לקבוצת הרשאות
-     * ה-SharePoint - כדי לכסות רטרואקטיבית משתמשים שנוספו לפני שהתכונה האוטומטית
-     * (בתוך submitUser) הייתה קיימת, בלי צורך לפתוח "ערוך" ולשמור אחד-אחד לכל אחד.
-     * דורשת שלמשתמש המחובר תהיה הרשאת "ניהול הרשאות" באתר, בדיוק כמו ההוספה הבודדת.
-     */
-    async function syncAllUsersToSharePoint() {
-      if (typeof DataService === 'undefined' || typeof DataService.addUserToSharePointGroup !== 'function') {
-        showMsg('הפעולה הזו זמינה רק כשהאתר מחובר ל-SharePoint.', true);
-        return;
-      }
-      const users = AUTH.loadUsers();
-      if (!users.length) {
-        showMsg('אין משתמשים רשומים לסנכרן.', true);
-        return;
-      }
-      if (!confirm(`לנסות להוסיף את כל ${users.length} המשתמשים הרשומים לקבוצת ההרשאות ב-SharePoint?`)) return;
-
-      showMsg(`מסנכרן ${users.length} משתמשים... זה עשוי לקחת כמה שניות.`, false, 60000);
-
-      let succeeded = 0;
-      const failed = [];
-      for (const u of users) {
-        const res = await DataService.addUserToSharePointGroup(u.pn);
-        if (res.ok) succeeded++;
-        else failed.push(`${u.name || u.pn} (${res.error})`);
-      }
-
-      if (failed.length === 0) {
-        showMsg(`הושלם: כל ${succeeded} המשתמשים נוספו/מאושרים בהרשאות ה-SharePoint.`, false, 8000);
-      } else {
-        showMsg(`הושלם: ${succeeded} הצליחו, ${failed.length} נכשלו - ${failed.join(', ')}. את אלה יש להוסיף ידנית.`, true, 12000);
-      }
     }
 
     if (ACCESS_GRANTED) {

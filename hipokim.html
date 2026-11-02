@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="style.css?v=110">
-  <link rel="stylesheet" href="hipokim.css?v=110">
+  <link rel="stylesheet" href="style.css?v=130">
+  <link rel="stylesheet" href="hipokim.css?v=130">
   <title>PAKADEX - מענה רפואי</title>
 </head>
 <body>
@@ -87,10 +87,10 @@
 
   </div>
 
-  <script src="config.js?v=110"></script>
-  <script src="sharepointService.js?v=110"></script>
-  <script src="auth.js?v=110"></script>
-  <script src="script.js?v=110"></script>
+  <script src="config.js?v=130"></script>
+  <script src="sharepointService.js?v=130"></script>
+  <script src="auth.js?v=130"></script>
+  <script src="script.js?v=130"></script>
 
   <script>
     const ALL_HIPOK_COLORS = ['bg-esuk', 'bg-hirg', 'bg-pikud', 'bg-tazam', 'bg-maphat'];
@@ -123,6 +123,32 @@
       }
     });
 
+    // שדה "שעה" - שני שדות שעה טבעיים (input type="time", step חצי שעה) בדיוק כמו במודאל
+    // "הוספת מענה רפואי" ביחידות (esuk.html וכו') - "מ-"/"עד-" - במקום הקלדה חופשית של
+    // מחרוזת (בקשת המשתמש: "כפתורים ממש להזנת שעה... בפורמט של שעה כמו בהוספת חיפוק
+    // בדרישות"). שדה .time-input המקורי (מוסתר, type="hidden") נשאר מקור האמת היחיד -
+    // כל התשתית הקיימת (saveHipokData/readHipokData/_loadHipokDataImpl/
+    // updateHipokConflictHighlight/מנגנון הביטול-ביצוע-חוזר) ממשיכה לקרוא/לכתוב אליו בדיוק
+    // כמו קודם, בלי לדעת שהערך שלו מורכב עכשיו משני שדות נפרדים.
+    function _syncHipokTimeParts(wrapper) {
+      const hidden = wrapper.querySelector('.time-input');
+      const fromEl = wrapper.querySelector('.time-part-from');
+      const toEl = wrapper.querySelector('.time-part-to');
+      const from = fromEl.value;
+      const to = toEl.value;
+      const composed = (from && to) ? `${from} - ${to}` : '';
+      if (hidden.value === composed) return;
+      hidden.value = composed;
+      hidden.dispatchEvent(new Event('input', { bubbles: true }));
+      hidden.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    document.addEventListener('change', (e) => {
+      if (!e.target.classList || !(e.target.classList.contains('time-part-from') || e.target.classList.contains('time-part-to'))) return;
+      const wrapper = e.target.closest('.cell-wrapper');
+      if (wrapper) _syncHipokTimeParts(wrapper);
+    });
+
     document.addEventListener("DOMContentLoaded", () => {
       const cells = document.querySelectorAll("#hipoktable tbody td");
 
@@ -142,7 +168,12 @@
                  <div class="color-option bg-clear" onclick="setCellColor(this, '')" title="נקה צבע">✕</div>
               </div>
               <textarea class="task-input" placeholder=""></textarea>
-              <input type="text" class="time-input" pattern="^([01]\\d|2[0-3]):[0-5]\\d\\s-\\s([01]\\d|2[0-3]):[0-5]\\d$">
+              <div class="time-range-wrap">
+                <input type="time" class="time-part time-part-from" step="1800">
+                <span class="time-sep">-</span>
+                <input type="time" class="time-part time-part-to" step="1800">
+              </div>
+              <input type="hidden" class="time-input" pattern="^([01]\\d|2[0-3]):[0-5]\\d\\s-\\s([01]\\d|2[0-3]):[0-5]\\d$">
             </div>
           `;
         }
@@ -162,15 +193,40 @@
       return data;
     }
 
+    // מגינה מפני שתי קריאות חופפות ל-loadHipokData בו-זמנית (למשל מחזור רענון תקופתי שמתנגש
+    // עם קריאה אחרת שעוד לא הסתיימה מול שרת מרכזי אמיתי) - ראו הגנה זהה על loadTableData/
+    // loadHipokData ב-script.js. הגרסה הזו (המקומית, בעמוד הזה) דורסת את זו של script.js
+    // (אותו שם פונקציה גלובלית, נטענת אחריה) ולכן חייבת לכלול את אותה הגנה בעצמה.
+    let _hipokPageLoadInFlight = false;
+    let _hipokPageLoadRerunArgs = null;
+
     async function loadHipokData(week, year) {
+      if (_hipokPageLoadInFlight) {
+        _hipokPageLoadRerunArgs = { week, year };
+        return;
+      }
+      _hipokPageLoadInFlight = true;
+      try {
+        await _loadHipokDataImpl(week, year);
+      } finally {
+        _hipokPageLoadInFlight = false;
+        if (_hipokPageLoadRerunArgs) {
+          const rerun = _hipokPageLoadRerunArgs;
+          _hipokPageLoadRerunArgs = null;
+          loadHipokData(rerun.week, rerun.year);
+        }
+      }
+    }
+
+    // ממלאת כל שדה/מחלקה ישירות לערך הסופי שלהם במעבר אחד - בלי שלב-ביניים שמרוקן הכל קודם
+    // (טקסט לריק, className ל-'cell-wrapper' בלבד) ורק אחר כך ממלא מחדש. ריקון-ואז-מילוי כזה
+    // גורם להבהוב אמיתי בכל מחזור רענון אוטומטי גם כשדבר לא השתנה בפועל - יש רגע קצר בלי
+    // המחלקה/הצבע בכלל (אותה תבנית באג בדיוק כמו שכבר תוקנה ב-loadTableData/loadHipokData
+    // הכלליים ב-script.js - ראו שם). מחשבים את מחלקת ה-CSS היעד המלאה של כל wrapper מראש,
+    // ומחילים אותה (className =) רק אם היא בפועל שונה מהנוכחית.
+    async function _loadHipokDataImpl(week, year) {
       const table = document.getElementById('hipoktable');
       if (!table) return;
-
-      document.querySelectorAll('#hipoktable .task-input').forEach(el => el.value = '');
-      document.querySelectorAll('#hipoktable .time-input').forEach(el => el.value = '');
-      document.querySelectorAll('#hipoktable .cell-wrapper').forEach(wrapper => {
-         wrapper.className = 'cell-wrapper';
-      });
 
       const key = getStorageKey('hipoktable', week, year);
       let data = null;
@@ -180,35 +236,51 @@
         const saved = localStorage.getItem(key);
         if (saved) data = JSON.parse(saved);
       }
-      if (!data) return;
+
+      const pubKey = getStorageKey('hipoktable', week, year) + '_published';
+      let published = null;
+      if (typeof fetchTableData === 'function') {
+        published = await fetchTableData(pubKey);
+      } else {
+        const saved = localStorage.getItem(pubKey);
+        if (saved) published = JSON.parse(saved);
+      }
+      published = published || {};
 
       document.querySelectorAll('#hipoktable .task-input').forEach((el, i) => {
-        if (data['task_' + i] !== undefined) {
-          el.value = data['task_' + i];
-          if (data['task_' + i].trim() !== '') {
-            const wrapper = el.closest('.cell-wrapper');
-            if (wrapper) wrapper.classList.add('imported');
-          }
-        }
+        el.value = (data && data['task_' + i] !== undefined) ? data['task_' + i] : '';
         applyRomaniotRule(el);
       });
       document.querySelectorAll('#hipoktable .time-input').forEach((el, i) => {
-        if (data['time_' + i] !== undefined) {
-          el.value = data['time_' + i];
-          if (data['time_' + i].trim() !== '') {
-            const wrapper = el.closest('.cell-wrapper');
-            if (wrapper) wrapper.classList.add('imported');
-          }
-        }
+        const timeVal = (data && data['time_' + i] !== undefined) ? data['time_' + i] : '';
+        el.value = timeVal;
+        const wrapper = el.closest('.cell-wrapper');
+        const fromEl = wrapper ? wrapper.querySelector('.time-part-from') : null;
+        const toEl = wrapper ? wrapper.querySelector('.time-part-to') : null;
+        const match = timeVal.trim().match(/^((?:[01]\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]\d|2[0-3]):[0-5]\d)$/);
+        if (fromEl) fromEl.value = match ? match[1] : '';
+        if (toEl) toEl.value = match ? match[2] : '';
       });
 
       document.querySelectorAll('#hipoktable .cell-wrapper').forEach((wrapper, i) => {
-         if (data['color_' + i]) {
-             wrapper.classList.add(data['color_' + i]);
-         }
-      });
+        const taskVal = data ? (data['task_' + i] || '') : '';
+        const timeVal = data ? (data['time_' + i] || '') : '';
+        const colorVal = data ? (data['color_' + i] || '') : '';
 
-      await updateHipokConflictHighlight(week, year);
+        const classes = ['cell-wrapper'];
+        if (taskVal.trim() !== '' || timeVal.trim() !== '') classes.push('imported');
+        if (colorVal) classes.push(colorVal);
+        if (/רומניות/.test(taskVal)) classes.push('hipok-romaniot');
+
+        const pubTask = published['task_' + i] || '';
+        const pubTime = published['time_' + i] || '';
+        const pubColor = published['color_' + i] || '';
+        const changed = taskVal !== pubTask || timeVal !== pubTime || colorVal !== pubColor;
+        if (changed) classes.push('conflict-overlap');
+
+        const targetClassName = classes.join(' ');
+        if (wrapper.className !== targetClassName) wrapper.className = targetClassName;
+      });
     }
 
     /* סימון כתום (.conflict-overlap) למשבצות מענים רפואיים ששונו מאז ההפצה האחרונה של המנהל -

@@ -150,21 +150,47 @@ table.hipoktable {
   box-sizing: border-box;
 }
 
-.time-input {
+/* .time-input עצמו הפך ל-type="hidden" (מקור אמת פנימי בלבד) - הקלט הנראה לעין הוא
+   .time-range-wrap למטה. */
+
+.time-range-wrap {
   width: 100%;
-  border: none;
-  border-top: 1px solid #e2e8f0;
-  outline: none;
-  background: rgba(255, 255, 255, 0.7) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  /* הכיוון הכללי של העמוד הוא RTL, אבל טווח שעות תמיד נכתב שמאל-לימין (10:32 - 23:30) -
+     בלי direction:ltr מפורש כאן, סדר ה-DOM (משעה, מפריד, עד שעה) היה מתהפך חזותית בגלל
+     ירושת ה-RTL של העמוד: "משעה" היה מוצג מימין ו"עד שעה" משמאל, הפוך ממה שביקש המשתמש. */
   direction: ltr;
-  text-align: center;
-  font-size: 12.5px;
-  font-weight: 800;
-  color: #000000 !important;
+  border-top: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.7) !important;
   padding: 2px;
   box-sizing: border-box;
   margin-top: auto;
   border-radius: 0 0 4px 4px;
+}
+
+.time-part {
+  width: 46%;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  direction: ltr;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #000000 !important;
+  padding: 1px 0;
+  box-sizing: border-box;
+  font-family: 'Assistant', sans-serif !important;
+}
+
+.time-sep {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
 }
 
 /* פורמט שעה לא תקין (לא תואם HH:MM - HH:MM) - ראו validateTimeInputFormat */
